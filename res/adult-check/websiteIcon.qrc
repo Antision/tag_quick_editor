@@ -1,0 +1,13 @@
+<RCC>
+    <qresource prefix="/">
+        <file>avast.png</file>
+        <file>civitai.png</file>
+        <file>danbooru.png</file>
+        <file>eh.png</file>
+        <file>fantia.png</file>
+        <file>pixiv.png</file>
+        <file>tiktok.png</file>
+        <file>x.png</file>
+        <file>wallpaper engine.png</file>
+    </qresource>
+</RCC>

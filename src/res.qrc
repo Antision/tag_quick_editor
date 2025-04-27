@@ -1,0 +1,32 @@
+<RCC>
+    <qresource prefix="/">
+        <file>../res/bin.png</file>
+        <file>../res/bin_sleep.png</file>
+        <file>../res/close.png</file>
+        <file>../res/close_mainwindow_sleep.png</file>
+        <file>../res/close_sleep.png</file>
+        <file>../res/icon.ico</file>
+        <file>../res/icon.png</file>
+        <file>../res/maximize.png</file>
+        <file>../res/maximize_mainwindow_sleep.png</file>
+        <file>../res/maximize_sleep.png</file>
+        <file>../res/menu_add.png</file>
+        <file>../res/menu_copy.png</file>
+        <file>../res/menu_cut.png</file>
+        <file>../res/menu_edit.png</file>
+        <file>../res/menu_paste.png</file>
+        <file>../res/menu_pin.png</file>
+        <file>../res/menu_remove.png</file>
+        <file>../res/minimize.png</file>
+        <file>../res/minimize_mainwindow_sleep.png</file>
+        <file>../res/minimize_sleep.png</file>
+        <file>../res/plus.png</file>
+        <file>../res/plus_sleep.png</file>
+        <file>../res/scrollbar_downarrow.png</file>
+        <file>../res/scrollbar_leftarrow.png</file>
+        <file>../res/scrollbar_rightarrow.png</file>
+        <file>../res/scrollbar_uparrow.png</file>
+        <file>../res/tick.png</file>
+        <file>../res/tick_sleep.png</file>
+    </qresource>
+</RCC>
