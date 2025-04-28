@@ -1,6 +1,8 @@
 # Tag Quick Editor
 
 Tag Quick Editor is a software designed for editing training dataset captions in Danbooru-style tag format. It includes built-in editor modules for capturing specific tags, primarily used to manually correct tags that WD14 Tagger often misidentifies. The software design references [BooruDatasetTagManager](https://github.com/starik222/BooruDatasetTagManager/tree/master).
+![Image](https://github.com/user-attachments/assets/f9a137d6-b313-4c52-b16f-13aafdd80590)
+
 
 ## License
 This project is licensed under the [GPL-3.0 License](LICENSE).
@@ -17,6 +19,14 @@ Click **File -> Open** in the menu bar.
 
 ## Editor Modules
 The rightmost column in the interface contains editor modules, which enable rapid tag editing via mouse interactions.
+![Image](https://github.com/user-attachments/assets/709a4b93-ac1f-422d-8d12-795a545d4320)
+
+### Editor Layout Customization
+Access **Options -> Editors** to enter the layout configuration interface. You can:
+- Reorder editor modules by dragging within/between columns
+- Add new columns using the green plus (+) button
+- Recommended to organize editors into two columns for optimal workflow
+![Image](https://github.com/user-attachments/assets/a349e4f5-867e-41f2-8ff5-640915d453bb)
 
 ### Auto-Merge Behavior
 Editors may auto-merge tags by default. Disable this via **Options -> Auto Merge Tags**. Settings are persisted.
@@ -50,6 +60,8 @@ The first list auto-merges clothing tags under these conditions:
 ### Tags/Images
 - **Images**: Use `Shift`/`Ctrl` or drag to multi-select.  
 - **Multi-Edit Mode**: When multiple images are selected, tags represent aggregated tags across all selected images.  
+![Image](https://github.com/user-attachments/assets/1632f54b-ed4c-4af2-8b8e-262b37cb6150)
+![Image](https://github.com/user-attachments/assets/53cb011b-871f-4df9-adf5-48511f55f875)
 
 **Bulk Tag Positioning**:  
 1. Drag a tag (e.g., `hat`) to a new position in the multi-edit list.  
