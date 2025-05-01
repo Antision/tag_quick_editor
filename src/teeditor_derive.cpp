@@ -1252,8 +1252,19 @@ struct BangsList: teTagListControl{
     }
     void extraWidgetPushBack(std::shared_ptr<tetagcore>in_tag,tetagbase*widget){}
     void refreshState()override{}
-}*bangs_list = new BangsList(new colorsWidget({ {{qsl("long"),qsl("short")},true}, {{qsl("asymmetrical"),qsl("double-parted"),qsl("crossed"),qsl("blunt"),qsl("parted"),qsl("choppy"),qsl("swept"),qsl("braided"),qsl("diagonal"),qsl("center-flap"),qsl("wispy"),qsl("arched"),qsl("dyed"),qsl("curtained"),qsl("fanged"),qsl("flipped"),qsl("sideless"),qsl("loosely tucked")},false}, {{qsl("bangs")},true}}, nullptr,-1,{{qsl("hair between eyes"),qsl("hair over one eye"),qsl("hair over eyes")}})
-                              ,taglistwidget);
+}*bangs_list = new BangsList(
+    new colorsWidget({
+                      {{qsl("long"),qsl("short")},true},
+                      {{qsl("asymmetrical"),qsl("double-parted"),qsl("crossed"),qsl("blunt"),qsl("parted"),qsl("choppy"),qsl("swept"),qsl("braided"),qsl("diagonal"),qsl("center-flap"),qsl("wispy"),qsl("arched"),qsl("dyed"),qsl("curtained"),qsl("fanged"),qsl("flipped"),qsl("sideless"),qsl("loosely tucked")},false},
+                      {{qsl("bangs")},true}
+                     },
+                     nullptr,-1,
+                     {{
+                       qsl("hair between eyes"),
+                       qsl("hair over one eye"),
+                       qsl("hair over eyes")
+                     }}
+                     ),taglistwidget);
 contentLayout->addWidget(bangs_list);
 controls.push_back(bangs_list);
 

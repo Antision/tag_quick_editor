@@ -44,6 +44,8 @@ void colorsWidget::uncheckAllButtons(){
                 btn->setChecked(false);
         }
     }
+    for(QAbstractButton*btn:extra_buttongroup->buttons())
+        btn->setChecked(false);
     otherWords.clear();
 }
 
@@ -231,17 +233,20 @@ void colorsWidget::input_and_show(std::shared_ptr<tetagcore> in_tag){
     if(in_tag){
         QList<tewordcore*>&words = in_tag->words;
         int wordCount = words.count();
+        if(extra_buttongroup){
+            auto extrabuttonlist = extra_buttongroup->buttons();
+            QString tagText = *in_tag.get();
+            for(QAbstractButton*btn:extrabuttonlist)
+                if(btn->text()==tagText){
+                    btn->setChecked(true);
+                    show();
+                    return;
+                }
+        }
         for(int i=0;i<wordCount;++i){
             tewordcore*wc = words[i];
             QString wordtext = wc->text;
-            if(extra_buttongroup){
-                auto extrabuttonlist = extra_buttongroup->buttons();
-                for(QAbstractButton*btn:extrabuttonlist)
-                    if(btn->text()==wordtext){
-                        btn->setChecked(true);
-                        goto nextword;
-                    }
-            }
+
             for(auto&[layout,buttongroup]:objectLayoutList){
                 if(buttongroup){
                     auto buttonlist = buttongroup->buttons();
@@ -250,6 +255,14 @@ void colorsWidget::input_and_show(std::shared_ptr<tetagcore> in_tag){
                             btn->setChecked(true);
                             goto nextword;
                         }
+                }else{
+                    int count=layout->count();
+                    for(int i=0;i<count;++i){
+                        QLabel*label = qobject_cast<QLabel*>(layout->itemAt(i)->widget());
+                        if(label){
+                            goto nextword;
+                        }
+                    }
                 }
             }
             otherWords.append(*wc+' ');
