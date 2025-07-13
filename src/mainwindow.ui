@@ -298,6 +298,10 @@ border-left:1px solid rgb(100,100,100);
 border-right:1px solid rgb(100,100,100);
 }
 QMenuBar::item:selected{
+
+	background: #613d80;
+}
+QMenuBar::item:first:selected{
     border-top-left-radius: 7px; 
 	background: #613d80;
 }

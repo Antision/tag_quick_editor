@@ -44,8 +44,9 @@ void colorsWidget::uncheckAllButtons(){
                 btn->setChecked(false);
         }
     }
-    for(QAbstractButton*btn:extra_buttongroup->buttons())
-        btn->setChecked(false);
+    if(extra_buttongroup)
+        for(QAbstractButton*btn:extra_buttongroup->buttons())
+            btn->setChecked(false);
     otherWords.clear();
 }
 

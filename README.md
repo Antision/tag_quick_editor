@@ -1,7 +1,8 @@
 # Tag Quick Editor
 
 Tag Quick Editor is a software designed for editing training dataset captions in Danbooru-style tag format. It includes built-in editor modules for capturing specific tags, primarily used to manually correct tags that WD14 Tagger often misidentifies. The software design references [BooruDatasetTagManager](https://github.com/starik222/BooruDatasetTagManager/tree/master).
-![Image](https://github.com/user-attachments/assets/f9a137d6-b313-4c52-b16f-13aafdd80590)
+![Image](https://github.com/user-attachments/assets/d081e7a0-083c-441c-8f84-e8f0592b666c)
+![Image](https://github.com/user-attachments/assets/b7e7841e-7623-4c33-946e-68b974a9abe1)
 
 
 ## License
@@ -60,7 +61,7 @@ The first list auto-merges clothing tags under these conditions:
 ### Tags/Images
 - **Images**: Use `Shift`/`Ctrl` or drag to multi-select.  
 - **Multi-Edit Mode**: When multiple images are selected, tags represent aggregated tags across all selected images.  
-![Image](https://github.com/user-attachments/assets/1632f54b-ed4c-4af2-8b8e-262b37cb6150)
+![Image](https://github.com/user-attachments/assets/aa274b3c-e5c6-4681-8a1a-300dfb4b253f)
 ![Image](https://github.com/user-attachments/assets/53cb011b-871f-4df9-adf5-48511f55f875)
 
 **Bulk Tag Positioning**:  
