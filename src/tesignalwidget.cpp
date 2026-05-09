@@ -507,9 +507,9 @@ QPushButton:hover{border-image:url(:/res/minimize.png);})"));
         close_btn->setFixedWidth(30);
         maximize_btn->setFixedWidth(30);
         minimize_btn->setFixedWidth(30);
-        connect(close_btn,&QPushButton::pressed,this,&QWidget::hide,Qt::DirectConnection);
-        connect(maximize_btn,&QPushButton::pressed,this,[this]{if(isMaximized())showNormal(); else showMaximized();},Qt::DirectConnection);
-        connect(minimize_btn,&QPushButton::pressed,this,&QWidget::showMinimized,Qt::DirectConnection);
+        connect(close_btn,&QPushButton::clicked,this,&QWidget::hide,Qt::DirectConnection);
+        connect(maximize_btn,&QPushButton::clicked,this,[this]{if(isMaximized())showNormal(); else showMaximized();},Qt::DirectConnection);
+        connect(minimize_btn,&QPushButton::clicked,this,&QWidget::showMinimized,Qt::DirectConnection);
         titlelayout->addWidget(minimize_btn);
         titlelayout->addWidget(maximize_btn);
         titlelayout->addWidget(close_btn);
@@ -530,7 +530,6 @@ bool teWidget::nativeEvent(const QByteArray &eventType, void *message, qintptr *
         return false;
 
     switch (msg->message) {
-
     case WM_NCCALCSIZE: {
         if (msg->wParam) {
             *result = 0;
@@ -538,39 +537,48 @@ bool teWidget::nativeEvent(const QByteArray &eventType, void *message, qintptr *
         }
         break;
     }
-    case WM_NCHITTEST:{
-        POINT pt = { GET_X_LPARAM(msg->lParam), GET_Y_LPARAM(msg->lParam) };
-        ScreenToClient(msg->hwnd, &pt);
-        int xPos = pt.x;
-        int yPos = pt.y;
-        if (yPos > boundaryWidth&&yPos < titleWidget->height()&&xPos>0&&xPos<minimize_btn->x())
-        {
+    case WM_NCHITTEST: {
+        // Win32 给出的坐标是 物理屏幕像素（physical）。先把它转成 Qt 的逻辑全局坐标，再 mapFromGlobal。
+        int physX = GET_X_LPARAM(msg->lParam);
+        int physY = GET_Y_LPARAM(msg->lParam);
+
+        double scale = getWindowScale(msg->hwnd); // e.g. 1.0, 1.5, 2.0
+        QPoint globalLogical(qRound(physX / scale), qRound(physY / scale)); // 转为 Qt 全局逻辑坐标
+
+        // 转为 widget 本地坐标（与 this->width()/height()/控件位置使用相同单位）
+        QPoint local = this->mapFromGlobal(globalLogical);
+        int xPos = local.x();
+        int yPos = local.y();
+
+        // 获取 minimize_btn 在 this 中的 x（确保单位一致）
+        int minimizeBtnX = minimize_btn ? minimize_btn->mapTo(this, QPoint(0,0)).x() : width();
+
+        if (yPos > boundaryWidth && yPos < titleWidget->height() && xPos > 0 && xPos < minimizeBtnX) {
             *result = HTCAPTION;
         }
-        else if(xPos < boundaryWidth && yPos<boundaryWidth)
+        else if (xPos < boundaryWidth && yPos < boundaryWidth)
             *result = HTTOPLEFT;
-        else if(xPos>=width()-boundaryWidth&&yPos<boundaryWidth)
+        else if (xPos >= width() - boundaryWidth && yPos < boundaryWidth)
             *result = HTTOPRIGHT;
-        else if(xPos<boundaryWidth&&yPos>=height()-boundaryWidth)
+        else if (xPos < boundaryWidth && yPos >= height() - boundaryWidth)
             *result = HTBOTTOMLEFT;
-        else if(xPos>=width()-boundaryWidth&&yPos>=height()-boundaryWidth)
+        else if (xPos >= width() - boundaryWidth && yPos >= height() - boundaryWidth)
             *result = HTBOTTOMRIGHT;
-        else if(xPos < boundaryWidth)
+        else if (xPos < boundaryWidth)
             *result = HTLEFT;
-        else if(xPos>=width()-boundaryWidth)
+        else if (xPos >= width() - boundaryWidth)
             *result = HTRIGHT;
-        else if(yPos<boundaryWidth)
+        else if (yPos < boundaryWidth)
             *result = HTTOP;
-        else if(yPos>=height()-boundaryWidth)
+        else if (yPos >= height() - boundaryWidth)
             *result = HTBOTTOM;
-        else{
+        else {
             return false;
         }
         return true;
     }
     case WM_GETMINMAXINFO: {
         MINMAXINFO* minMax = reinterpret_cast<MINMAXINFO*>(msg->lParam);
-
         HMONITOR monitor = MonitorFromWindow(msg->hwnd, MONITOR_DEFAULTTONEAREST);
         MONITORINFO monitorInfo = { sizeof(MONITORINFO) };
         GetMonitorInfo(monitor, &monitorInfo);
@@ -586,8 +594,6 @@ bool teWidget::nativeEvent(const QByteArray &eventType, void *message, qintptr *
         *result = 0;
         return true;
     }
-    break;
-
     default:
         break;
     }

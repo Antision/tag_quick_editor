@@ -1600,8 +1600,9 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
                 return 0;
                 sortwords:
                 static auto insertWords = [](std::shared_ptr<tetagcore>tag,QVector<QVector<teWordCore*>>wordListList){
-                        tag->widget->disconnectWord();
-                        // tag->widget->takeWordWidgets();
+                        bool hasWidget=tag->widget;
+                        if(hasWidget)
+                            tag->widget->disconnectWord();
                         tag->words.clear();
                         int pos=-1;
                         QHash<QString, bool> seen;
@@ -1612,7 +1613,10 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
                                     continue;
                                 }
                                 seen[*wc]=true;
-                                tag->widget->insertWord(++pos,wc,true,false);
+                                if(hasWidget)
+                                    tag->widget->insertWord(++pos,wc,true,false);
+                                else
+                                    tag->words.append(wc);
                             }
                     };
                 teWordCore*typeWord;

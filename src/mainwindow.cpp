@@ -416,31 +416,46 @@ bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, qintptr
         }
         break;
     }
-    case WM_NCHITTEST:{
-        int xPos = GET_X_LPARAM(msg->lParam) - this->frameGeometry().x();
-        int yPos = GET_Y_LPARAM(msg->lParam) - this->frameGeometry().y();
-        if (yPos > boundaryWidth&&yPos < ui->menuBar->height()&&xPos>ui->menuBar->actionGeometry(ui->menuBar->actions().back()).x()+(ui->menuBar->actionGeometry(ui->menuBar->actions().back()).width())&&xPos<minimize_btn->x())
+    case WM_NCHITTEST: {
+        // 把 lParam (物理屏幕像素) -> Qt 逻辑坐标（和 Qt 的 geometry/控件坐标一致）
+        POINT ptWin = { GET_X_LPARAM(msg->lParam), GET_Y_LPARAM(msg->lParam) };
+        double scale = getWindowScale(msg->hwnd); // e.g. 1.5, 2.0
+        // 转换为 Qt 逻辑全局点
+        QPointF qtGlobal(ptWin.x / scale, ptWin.y / scale);
+
+        // 计算相对于窗口左上角的逻辑坐标（和 frameGeometry()/width()/height() 在同一坐标系）
+        int xPos = static_cast<int>(qtGlobal.x()) - this->frameGeometry().x();
+        int yPos = static_cast<int>(qtGlobal.y()) - this->frameGeometry().y();
+
+        // 如果 boundaryWidth 是以逻辑像素定义（推荐这样），可以直接使用
+        // 判断是否为标题栏区域（注意：你原来用的 last action x 等都是 Qt 逻辑坐标）
+        QRect lastActionGeom = ui->menuBar->actionGeometry(ui->menuBar->actions().back());
+        int lastActionRightX = lastActionGeom.x() + lastActionGeom.width();
+
+        if (yPos > boundaryWidth && yPos < ui->menuBar->height()
+            && xPos > lastActionRightX && xPos < minimize_btn->x())  // 标题栏区域
         {
             *result = HTCAPTION;
         }
-        else if(xPos < boundaryWidth && yPos<boundaryWidth)
+        else if (xPos < boundaryWidth && yPos < boundaryWidth)
             *result = HTTOPLEFT;
-        else if(xPos>=width()-boundaryWidth&&yPos<boundaryWidth)
+        else if (xPos >= width() - boundaryWidth && yPos < boundaryWidth)
             *result = HTTOPRIGHT;
-        else if(xPos<boundaryWidth&&yPos>=height()-boundaryWidth)
+        else if (xPos < boundaryWidth && yPos >= height() - boundaryWidth)
             *result = HTBOTTOMLEFT;
-        else if(xPos>=width()-boundaryWidth&&yPos>=height()-boundaryWidth)
+        else if (xPos >= width() - boundaryWidth && yPos >= height() - boundaryWidth)
             *result = HTBOTTOMRIGHT;
-        else if(xPos < boundaryWidth)
+        else if (xPos < boundaryWidth)
             *result = HTLEFT;
-        else if(xPos>=width()-boundaryWidth)
+        else if (xPos >= width() - boundaryWidth)
             *result = HTRIGHT;
-        else if(yPos<boundaryWidth)
+        else if (yPos < boundaryWidth)
             *result = HTTOP;
-        else if(yPos>=height()-boundaryWidth)
+        else if (yPos >= height() - boundaryWidth)
             *result = HTBOTTOM;
         else
             return false;
+
         return true;
     }
     case WM_GETMINMAXINFO: {

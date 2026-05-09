@@ -1,48 +1,54 @@
 #include "tepicturefile.h"
 #include "func.h"
 
-int tePictureFile::openpath(std::string tagfile_extension){
-    if(!std::filesystem::exists(filepath)) return -2;
-    thread_pool.add([this]{loadPicture();});
-    std::filesystem::path stdpath = filepath.stdpath;
-    if(std::filesystem::exists(stdpath.replace_extension(tagfile_extension))){
-        txtfile_read.open(stdpath.replace_extension(tagfile_extension),std::ios::in);
-        if(!txtfile_read.is_open()){
-            telog("[tePictureFile::openpath()]:Found file but couldn't open it");
+int tePictureFile::openpath(std::string tagfile_extension)
+{
+    // Ensure the file exists using QFileInfo (Qt way)
+    QFileInfo fileInfo(filepath);
+    if (!fileInfo.exists()) {
+        telog(QString("Couldn't test the existence of file %1").arg(filepath));
+        return -1;  // Or any appropriate error code
+    }
+
+    thread_pool.add([this]{ loadPicture(); });
+
+    // Replace extension using QFileInfo
+    QString tagfilePath = filepath;
+    tagfilePath = fileInfo.absolutePath() + "/" + fileInfo.completeBaseName() + QString::fromStdString(tagfile_extension);
+
+    QFile txtfile_read(tagfilePath);
+    if (txtfile_read.exists()) {
+        if (!txtfile_read.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            telog("[tePictureFile::openpath()]: Found file but couldn't open it");
             return -2;
         }
     } else {
-        txtfile_read.open(stdpath.replace_extension(tagfile_extension),std::ios::in);
-        if(txtfile_read.is_open()){
-            telog("[tePictureFile::openpath()]:Couldn't find prompt file of the picture");
+        // If the file doesn't exist, attempt to open a non-existing file for logging purposes
+        if (txtfile_read.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            telog("[tePictureFile::openpath()]: Couldn't find prompt file for the picture");
             return -1;
-        }else{
-            telog("[tePictureFile::openpath()]:Create File object Error");
+        } else {
+            telog("[tePictureFile::openpath()]: Create File object Error");
             return -2;
         }
     }
-    std::string content;
-    content.assign((std::istreambuf_iterator<char>(txtfile_read)), std::istreambuf_iterator<char>());
-    QString QStringContent = QString::fromStdString(content);
+
+    // Read the content from the file
+    QTextStream in(&txtfile_read);
+    QString content = in.readAll();
     QRegularExpression re(R"((?:,|\n|(?<=[a-zA-Z0-9])\.))");
-    QStringList tokens = QStringContent.split(re, Qt::SkipEmptyParts);
+    QStringList tokens = content.split(re, Qt::SkipEmptyParts);
+
+    // Process tokens and populate the taglist
     for (const QString& token : tokens) {
         if (!token.isEmpty()) {
             taglist.initialize_push_back(token);
         }
     }
-    // static std::regex re(R"((,|\n|(?<=[a-zA-Z0-9])\.))");
-    // std::sregex_token_iterator iter(content.begin(), content.end(), re, -1);
-    // std::sregex_token_iterator end;
-    // while (iter != end) {
-    //     std::string token = *iter++;
-    //     if (!token.empty()) {
-    //         taglist.initialize_push_back(token);
-    //     }
-    // }
 
-    taglist.isTagsLoaded=true;
+    taglist.isTagsLoaded = true;
     txtfile_read.close();
+
     return 0;
 }
 

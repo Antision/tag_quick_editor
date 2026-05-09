@@ -37,5 +37,6 @@ class MainWindow;
 void CreateAutoSaveThread(MainWindow*w);
 #define telog(a) qDebug()<<a
 #define qsl(x) QStringLiteral(x)
+double getWindowScale(HWND hwnd);
 
 #endif // FUNC_H

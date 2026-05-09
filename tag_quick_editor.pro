@@ -4,7 +4,7 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++20
 
-VERSION = 0.0.0
+VERSION = 0.0.1
 DEFINES += APP_VERSION=\\\"$$VERSION\\\"
 
 # You can make your code fail to compile if it uses deprecated APIs.
@@ -16,6 +16,7 @@ PRECOMPILED_HEADER=src/pch.h
 # QMAKE_CXXFLAGS += /MP
 LIBS += -luser32
 LIBS += -ldwmapi
+LIBS += -lgdi32
 RC_ICONS = res/icon.ico
 SOURCES += \
     src/ctag.cpp \

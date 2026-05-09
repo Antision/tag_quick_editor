@@ -368,7 +368,7 @@ public:
         void worker_function() {
             while (true) {
                 if (parent->delete_count > 0) {
-                    std::unique_lock<std::mutex>(delete_count_mt);
+                    std::unique_lock<std::mutex> tmp_unique_lock(parent->delete_count_mt);
                     if (parent->delete_count > 0)
                     {
                         --parent->delete_count;

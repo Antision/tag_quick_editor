@@ -260,3 +260,23 @@ void MainWindow::checkForUpdate() {
     }
     reply->deleteLater();
 }
+double getWindowScale(HWND hwnd)
+{
+    // 动态获取 GetDpiForWindow（Windows 10/1607+），兼容低版本
+    typedef UINT(WINAPI *GetDpiForWindow_t)(HWND);
+    static GetDpiForWindow_t pGetDpiForWindow = reinterpret_cast<GetDpiForWindow_t>(
+        GetProcAddress(GetModuleHandleW(L"user32"), "GetDpiForWindow"));
+
+    UINT dpi = 96; // fallback
+    if (pGetDpiForWindow) {
+        dpi = pGetDpiForWindow(hwnd);
+    } else {
+        // fallback: 从设备上下文读取 DPI（旧方法）
+        HDC hdc = GetDC(hwnd);
+        if (hdc) {
+            dpi = GetDeviceCaps(hdc, LOGPIXELSX);
+            ReleaseDC(hwnd, hdc);
+        }
+    }
+    return static_cast<double>(dpi) / 96.0;
+}

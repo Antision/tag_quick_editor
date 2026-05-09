@@ -1,28 +1,28 @@
 #ifndef TESIGNALWIDGET_H
 #define TESIGNALWIDGET_H
 #include "tepicturelistview.h"
+#include "pch.h"
 
-class teWidget:public QWidget,public teObject{
+class teWidget: public QWidget, public teObject {
     Q_OBJECT
 public:
-    QWidget*titleWidget=new QWidget(this);
-    QWidget*content = new QWidget(this);
+    QWidget* titleWidget = new QWidget(this);
+    QWidget* content = new QWidget(this);
     QVBoxLayout vlayout;
+    QHBoxLayout* titlelayout = new QHBoxLayout;
+    QPushButton* close_btn;
+    QPushButton* maximize_btn;
+    QPushButton* minimize_btn;
 
-    QHBoxLayout*titlelayout = new QHBoxLayout;
+    teWidget(QWidget* parent = nullptr);
 
-    QPushButton*close_btn;
-    QPushButton*maximize_btn;
-    QPushButton*minimize_btn;
-
-    teWidget(QWidget*parent=nullptr);
-    ~teWidget(){
+    ~teWidget() {
         delete titlelayout;
     }
-    int boundaryWidth=6;
-    bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result);
 
+    int boundaryWidth = 6; // 逻辑像素
 
+    bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result) override;
 };
 extern QString destroyButtonStyle,OkButtonStyle,addButtonStyle;
 class teSignalWidget:public teWidget
@@ -233,7 +233,11 @@ public:
         content->setLayout(content_layout);
         show();
         QEventLoop loop;
-        QObject::connect(Ok_btn, &QPushButton::clicked, &loop, &QEventLoop::quit);
+        connect(Ok_btn, &QPushButton::clicked, &loop, &QEventLoop::quit);
+        connect(close_btn,&QPushButton::clicked,this,[&loop]{
+            QCoreApplication::quit();
+            loop.quit();
+        });
         loop.exec();
         for(int i=0;i<8;++i){
             QAbstractButton*btn = bg->buttons()[i];
@@ -246,6 +250,7 @@ public:
             *nsfwMode=-1;
         if(*nsfwMode==0)
             *nsfwMode=1;
+
     }
 };
 #endif // TESIGNALWIDGET_H
