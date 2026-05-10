@@ -224,7 +224,7 @@ public:
 struct teInputWidget;
 struct teEditorControl;
 
-typedef struct teTagBase: public QFrame,public teObject{
+typedef class teTagBase: public QFrame,public teObject{
     Q_OBJECT
 public:
     teTagBase(){ }

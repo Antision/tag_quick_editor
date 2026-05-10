@@ -218,6 +218,7 @@ void teTagButtonGroup::onClicked(int id){
             while(linked_tags.size()>1){
                 taglistwidget->tagErase(*linked_tags.begin());
             }
+            qDebug()<<linked_tags.size();
             (*linked_tags.begin())->widget->setText(final_string);
         }
     }else{

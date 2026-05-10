@@ -142,30 +142,50 @@ MainWindow::MainWindow(QWidget *parent)
     picturefileModel = dynamic_cast<tePictureFileModel*>(picturefileListView->model());
     imageWidget = new teImageWidget{nullptr};
     imageWidget->hide();
-    connect(picturefileListView, &QListView::doubleClicked, this, [this](const QModelIndex&index){
+    connect(picturefileListView, &QListView::doubleClicked, this, [this](const QModelIndex &index) {
         imageWidget->show();
-        tePictureFile*file = qvariant_cast<tePictureFile*>(picturefileModel->data(index));
 
-        imageWidget->imgArea->setImage(file->filepath.qstring);
+        tePictureFile *file = qvariant_cast<tePictureFile*>(picturefileModel->data(index));
+        if (!file) return;
+
+        imageWidget->setImage(file->filepath.qstring);
 
         QRect windowRect = this->geometry();
         int leftSpace = windowRect.left();
         int rightSpace = QGuiApplication::primaryScreen()->geometry().right() - windowRect.right();
-        if(leftSpace<rightSpace){
-            imageWidget->setGeometry(windowRect.right(),windowRect.top(),QGuiApplication::primaryScreen()->geometry().right()-windowRect.right(),windowRect.height());
-        }else{
-            imageWidget->setGeometry(0,windowRect.top(),windowRect.left(),windowRect.height());
-        }
-        imageWidget->imgArea->adjustImageScaleToFit();
-    },Qt::DirectConnection);
-    connect(imageWidget,&teImageWidget::prevImage,picturefileListView,&tePictureListView::selectPrevious,Qt::DirectConnection);
-    connect(imageWidget,&teImageWidget::nextImage,picturefileListView,&tePictureListView::selectNext,Qt::DirectConnection);
-    connect(ui->action_save,&QAction::triggered,this,&MainWindow::save,Qt::DirectConnection);
 
-    connect(picturefileListView->selectionModel(),&QItemSelectionModel::selectionChanged,this,[this](const QItemSelection &selected){
-        if(imageWidget->isVisible()&&selected.size()==1)
-        imageWidget->imgArea->setImage(qvariant_cast<tePictureFile*>(picturefileListView->model()->data(selected[0].indexes()[0]))->filepath.qstring);
-    },Qt::DirectConnection);
+        if (leftSpace < rightSpace) {
+            imageWidget->setGeometry(
+                windowRect.right(),
+                windowRect.top(),
+                QGuiApplication::primaryScreen()->geometry().right() - windowRect.right(),
+                windowRect.height()
+                );
+        } else {
+            imageWidget->setGeometry(0, windowRect.top(), windowRect.left(), windowRect.height());
+        }
+    }, Qt::DirectConnection);
+
+    connect(imageWidget, &teImageWidget::prevImage,
+            picturefileListView, &tePictureListView::selectPrevious, Qt::DirectConnection);
+
+    connect(imageWidget, &teImageWidget::nextImage,
+            picturefileListView, &tePictureListView::selectNext, Qt::DirectConnection);
+
+    connect(ui->action_save, &QAction::triggered,
+            this, &MainWindow::save, Qt::DirectConnection);
+
+    connect(picturefileListView->selectionModel(), &QItemSelectionModel::selectionChanged,
+            this, [this](const QItemSelection &selected) {
+                if (imageWidget->isVisible() && selected.size() == 1) {
+                    auto *file = qvariant_cast<tePictureFile*>(
+                        picturefileListView->model()->data(selected[0].indexes()[0])
+                        );
+                    if (file) {
+                        imageWidget->setImage(file->filepath.qstring);
+                    }
+                }
+            }, Qt::DirectConnection);
     void newFileLoaded(QList<tePictureFile *> files);
     void clearAllFiles();
     connect(picturefileModel,&tePictureFileModel::newFileLoaded,ui->GlobalMultiTaglistView->model,&teMultiTagListModel::loadFiles,Qt::DirectConnection);

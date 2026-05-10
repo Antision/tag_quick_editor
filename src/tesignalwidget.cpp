@@ -5,7 +5,7 @@ void addButtonsToGridLayout(QGridLayout *gridLayout, QButtonGroup *buttonGroup, 
         return;
     }
     const int itemCount = stringList.size();
-    int rows = 4; // Default to 3 rows
+    int rows = 4;
     if (itemCount < 16) {
         int threerowsremainder = itemCount%3;
         if(threerowsremainder==0)threerowsremainder=3;
@@ -538,19 +538,20 @@ bool teWidget::nativeEvent(const QByteArray &eventType, void *message, qintptr *
         break;
     }
     case WM_NCHITTEST: {
-        // Win32 给出的坐标是 物理屏幕像素（physical）。先把它转成 Qt 的逻辑全局坐标，再 mapFromGlobal。
+        // The coordinates provided by Win32 are physical screen pixels.
+        // First convert them to Qt logical global coordinates, then mapFromGlobal.
         int physX = GET_X_LPARAM(msg->lParam);
         int physY = GET_Y_LPARAM(msg->lParam);
 
         double scale = getWindowScale(msg->hwnd); // e.g. 1.0, 1.5, 2.0
-        QPoint globalLogical(qRound(physX / scale), qRound(physY / scale)); // 转为 Qt 全局逻辑坐标
+        QPoint globalLogical(qRound(physX / scale), qRound(physY / scale)); // Convert to Qt global logical coordinates
 
-        // 转为 widget 本地坐标（与 this->width()/height()/控件位置使用相同单位）
+        // Convert to widget local coordinates (same unit as this->width()/height()/control positions)
         QPoint local = this->mapFromGlobal(globalLogical);
         int xPos = local.x();
         int yPos = local.y();
 
-        // 获取 minimize_btn 在 this 中的 x（确保单位一致）
+        // Get the x coordinate of minimize_btn relative to this (ensure consistent units)
         int minimizeBtnX = minimize_btn ? minimize_btn->mapTo(this, QPoint(0,0)).x() : width();
 
         if (yPos > boundaryWidth && yPos < titleWidget->height() && xPos > 0 && xPos < minimizeBtnX) {

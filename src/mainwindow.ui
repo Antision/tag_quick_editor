@@ -284,7 +284,7 @@ QTabBar::tab:only-one {
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>22</height>
+     <height>26</height>
     </rect>
    </property>
    <property name="styleSheet">
@@ -399,7 +399,7 @@ selection-background-color: rgb(70, 70, 70);
   </action>
   <action name="action_editor_setting">
    <property name="text">
-    <string>Editors</string>
+    <string>Editor Layout</string>
    </property>
   </action>
   <action name="action_filt">

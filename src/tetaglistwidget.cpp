@@ -380,8 +380,6 @@ QString teTagListWidgetBase::getSelectText()
         if (tw && tw->core)
             cores.push_back(tw->core);
     }
-
-    // 如果你希望“句子 tag 不参与复制”，把最后一个参数改成 false
     return serializePieces(cores.size(), [&](int i) -> std::shared_ptr<tetagcore> {
         return cores[i];
     }, true);

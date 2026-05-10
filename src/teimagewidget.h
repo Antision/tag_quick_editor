@@ -5,56 +5,67 @@
 #include "tepicturelistview.h"
 #include "tesignalwidget.h"
 
-class teImageScrollArea : public QScrollArea {
+
+class ImageDisplayWidget : public QWidget {
     Q_OBJECT
-
 public:
-    explicit teImageScrollArea(QWidget *parent = nullptr);
-    bool eventFilter(QObject *watched, QEvent *e)override{
-        if(e->type()==QEvent::Wheel){
-            wheelEvent(dynamic_cast<QWheelEvent *>(e));
-            return true;
-        }
-        return false;
-    }
-    // Set image path
-    void setImage(const QString &path);
+    explicit ImageDisplayWidget(QWidget *parent = nullptr);
 
-    void wheelEvent(QWheelEvent *event) override;
+    void setImageList(const QVector<QString> &list);
+    void setCurrentIndex(int idx);
 
-    void mousePressEvent(QMouseEvent *event) override;
+    QString currentImagePath() const;
+    void next();
+    void prev();
 
-    void mouseMoveEvent(QMouseEvent *event) override;
-    void keyPressEvent(QKeyEvent*event) override{
-        event->ignore();
-    }
-    QLabel *imageLabel;
-    QPixmap originalPixmap;
-    double scaleFactor;
-    QPoint lastMousePosition;
-    void scaleImage(double factor);
-    void adjustImageScaleToFit() {
-        scaleFactor = qMin((double)viewport()->width()/originalPixmap.width(),(double)viewport()->height()/originalPixmap.height());
-        imageLabel->setPixmap(originalPixmap.scaled(viewport()->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
-    }
+signals:
+    void nextImageRequested();
+    void prevImageRequested();
+    void requestDeleteCurrent();
 
+protected:
+    void paintEvent(QPaintEvent *) override;
+    void wheelEvent(QWheelEvent *ev) override;
+    void mousePressEvent(QMouseEvent *ev) override;
+    void mouseMoveEvent(QMouseEvent *ev) override;
+    void mouseReleaseEvent(QMouseEvent *ev) override;
+    void resizeEvent(QResizeEvent *ev) override;
+    void keyPressEvent(QKeyEvent *ev) override;
+
+private:
+    void loadImageAt(int idx);
+    void adjustToFit();
+    void ensureBounds();
+
+private:
+    QVector<QString> m_images;
+    int m_curIndex = -1;
+
+    QImage m_image;
+
+    double m_scale = 1.0;
+    QPointF m_offset {0.0, 0.0};   // 视口左上角对应的图像坐标
+    QPoint  m_lastMouse;
+    QPoint  m_mousePressPos;
+    bool    m_dragging = false;
+    int     m_clickThreshold = 4;
 };
 
-class teImageWidget:public teWidget{
+class teImageWidget : public teWidget {
     Q_OBJECT
 public:
-    QVBoxLayout* content_layout;
-    teImageScrollArea* imgArea;
-    tePictureListView* pictureList;
-    teImageWidget(QWidget*parent=nullptr);
+    explicit teImageWidget(QWidget *parent = nullptr);
+
     void keyPressEvent(QKeyEvent *event) override;
-    void resizeEvent(QResizeEvent *event)override{
-        if(imgArea->width()>imgArea->imageLabel->width()&&imgArea->height()>imgArea->imageLabel->height())
-            imgArea->adjustImageScaleToFit();
-        return QWidget::resizeEvent(event);
-    }
+    void resizeEvent(QResizeEvent *event) override;
+    void setImage(const QString &path);
 signals:
-    void nextImage(); // Signal for next image
-    void prevImage(); // Signal for previous image
+    void nextImage();
+    void prevImage();
+
+private:
+    QVBoxLayout *content_layout = nullptr;
+    ImageDisplayWidget *imgView = nullptr;
+    tePictureListView *pictureList = nullptr;
 };
 #endif // TEIMAGEWIDGET_H

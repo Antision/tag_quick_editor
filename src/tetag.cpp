@@ -440,7 +440,7 @@ void teTagCore::read(const QString &str, bool ifclear, bool forceSentence)
         return;
     }
 
-    // Original logic for normal tags
+    // Logic for normal tags
     QStringList result;
     QStringList wordlist;
 
