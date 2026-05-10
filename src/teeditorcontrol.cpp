@@ -201,7 +201,6 @@ void teTagButtonGroup::onClicked(int id){
                     final_string.append(QStringLiteral(" "));
             }
         }else{
-            QLabel* lb = (QLabel*)widget;
             final_string.append(data);
             if(space)
                 final_string.append(QStringLiteral(" "));
@@ -218,7 +217,6 @@ void teTagButtonGroup::onClicked(int id){
             while(linked_tags.size()>1){
                 taglistwidget->tagErase(*linked_tags.begin());
             }
-            qDebug()<<linked_tags.size();
             (*linked_tags.begin())->widget->setText(final_string);
         }
     }else{

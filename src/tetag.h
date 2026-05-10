@@ -221,8 +221,8 @@ public:
     }
     ~teTagCore();
 }tetagcore;
-struct teInputWidget;
-struct teEditorControl;
+class teInputWidget;
+class teEditorControl;
 
 typedef class teTagBase: public QFrame,public teObject{
     Q_OBJECT
@@ -383,7 +383,7 @@ public slots:
     virtual void worddroped(teWordBase*in_word,int xpos);
 }tetagbase;
 
-typedef struct teTag:public teTagBase
+typedef class teTag:public teTagBase
 {
     Q_OBJECT
 public:

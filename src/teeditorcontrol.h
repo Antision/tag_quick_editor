@@ -3,7 +3,7 @@
 #include"tetag.h"
 #include"tereftaglistwidget.h"
 #include"tesignalwidget.h"
-struct teTagListWidget;
+class teTagListWidget;
 struct teEditor;
 struct anytype{
     template<typename...Args>
@@ -12,7 +12,8 @@ struct anytype{
     operator T&&(){}
 };
 
-struct teEditorControl:virtual public teObject{
+class teEditorControl:virtual public teObject{
+public:
     std::set<std::shared_ptr<tetagcore>>linked_tags;
     teEditor* editor;
     teTagListWidget* taglistwidget=nullptr;

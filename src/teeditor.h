@@ -1,12 +1,12 @@
 #ifndef TEEDITOR_H
 #define TEEDITOR_H
 #include "tetaglistwidget.h"
-struct teTag;
-struct teTagList;
+class teTag;
+class teTagList;
 struct teTagOperation;
 class teTagOperationList;
-typedef struct teTagCore tetagcore;
-struct teEditorControl;
+typedef class teTagCore tetagcore;
+class teEditorControl;
 class teEditorList;
 struct teEditor:public QFrame,public teObject{
 public:

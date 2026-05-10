@@ -721,7 +721,6 @@ void teTagListWidget::onTagEdited(std::shared_ptr<teTagCore>tag){
     if(showing_list->remove_duplicate(tag,false)){
         tagErase(tag);
         showing_list->erase(tag);
-        tag->deleteLater();
         setUnselect(tag->widget);
         return;
     }

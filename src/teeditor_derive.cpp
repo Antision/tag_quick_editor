@@ -663,23 +663,44 @@ struct Breast_Buttongroup :teTagButtonGroup {
     std::shared_ptr<tetagcore>breasts_ptr=nullptr;
     std::unordered_set<QString>::iterator breasts_it;
     std::unordered_set<QString>::iterator filter_it;
-    bool filter(std::shared_ptr<tetagcore>tag)override{
-        if(filter_it= defaultFiltStrings.find(*tag);filter_it!=defaultFiltStrings.end()){
-            if(autoMerge&&MergeSwitch){
-                if(filter_it==breasts_it){
-                    if(!linked_tags.empty()&&(*(*linked_tags.begin())->words.begin())->text!=qsl("breasts")){
-                        tag->type=teTagCore::deleteTag;
-                        breasts_ptr.reset();
-                        return false;
-                    }
-                    breasts_ptr=tag;
-                }else if(breasts_ptr){
-                    taglistwidget->tagErase(breasts_ptr);
+    bool filter(std::shared_ptr<tetagcore> tag) override
+    {
+        filter_it = defaultFiltStrings.find(*tag);
+        if (filter_it == defaultFiltStrings.end())
+            return false;
+
+        if (!(autoMerge && MergeSwitch))
+            return true;
+
+        const bool isBreastsToken = (filter_it == breasts_it);
+        const bool isCurrentBreastsTag = (breasts_ptr && breasts_ptr == tag);
+
+        if (isBreastsToken) {
+            // 当前这个 tag 就是 breasts / 由 breasts 维护的对象
+            // 不要把“正在编辑中的同一个对象”再删掉
+            if (!linked_tags.empty()) {
+                auto linked = *linked_tags.begin();
+                if (linked && !linked->words.empty()
+                    && linked->words.begin() != linked->words.end()
+                    && (*linked->words.begin())->text != qsl("breasts")) {
+                    tag->type = teTagCore::deleteTag;
                     breasts_ptr.reset();
+                    return false;
                 }
             }
+
+            breasts_ptr = tag;
             return true;
-        }else return false;
+        }
+
+        // 不是 breasts，但如果它正好就是当前控制器正在编辑的那个对象，
+        // 不能 erase 自己，否则会在回调链中把对象拆掉。
+        if (breasts_ptr && !isCurrentBreastsTag) {
+            taglistwidget->tagErase(breasts_ptr);
+            breasts_ptr.reset();
+        }
+
+        return true;
     }
     void unlink(std::shared_ptr<tetagcore>tag)override{
         if(tag==breasts_ptr)breasts_ptr.reset();
