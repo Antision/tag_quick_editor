@@ -157,8 +157,10 @@ void teEditorList::readList(teTagList *input_taglist){
     int tagsize=connectedList->size();
     QVector<std::shared_ptr<tetagcore>>temtaglist = connectedList->getTags();
     for(int i=0;i<tagsize;++i){
+        std::shared_ptr<tetagcore> co=temtaglist[i];
+        if(co->type!=tetagcore::tag)
+            continue;
         for(teEditor*e:editorlist){
-            std::shared_ptr<tetagcore> co=temtaglist[i];
             if(e->read(co)){
                 co->type=teTagCore::deleteTag;
                 break;
@@ -183,6 +185,8 @@ void teEditorList::unloadList(){
 }
 
 void teEditorList::onNewTagInserted(std::shared_ptr<tetagcore> in_tag){
+    if(in_tag->type!=tetagcore::tag)
+        return;
     for(teEditor*e:editorlist)
         if(e->read(in_tag)){
             return;

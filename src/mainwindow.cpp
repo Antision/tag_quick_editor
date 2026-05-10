@@ -310,37 +310,49 @@ void MainWindow::save(){
     });
 }
 
-int MainWindow::saveState(bool ifRunning){
+int MainWindow::saveState(bool ifRunning)
+{
     QJsonDocument doc;
     QJsonObject configObj;
 
     configObj.insert("running", ifRunning);
-    auto&picturefiles = picturefileModel->picturefiles;
+    auto &picturefiles = picturefileModel->picturefiles;
 
     QJsonArray picturesArr;
-    QJsonObject pictures;
+
     {
-        std::lock_guard<std::mutex>lg(picturefileModel->pictureListMutex);
-        for(tePictureFile*file:picturefiles){
+        std::lock_guard<std::mutex> lg(picturefileModel->pictureListMutex);
+        for (tePictureFile* file : picturefiles) {
             QJsonObject picture;
-            auto& taglist = file->taglist;
-            QJsonArray tags;
-            if(taglist.isSaved)
+            auto &taglist = file->taglist;
+
+            if (taglist.isSaved)
                 continue;
+
             taglist.tagsMt.lock();
+
+            // 新格式：整段文本
+            picture.insert("filepath", file->filepath.qstring);
+            picture.insert("tagsText", taglist.toText());
+
+            // 兼容旧格式：保留数组
+            QJsonArray tags;
             int tagCount = taglist.size();
             for (int t = 0; t < tagCount; ++t) {
                 teTagCore& tag = taglist[t];
                 tags.append(QString::fromStdString(joinTag(tag)));
             }
+            picture.insert("tags", tags);
+
             taglist.tagsMt.unlock();
-            picture.insert("filepath",file->filepath.qstring);
-            picture.insert("tags",tags);
+
             picturesArr.append(picture);
         }
     }
-    configObj.insert("pictures",picturesArr);
+
+    configObj.insert("pictures", picturesArr);
     doc.setObject(configObj);
+
     QFile f("./runtime_state.json");
     if (f.open(QFile::WriteOnly | QFile::Text)) {
         QTextStream stream(&f);
@@ -352,22 +364,27 @@ int MainWindow::saveState(bool ifRunning){
     return -1;
 }
 
-int MainWindow::loadState(){
+int MainWindow::loadState()
+{
     QFile f("./runtime_state.json");
-    if(!f.open(QFile::ReadOnly|QFile::Text)){
+    if (!f.open(QFile::ReadOnly | QFile::Text)) {
         return -1;
     }
+
     QTextStream stream(&f);
     stream.setEncoding(QStringConverter::Utf8);
     QString str = stream.readAll();
     f.close();
+
     QJsonParseError jsonError;
-    QJsonDocument doc = QJsonDocument::fromJson(str.toUtf8(),&jsonError);
-    if(jsonError.error!=QJsonParseError::NoError&&!doc.isNull())return -1;
+    QJsonDocument doc = QJsonDocument::fromJson(str.toUtf8(), &jsonError);
+    if (jsonError.error != QJsonParseError::NoError || doc.isNull())
+        return -1;
 
     QJsonObject configObj = doc.object();
-    QJsonArray picturesArr= configObj.value("pictures").toArray();
-    if(configObj.value("running").toBool()&&!picturesArr.isEmpty()){
+    QJsonArray picturesArr = configObj.value("pictures").toArray();
+
+    if (configObj.value("running").toBool() && !picturesArr.isEmpty()) {
         QMessageBox msgBox;
         msgBox.setWindowTitle("");
         msgBox.setText("An unexpected exit was detected during your last session. Would you like to load the auto-saved states of your unsaved files?");
@@ -375,22 +392,44 @@ int MainWindow::loadState(){
         if (msgBox.exec() == QMessageBox::No) {
             return 0;
         }
-    }else return 0;
-    QList<tePictureFile*>appendPicturelist;
-    if(picturesArr.isEmpty())return 0;
-    for(QJsonValue pictureV:picturesArr){
+    } else {
+        return 0;
+    }
+
+    QList<tePictureFile*> appendPicturelist;
+    if (picturesArr.isEmpty())
+        return 0;
+
+    for (QJsonValue pictureV : picturesArr) {
         QJsonObject picture = pictureV.toObject();
         tePictureFile* newpicture = new tePictureFile(picture.value("filepath").toString());
+
         newpicture->taglist.clear();
-        QJsonArray tags = picture.value("tags").toArray();
-        for(QJsonValue tagstrV:tags){
-            QString tagstr = tagstrV.toString();
-            newpicture->taglist.initialize_push_back(tagstr);
+
+        // 新格式：整段文本
+        QString tagsText = picture.value("tagsText").toString();
+        if (!tagsText.isEmpty()) {
+            const auto pieces = splitTextToPieces(tagsText);
+            for (const auto& piece : pieces) {
+                if (!piece.text.isEmpty()) {
+                    newpicture->taglist.initialize_push_back(piece.text, piece.sentence);
+                }
+            }
+        } else {
+            // 旧格式：数组
+            QJsonArray tags = picture.value("tags").toArray();
+            for (QJsonValue tagstrV : tags) {
+                QString tagstr = tagstrV.toString();
+                newpicture->taglist.initialize_push_back(tagstr,false);
+            }
         }
-        newpicture->taglist.isSaved=false;
+
+        newpicture->taglist.isSaved = false;
         appendPicturelist.push_back(newpicture);
     }
+
     ((tePictureFileModel*)ui->picturelist->model())->append(appendPicturelist);
+    return 0;
 }
 
 extern QStringList custom_tags;

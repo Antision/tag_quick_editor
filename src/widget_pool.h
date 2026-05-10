@@ -17,7 +17,7 @@ struct teTagListWidget;
  * @tparam total_words_count Total number of pre-allocated word widgets
  */
 template<typename TagType,typename WordType,size_t total_tags_count,size_t total_words_count>requires (std::derived_from<TagType,teTagBase>&&std::derived_from<WordType,teWordBase>)
-struct WidgetPool:teObject{
+struct WidgetPool:public teObject{
     std::vector<QWidget*>extra_tags;//< Stores pointers to temporarily created widgets when pre-allocated widgets are insufficient
     int tagpool_end;//< Stack top index for available tag widgets
     int wordpool_end;//< Stack top index for available word widgets

@@ -77,5 +77,4 @@ public:
     void save();
 };
 
-
 #endif // TEPICTUREFILE_H

@@ -4,6 +4,7 @@
 #include "tepicturefile.h"
 #include "tetag.h"
 #include "tesignalwidget.h"
+#include "func.h"
 QStringList ClipBoard;
 
 teTagListWidgetBase::teTagListWidgetBase(int wordsize,QWidget *parent): QWidget{parent}{
@@ -368,25 +369,34 @@ void teTagListWidgetBase::focusOutEvent(QFocusEvent *e){
     return QWidget::focusOutEvent(e);
 }
 
-QString teTagListWidgetBase::getSelectText(){
-    QString finalStr;
-    if(!select_current)return finalStr;
-    finalStr.append(*select_current);
-    if(select.empty())return finalStr;
-    finalStr.append(", ");
-    for(teTagBase*tw:select){
-        finalStr.append(*tw->core);
-        finalStr.append(", ");
+QString teTagListWidgetBase::getSelectText()
+{
+    QList<std::shared_ptr<tetagcore>> cores;
+
+    if (select_current && select_current->core)
+        cores.push_back(select_current->core);
+
+    for (teTagBase* tw : select) {
+        if (tw && tw->core)
+            cores.push_back(tw->core);
     }
-    finalStr.chop(2);
-    return finalStr;
+
+    // 如果你希望“句子 tag 不参与复制”，把最后一个参数改成 false
+    return serializePieces(cores.size(), [&](int i) -> std::shared_ptr<tetagcore> {
+        return cores[i];
+    }, true);
 }
 
-void teTagListWidgetBase::paste(){
+void teTagListWidgetBase::paste()
+{
     QString clipboardText = QApplication::clipboard()->text();
-    QStringList strlst = clipboardText.split(",");
-    for(QString& s:strlst)
-        tagInsertBelow(false,std::make_shared<tetagcore>(s.trimmed()),1);
+    const auto pieces = splitTextToPieces(clipboardText);
+
+    for (const auto& piece : pieces) {
+        if (!piece.text.isEmpty()) {
+            tagInsertBelow(false, std::make_shared<tetagcore>(piece.text, nullptr, piece.sentence), 1);
+        }
+    }
 }
 
 void teTagListWidget::load(teTagList*newlist){

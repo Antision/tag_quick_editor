@@ -1,6 +1,6 @@
 #include "tereftaglistwidget.h"
 #include "teeditorcontrol.h"
-
+#include "func.h"
 bool teRefTagCmp(tereftag *a, tereftag *b){
     return a->core<b->core;
 }
@@ -340,17 +340,19 @@ teTagBase* teRefTagListWidget::taginsert(int index,std::shared_ptr<tetagcore>in_
 }
 
 
-void teRefTagListWidget::paste(){
+void teRefTagListWidget::paste()
+{
     QString clipboardText = QApplication::clipboard()->text();
-    QStringList strlst = clipboardText.split(",");
-    if(parentTagListWidget){
-        for(QString& s:strlst)
-            parentTagListWidget->tagInsertAbove(false,std::make_shared<tetagcore>(s.trimmed()),2);
-    }else{
+    const auto pieces = splitTextToPieces(clipboardText);
+
+    if (parentTagListWidget) {
+        for (const auto& piece : pieces)
+            parentTagListWidget->tagInsertAbove(false, std::make_shared<tetagcore>(piece.text, nullptr, piece.sentence), 2);
+    } else {
         telog("[teRefTagListWidget::taginsert]:No taglistwidget specified");
         MainWindow* mwptr = (MainWindow*)global_window;
-        for(QString& s:strlst)
-            mwptr->ui->taglist->tagInsertAbove(false,std::make_shared<tetagcore>(s.trimmed()),2);
+        for (const auto& piece : pieces)
+            mwptr->ui->taglist->tagInsertAbove(false, std::make_shared<tetagcore>(piece.text, nullptr, piece.sentence), 2);
     }
 }
 

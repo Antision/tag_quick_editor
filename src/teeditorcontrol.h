@@ -12,7 +12,7 @@ struct anytype{
     operator T&&(){}
 };
 
-struct teEditorControl:virtual teObject{
+struct teEditorControl:virtual public teObject{
     std::set<std::shared_ptr<tetagcore>>linked_tags;
     teEditor* editor;
     teTagListWidget* taglistwidget=nullptr;

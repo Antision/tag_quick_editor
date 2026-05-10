@@ -39,4 +39,10 @@ void CreateAutoSaveThread(MainWindow*w);
 #define qsl(x) QStringLiteral(x)
 double getWindowScale(HWND hwnd);
 
+
+struct ParsedPiece {
+    QString text;
+    bool sentence = false;
+};
+
 #endif // FUNC_H

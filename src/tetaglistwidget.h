@@ -7,15 +7,15 @@ extern QStringList ClipBoard;
 extern QString liststyle;
 extern QString lineeditstyle;
 class teEditorList;
-struct tePictureFile;
-typedef struct teTag tetag;typedef struct teTagCore tetagcore;
-struct teTagList;
+class tePictureFile;
+typedef struct teTag tetag;typedef class teTagCore tetagcore;
+class teTagList;
 class teInputWidget;
 
 /**
  * @brief Widget for displaying and managing teTagList
  */
-struct teTagListWidgetBase : public QWidget,virtual public teObject
+class teTagListWidgetBase : public QWidget,virtual public teObject
 {
     Q_OBJECT
 public:
@@ -218,7 +218,7 @@ public:
     void onTagLeftButtonClicked(teTagBase*tag,QPoint point,int modifiers);
 };
 
-struct teTagListWidget : public teTagListWidgetBase
+class teTagListWidget : public teTagListWidgetBase
 {
     Q_OBJECT
 public:

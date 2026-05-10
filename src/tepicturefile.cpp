@@ -1,6 +1,8 @@
 #include "tepicturefile.h"
 #include "func.h"
 
+
+
 int tePictureFile::openpath(std::string tagfile_extension)
 {
     // Ensure the file exists using QFileInfo (Qt way)
@@ -33,22 +35,18 @@ int tePictureFile::openpath(std::string tagfile_extension)
         }
     }
 
-    // Read the content from the file
     QTextStream in(&txtfile_read);
     QString content = in.readAll();
-    QRegularExpression re(R"((?:,|\n|(?<=[a-zA-Z0-9])\.))");
-    QStringList tokens = content.split(re, Qt::SkipEmptyParts);
 
-    // Process tokens and populate the taglist
-    for (const QString& token : tokens) {
-        if (!token.isEmpty()) {
-            taglist.initialize_push_back(token);
+    const auto pieces = splitTextToPieces(content);
+    for (const auto& piece : pieces) {
+        if (!piece.text.isEmpty()) {
+            taglist.initialize_push_back(piece.text, piece.sentence);
         }
     }
 
     taglist.isTagsLoaded = true;
     txtfile_read.close();
-
     return 0;
 }
 
@@ -68,19 +66,19 @@ int tePictureFile::loadPicture(){
     return 0;
 }
 
-void tePictureFile::save(){
-    if(taglist.isSaved)
+void tePictureFile::save()
+{
+    if (taglist.isSaved)
         return;
+
     txtfile_write.open(std::filesystem::path(filepath.stdpath).replace_extension("txt"));
-    int tagCount = taglist.size();
-    for (int t = 0; t < tagCount; ++t) {
-        teTagCore& tag = taglist[t];
-        std::string tagStr = joinTag(tag);
-        txtfile_write << tagStr;
-        if (t < tagCount - 1) {
-            txtfile_write << ", ";
-        }
-    }
-    taglist.isSaved=true;
+
+    QString text = serializePieces(taglist.size(), [&](int i) -> std::shared_ptr<tetagcore> {
+        return taglist.tags[i];
+    }, true);
+
+    txtfile_write << text.toStdString();
+
+    taglist.isSaved = true;
     txtfile_write.close();
 }

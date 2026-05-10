@@ -224,14 +224,29 @@ words_loop_end:
     layout->insertItem(i,layout->takeAt(in_id));
     core->edited_with_layout();
 }
-int teTagList::initialize_push_back(const QString&str){
-    return initialize_push_back(std::make_shared<tetagcore>(str));
+int teTagList::initialize_push_back(const QString& str, bool forceSentence)
+{
+    return initialize_push_back(std::make_shared<tetagcore>(str, nullptr, forceSentence));
 }
 
-int teTagList::initialize_push_back(const std::string &in){
-    return initialize_push_back(QString::fromStdString(in));
+int teTagList::initialize_push_back(const std::string &in, bool forceSentence)
+{
+    return initialize_push_back(QString::fromStdString(in), forceSentence);
 }
 
+int teTagList::initialize_push_back(std::shared_ptr<tetagcore> tag)
+{
+    if (remove_duplicate(tag, false)) {
+        return -1;
+    } else {
+        tags.append(tag);
+        connectTag(tag);
+        operationlist.addEditOperation(tag, *tag);
+        ++operationlist.inip;
+        return tags.size() - 1;
+    }
+    return -1;
+}
 int teTagList::insert(int pos, std::shared_ptr<tetagcore> tag, int removeDuplicate, bool ifSendSignal){
     if(removeDuplicate==1&&remove_duplicate(tag,false)){
         return -1;
@@ -271,20 +286,13 @@ int teTagList::insert(int pos, std::shared_ptr<tetagcore> tag, int removeDuplica
     return 0;
 }
 
-int teTagList::initialize_push_back(std::shared_ptr<tetagcore>tag)
+QString teTagList::toText()
 {
-    if(remove_duplicate(tag,false))
-    {
-        return -1;
-    }else{
-        tags.append(tag);
-        connectTag(tag);
-        operationlist.addEditOperation(tag,*tag);
-        ++operationlist.inip;
-        return tags.size()-1;
-    }
-    return -1;
+    return serializePieces(size(), [this](int i) -> std::shared_ptr<tetagcore> {
+        return tags[i];
+    }, true);
 }
+
 
 void teWordBase::initialize(){
     setContentsMargins(0,0,0,0);
@@ -361,11 +369,11 @@ teTagCore::teTagCore(const QList<teWordCore *> in, teTag *child):widget(child){
         words.push_back(new teWordCore(w->text));
 }
 
-teTagCore::teTagCore(const QString &str, teTag *child):widget(child){
+teTagCore::teTagCore(const QString &str, teTag *child, bool forceSentence):widget(child){
     read(str);
 }
 
-teTagCore::teTagCore(const char *str, teTag *child):widget(child){
+teTagCore::teTagCore(const char *str, teTag *child, bool forceSentence):widget(child){
     read(QString(str));
 }
 
@@ -396,50 +404,74 @@ teTagCore &teTagCore::operator=(const teTagCore &in){
     return *this;
 }
 
-void teTagCore::read(const QString &str, bool ifclear){
-    if(ifclear)
+void teTagCore::read(const QString &str, bool ifclear, bool forceSentence)
+{
+    if (ifclear)
         clear();
+
+    QString text = str.trimmed();
+
+    // Force sentence mode: used for the result of openpath / splitTextToPieces
+    if (forceSentence) {
+        if (!text.endsWith('.'))
+            text += '.';
+
+        words.push_back(new teWordCore(text));
+        type = sentence;
+
+        if (widget)
+            widget->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
+
+        if (ifclear)
+            edited();
+        return;
+    }
+
+    // Manually adding a tag: if it ends with a period, treat it as a sentence
+    if (text.endsWith('.')) {
+        words.push_back(new teWordCore(text));
+        type = sentence;
+
+        if (widget)
+            widget->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
+
+        if (ifclear)
+            edited();
+        return;
+    }
+
+    // Original logic for normal tags
     QStringList result;
     QStringList wordlist;
-    if(str.size()>100){
-        words.push_back(new teWordCore(str.trimmed()));
-        type=sentence;
-        if(widget)
-            widget->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Fixed);
-        goto teTagCore_read_end;
-    }
-    if(str.indexOf("(")!=-1||str.indexOf(")")!=-1){
+
+    if (text.indexOf("(") != -1 || text.indexOf(")") != -1) {
         QRegularExpression regex(R"(\\\(|\(|\\\)|\))");
         int lastIndex = 0;
-        QRegularExpressionMatchIterator it = regex.globalMatch(str);
+        QRegularExpressionMatchIterator it = regex.globalMatch(text);
         while (it.hasNext()) {
             QRegularExpressionMatch match = it.next();
             int start = match.capturedStart();
             if (start > lastIndex)
-                result.append(str.mid(lastIndex, start - lastIndex));
+                result.append(text.mid(lastIndex, start - lastIndex));
             result.append(match.captured());
             lastIndex = match.capturedEnd();
         }
-        if (lastIndex < str.length())
-            result.append(str.mid(lastIndex));
-    }else result = {str};
+        if (lastIndex < text.length())
+            result.append(text.mid(lastIndex));
+    } else {
+        result = {text};
+    }
 
-    for(QString s:result)
-        wordlist.append(s.split(" ",Qt::SkipEmptyParts));
-    if(wordlist.size()>10){
-        words.push_back(new teWordCore(str.trimmed()));
-        type=sentence;
-        if(widget)
-            widget->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Fixed);
-        goto teTagCore_read_end;
-    }
-    for(QString& tmpword:wordlist){
+    for (QString s : result)
+        wordlist.append(s.split(" ", Qt::SkipEmptyParts));
+
+    for (QString &tmpword : wordlist)
         words.push_back(new teWordCore(std::move(tmpword)));
-    }
-teTagCore_read_end:
-    if(ifclear){
+
+    type = tag;
+
+    if (ifclear)
         edited();
-    }
 }
 
 teWordCore *teTagCore::takeWordAt(int index, bool ifSendSignal){
@@ -569,3 +601,58 @@ teTagBase:hover{
 }
 )"));
 
+
+QList<ParsedPiece> splitTextToPieces(const QString& raw)
+{
+    QList<ParsedPiece> out;
+
+    QString text = raw;
+    text.replace("\r\n", "\n");
+    text.replace('\r', '\n');
+
+    const QStringList lines = text.split('\n', Qt::KeepEmptyParts);
+
+    for (QString line : lines) {
+        line = line.trimmed();
+        if (line.isEmpty())
+            continue;
+
+        // Contains periods: treat the entire segment as a sentence, split by periods
+        if (line.contains('.')) {
+            int start = 0;
+
+            while (start < line.size()) {
+                int dot = line.indexOf('.', start);
+
+                if (dot < 0) {
+                    QString tail = line.mid(start).trimmed();
+                    if (!tail.isEmpty()) {
+                        if (!tail.endsWith('.'))
+                            tail += '.';
+                        out.push_back({tail, true});
+                    }
+                    break;
+                }
+
+                QString piece = line.mid(start, dot - start + 1).trimmed();
+                if (!piece.isEmpty())
+                    out.push_back({piece, true});
+
+                start = dot + 1;
+                while (start < line.size() && line[start].isSpace())
+                    ++start;
+            }
+        }
+        // No periods: normal tag segment, split by commas
+        else {
+            const QStringList parts = line.split(',', Qt::SkipEmptyParts);
+            for (QString part : parts) {
+                part = part.trimmed();
+                if (!part.isEmpty())
+                    out.push_back({part, false});
+            }
+        }
+    }
+
+    return out;
+}

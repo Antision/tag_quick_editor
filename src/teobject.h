@@ -1,6 +1,6 @@
 #ifndef TEOBJECT_H
 #define TEOBJECT_H
-struct obj_callback_function_base;
+class obj_callback_function_base;
 bool teobj_caller_callback_cmp_func(obj_callback_function_base*a,obj_callback_function_base*b);
 bool teobj_reciver_callback_cmp_func(obj_callback_function_base*a,obj_callback_function_base*b);
 enum teCallbackType{
@@ -13,7 +13,8 @@ enum teCallbackType{
     extraWidget_removed
 };
 
-struct teObject{
+class teObject{
+public:
     std::multimap<teObject*,obj_callback_function_base*>linked_callback_call;
     std::multimap<teObject*,obj_callback_function_base*>linked_callback_recive;
     QString info;
@@ -42,7 +43,8 @@ private:
 
 extern std::set<int> funcList;
 extern int totalcount;
-struct obj_callback_function_base {
+class obj_callback_function_base {
+public:
     int type;
     QString info;
     obj_callback_function_base(int type):type(type){
@@ -54,7 +56,8 @@ struct obj_callback_function_base {
 };
 
 template <typename T, typename RET, typename... Args>
-struct obj_callback_function : obj_callback_function_base {
+class obj_callback_function : public obj_callback_function_base {
+public:
     T* obj_ptr;
     RET (T::*func_ptr)(Args...);
     std::tuple<Args...> params;

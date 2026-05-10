@@ -4,11 +4,12 @@
 #include"suggestionlineedit.h"
 #define telog(x) qDebug()<<x
 
-struct teWord;
-struct teTagBase;
-struct obj_callback_function_base;
+class teWord;
+class teTagBase;
+class obj_callback_function_base;
 
-typedef struct teWordCore:teObject{
+typedef class teWordCore:public teObject{
+public:
     QString text;
     teWord*widget=nullptr;
     teWordCore(){}
@@ -36,7 +37,7 @@ typedef struct teWordCore:teObject{
 }tewordcore;
 
 
-typedef struct teWordBase:public QLabel,public teObject{
+typedef class teWordBase:public QLabel,public teObject{
     Q_OBJECT
 public:
     tewordcore*core=nullptr;
@@ -109,7 +110,8 @@ signals:
     void droped(teWordBase*,int xpos);
 }tewordbase;
 
-typedef struct teWord:public teWordBase{
+typedef class teWord:public teWordBase{
+public:
     teWord(QWidget*parent=nullptr):teWordBase(parent){}
     ~teWord(){
 
@@ -136,7 +138,8 @@ typedef struct teWord:public teWordBase{
     }
 
 }teword;
-typedef struct teRefWord:public teWordBase{
+typedef class teRefWord:public teWordBase{
+public:
     teRefWord(QWidget*parent=nullptr):teWordBase(parent){initialize();}
     teRefWord(const QString& input_string,QWidget* parent=nullptr)=delete;
     teRefWord(QString&& input_string,QWidget* parent=nullptr)=delete;
@@ -150,18 +153,20 @@ typedef struct teRefWord:public teWordBase{
         setMaximumHeight(20);
     }
 }terefword;
-typedef struct teTagCore:teObject,std::enable_shared_from_this<teTagCore>{
+
+typedef class teTagCore:public teObject,public std::enable_shared_from_this<teTagCore>{
 public:
     enum teTagType{
-        other=0,
+        tag=0,
         sentence,
+        other,
         deleteTag
     };
 
     QList<tewordcore*> words;
     teTag* widget=nullptr;
     int weight=99;
-    teTagType type = other;
+    teTagType type = tag;
     teTagCore(){
 
     }
@@ -170,8 +175,8 @@ public:
     }
     teTagCore(const QList<teWordCore*>in,teTag*child=nullptr);
     teTagCore(QList<teWordCore*>&&in,teTag*child=nullptr):words(std::move(in)),widget(child){}
-    teTagCore(const QString &str,teTag*child=nullptr);
-    teTagCore(const char* str,teTag*child=nullptr);
+    teTagCore(const QString &str,teTag*child=nullptr, bool forceSentence=false);
+    teTagCore(const char* str,teTag*child=nullptr, bool forceSentence=false);
     teTagCore(const teTagCore&in):weight(in.weight),type(in.type){
         info=in.info;
         for(tewordcore*wc:in.words)
@@ -180,7 +185,7 @@ public:
     teTagCore(teTagCore&&in);
     void load();
     void unload();
-    void read(const QString &str,bool ifclear=true);
+    void read(const QString &str,bool ifclear=true, bool forceSentence=false);
     teWordCore* takeWordAt(int index,bool ifSendSignal=true);
     QList<tewordcore*>::iterator begin(){
         return words.begin();
@@ -490,10 +495,10 @@ public:
     }
 };
 
-struct teTagList:public QObject,public teObject{
+class teTagList:public QObject,public teObject{
     Q_OBJECT
-    friend struct teTagListWidget;
-    friend struct tePictureFile;
+    friend class teTagListWidget;
+    friend class tePictureFile;
 public:
     teTagList(){};
     bool receiveTagSignals=true;
@@ -526,8 +531,8 @@ public:
         tagsMt.unlock();
     }
     int initialize_push_back(std::shared_ptr<tetagcore>);
-    int initialize_push_back(const QString&);
-    int initialize_push_back(const std::string&in);
+    int initialize_push_back(const QString&, bool forceSentence);
+    int initialize_push_back(const std::string&in, bool forceSentence);
     void connectTag(std::shared_ptr<tetagcore>tag){
         tag->teConnect(teCallbackType::edit_with_layout,this,&teTagList::onTagEdited,tag,true);
     }
@@ -700,7 +705,7 @@ public:
         else
             telog("[teTagList::move]:could not find input tag in taglist");
     }
-
+    QString toText();
     int find(std::shared_ptr<tetagcore>in){
         return tags.indexOf(in);
     }
@@ -744,4 +749,67 @@ signals:
     void tagErased(std::shared_ptr<tetagcore>);
 };
 
+// [tag / sentence] -> 文本
+template <class Getter>
+QString serializePieces(int count, Getter getter, bool includeSentence = true)
+{
+    QString out;
+
+    bool havePrev = false;
+    bool prevSentence = false;
+
+    for (int i = 0; i < count; ++i) {
+        std::shared_ptr<tetagcore> tag = getter(i);
+        if (!tag)
+            continue;
+
+        const bool curSentence = (tag->type == teTagCore::sentence);
+
+        if (!includeSentence && curSentence)
+            continue;
+
+        QString curText = static_cast<QString>(*tag);
+
+        // sentence 强制补句号
+        if (curSentence) {
+            curText = curText.trimmed();
+            if (!curText.endsWith('.'))
+                curText += '.';
+        }
+
+        // 处理前一个元素与当前元素之间的分隔
+        if (havePrev) {
+
+            // tag -> tag
+            if (!prevSentence && !curSentence) {
+                out += ", ";
+            }
+
+            // tag -> sentence
+            else if (!prevSentence && curSentence) {
+                out += "\n";
+            }
+
+            // sentence -> tag
+            else if (prevSentence && !curSentence) {
+                out += "\n";
+            }
+
+            // sentence -> sentence
+            else {
+                out += " ";
+            }
+        }
+
+        out += curText;
+
+        havePrev = true;
+        prevSentence = curSentence;
+    }
+
+    return out;
+}
+
+// 文本 -> [tag / sentence]
+QList<ParsedPiece> splitTextToPieces(const QString& raw);
 #endif // TETAG_H

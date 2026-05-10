@@ -1423,7 +1423,7 @@ QStringList preposwords{{qsl("in"),qsl("on"),qsl("under"),qsl("from")}};
 teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&name, QString *styleSheet, QWidget *parent):teEditor_standard(in_taglistwidget,name, &teEditor_clothes_style, parent){
     struct ClothesList: teTagListControl{
         std::shared_ptr<tetagcore> clothes_editing=nullptr;
-        struct teClothes:teObject{
+        struct teClothes:public teObject{
             ClothesList*parentList = nullptr;
             teTagListWidget*parentTagListWidget=nullptr;
             std::shared_ptr<tetagcore>core=nullptr;
