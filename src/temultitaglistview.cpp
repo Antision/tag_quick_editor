@@ -675,7 +675,10 @@ void teMultitagListView::paste(const QModelIndex &index){
 
 void teMultitagListView::keyPressEvent(QKeyEvent *event) {
     if (event->key() == Qt::Key_W && event->modifiers() == Qt::ControlModifier) {
-        model->tagInsert(selectionModel()->selectedRows()[0].row(),std::shared_ptr<tetagcore>(nullptr),true);
+        if(!selectionModel()->selectedRows().empty())
+            model->tagInsert(selectionModel()->selectedRows()[0].row(),std::shared_ptr<tetagcore>(nullptr),true);
+        else
+            model->tagInsert(0,std::shared_ptr<tetagcore>(nullptr),true);
     } else if (event->key() == Qt::Key_D && event->modifiers() == Qt::ControlModifier) {
         model->tagDestroy();
     } else if (event->key() == Qt::Key_Delete) {

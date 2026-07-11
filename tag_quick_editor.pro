@@ -44,6 +44,7 @@ SOURCES += \
     src/widget_pool.cpp
 
 HEADERS += \
+    src/BS_thread_pool.hpp \
     src/ctag.h \
     src/func.h \
     src/mainwindow.h \
@@ -65,7 +66,6 @@ HEADERS += \
     src/tesignalwidget.h \
     src/tetag.h \
     src/tetaglistwidget.h \
-    src/threadpool.h \
     src/widget_pool.h
 
 FORMS += \

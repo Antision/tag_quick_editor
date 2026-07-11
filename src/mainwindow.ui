@@ -272,7 +272,10 @@ QTabBar::tab:only-one {
        </sizepolicy>
       </property>
       <property name="styleSheet">
-       <string notr="true"/>
+       <string notr="true">QLabel[type=&quot;title&quot;]{
+font:italic 14px;color:rgb(200,200,200);
+}
+</string>
       </property>
      </widget>
     </item>
@@ -302,7 +305,7 @@ QMenuBar::item:selected{
 	background: #613d80;
 }
 QMenuBar::item:first:selected{
-    border-top-left-radius: 7px; 
+    border-top-left-radius: 14px; 
 	background: #613d80;
 }
 /*QMenuBar::item:first:selected{

@@ -12,7 +12,7 @@ int tePictureFile::openpath(std::string tagfile_extension)
         return -1;  // Or any appropriate error code
     }
 
-    thread_pool.add([this]{ loadPicture(); });
+    thread_pool.detach_task([this]{ loadPicture(); });
 
     // Replace extension using QFileInfo
     QString tagfilePath = filepath;

@@ -5,7 +5,7 @@
 #include"tesignalwidget.h"
 
 using namespace std;
-ants::ThreadPool thread_pool;
+BS::thread_pool<> thread_pool;
 
 int main(int argc, char *argv[])
 {
@@ -21,5 +21,4 @@ int main(int argc, char *argv[])
     w.checkForUpdate();
     a.exec();
     save_config();
-    thread_pool.terminate();
 }

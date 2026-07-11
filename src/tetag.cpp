@@ -499,14 +499,45 @@ bool teTagCore::operator==(const teTagCore &in) const{
     }
 }
 
-teTagCore::operator QString() const{
-    QString tmpstr("");
-    for(tewordcore* word:words){
-        tmpstr+=' '+*word;
+teTagCore::operator QString() const
+{
+    QString out;
+
+    auto isOpenParen = [](const QString& s) {
+        return s == "(" || s == R"(\()";
+    };
+
+    auto isCloseParen = [](const QString& s) {
+        return s == ")" || s == R"(\))";
+    };
+
+    QString prev;
+    bool first = true;
+
+    for (tewordcore* word : words) {
+        if (!word)
+            continue;
+
+        const QString cur = word->text;
+
+        if (first) {
+            out += cur;
+            prev = cur;
+            first = false;
+            continue;
+        }
+
+        // 唯一不加空格的两种情况：
+        // 1. 左括号后
+        // 2. 右括号前
+        if (!isOpenParen(prev) && !isCloseParen(cur))
+            out += ' ';
+
+        out += cur;
+        prev = cur;
     }
-    if(tmpstr.size()>0)
-        return tmpstr.mid(1);
-    else return tmpstr;
+
+    return out;
 }
 
 teTagCore::~teTagCore(){

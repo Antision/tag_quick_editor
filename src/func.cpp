@@ -198,7 +198,7 @@ int save_config() {
 }
 
 void CreateAutoSaveThread(MainWindow*w){
-    thread_pool.add([=]{
+    thread_pool.detach_task([=]{
         while(autoSaveSec){
             std::this_thread::sleep_for(std::chrono::seconds(autoSaveSec));
             w->saveState(true);

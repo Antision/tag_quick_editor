@@ -749,6 +749,7 @@ signals:
     void tagErased(std::shared_ptr<tetagcore>);
 };
 
+
 // [tag / sentence] -> 文本
 template <class Getter>
 QString serializePieces(int count, Getter getter, bool includeSentence = true)

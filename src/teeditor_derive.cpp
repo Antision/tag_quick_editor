@@ -730,7 +730,7 @@ border:2px solid #008b46;
 teEditor_hair_and_eyes::teEditor_hair_and_eyes(teTagListWidget*in_taglistwidget,QString &&name, QString *styleSheet, QWidget *parent):teEditor_standard(in_taglistwidget,name, &teEditor_hair_and_eyes_style, parent){
     struct hair_and_eyes_color_list: teTagListControl{
         hair_and_eyes_color_list(colorsWidget*in_onEdit_widget,teTagListWidget*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr)
-            :teTagListControl(in_onEdit_widget,parentlist,parent,styleSheet){
+            :teTagListControl(in_onEdit_widget,parentlist,parent,styleSheet,"color"){
             QPushButton*yellow_button=nullptr;
             auto&&color_buttons = ((colorsWidget*)onEdit_widget)->colors_buttongroup->buttons();
             for(QAbstractButton*btn:color_buttons)
@@ -1239,7 +1239,7 @@ controls.push_back(two_side_up_cb);
 struct BangsList: teTagListControl{
     std::shared_ptr<tetagcore>editcore=nullptr;
     BangsList(colorsWidget*in_onEdit_widget,teTagListWidget*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr)
-        :teTagListControl(in_onEdit_widget,parentlist,parent,styleSheet){
+        :teTagListControl(in_onEdit_widget,parentlist,parent,styleSheet,"bangs"){
         QPushButton*curtained_button=nullptr;
         auto&&bangs_buttons = ((colorsWidget*)onEdit_widget)->objectLayoutList[1].second->buttons();
         for(QAbstractButton*btn:bangs_buttons)
@@ -1736,7 +1736,7 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
             return nullptr;
         }
         ClothesList(colorsWidget*in_onEdit_widget,teTagListWidget*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr)
-            :teTagListControl(in_onEdit_widget,parentlist,parent,styleSheet){
+            :teTagListControl(in_onEdit_widget,parentlist,parent,styleSheet,"clothes"){
             this->info=QStringLiteral("ClothesList");
             sc->setMinimumHeight(110);
         }
@@ -1935,7 +1935,7 @@ teEditor_nsfw::teEditor_nsfw(teTagListWidget*in_taglistwidget,QString &&name, QS
         std::shared_ptr<tetagcore>editcore=nullptr;
 
         Object_list(colorsWidget*in_onEdit_widget,teTagListWidget*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr)
-            :teTagListControl(in_onEdit_widget,parentlist,parent,styleSheet){
+            :teTagListControl(in_onEdit_widget,parentlist,parent,styleSheet,"object"){
             sc->setMinimumHeight(110);
         }
         bool filter(std::shared_ptr<tetagcore>in_tag)override{
@@ -1961,6 +1961,7 @@ teEditor_nsfw::teEditor_nsfw(teTagListWidget*in_taglistwidget,QString &&name, QS
         auto insertToEditor = [this](QBoxLayout*layout,QVector<teEditorControl*>&controls_array,QVector<teEditorControl*>controls,QString title={}){
             if(!title.isEmpty()){
                 QLabel*titleLabel = new QLabel(title);
+                titleLabel->setProperty("type","title");
                 titleLabel->setStyleSheet(qsl("font:italic 14px;color:rgb(200,200,200);"));
                 contentLayout->addWidget(titleLabel);
             }

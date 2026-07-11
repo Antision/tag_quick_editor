@@ -49,7 +49,7 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    thread_pool.add(load_tags);
+    thread_pool.detach_task(load_tags);
 
     setWindowFlags(Qt::WindowMinimizeButtonHint|Qt::FramelessWindowHint);
     setAttribute(Qt::WA_TranslucentBackground);

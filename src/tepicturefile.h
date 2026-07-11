@@ -2,7 +2,7 @@
 #define TEPICTUREFILE_H
 #include"tetag.h"
 
-extern ants::ThreadPool thread_pool;
+extern BS::thread_pool<> thread_pool;
 extern QThreadPool* qthreadpool;
 typedef class tePath{
 public:

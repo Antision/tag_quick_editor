@@ -508,7 +508,7 @@ void teTagCheckBoxPlus::clear(){
 }
 
 
-teTagListControl::teTagListControl(colorsWidget *in_onEdit_widget, teTagListWidget *parentlist, QWidget *parent, QString *styleSheet)
+teTagListControl::teTagListControl(colorsWidget *in_onEdit_widget, teTagListWidget *parentlist, QWidget *parent, QString *styleSheet,QString title)
     : teRefTagListWidget(parentlist,parent),onEdit_widget(in_onEdit_widget){
     connect(onEdit_widget,&teSignalWidget::stringSignal,this,&teTagListControl::reciveWidgetSignal,Qt::DirectConnection);
     connect(onEdit_widget,&teSignalWidget::destroySignal,this,&teTagListControl::reciveDestroySignal,Qt::DirectConnection);
@@ -524,6 +524,14 @@ QPushButton:hover{background-color:rgba(9,245,128,100);})");
     removeButton->setStyleSheet(R"(QPushButton{color:#f50935;border:1px solid #f50935;}
 QPushButton:hover{background-color:rgba(245,9,53,100);})");
     removeButton->setFixedSize(15,15);
+    setStyleSheet(R"(QLabel[type="title"]{
+font:italic 14px;color:rgb(200,200,200);
+})");
+    if(!title.isEmpty()){
+        QLabel*titleLabel= new QLabel{title};
+        titleLabel->setProperty("type","title");
+        buttonLayout->addWidget(titleLabel);
+    }
     buttonLayout->addStretch(0);
     buttonLayout->addWidget(addButton);
     buttonLayout->addWidget(removeButton);

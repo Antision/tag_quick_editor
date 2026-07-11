@@ -67,7 +67,7 @@ void suggestionLineEdit::start(const QString &in){
     setText(in);
     lineeditTextUpdateFlag=true;
     lineeditfocusflag=true;
-    thread_pool.add([this]{
+    thread_pool.detach_task([this]{
         while(lineeditfocusflag==true){
             if(lineeditTextUpdateFlag==true){
                 lineeditTextUpdateFlag=false;

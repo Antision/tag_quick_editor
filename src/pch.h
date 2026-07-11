@@ -26,7 +26,6 @@
 #include <dwmapi.h>
 #include <queue>
 #include <iterator>
-#include <thread>
 #include <condition_variable>
 #include <functional>
 #include <exception>
@@ -85,7 +84,7 @@
 #include <QDesktopServices>
 
 #include "func.h"
-#include "threadpool.h"
+#include "BS_thread_pool.hpp"
 #include "ctag.h"
 #include "teobject.h"
 #include "widget_pool.h"

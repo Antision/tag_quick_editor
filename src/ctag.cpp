@@ -276,7 +276,7 @@ void load_tags(){
     std::ifstream inf("./tag.tag", std::ios::binary);
     if(!inf.is_open()){
         telog("could not open tag path");
-        thread_pool.add(download_tags);
+        thread_pool.detach_task(download_tags);
         return;
     }
     unsigned int inwords_size;

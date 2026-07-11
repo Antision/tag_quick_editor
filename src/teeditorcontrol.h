@@ -153,7 +153,7 @@ public:
     bool ifedit=false;
     colorsWidget*onEdit_widget;
     QHBoxLayout* buttonLayout= new QHBoxLayout();
-    teTagListControl(colorsWidget*in_onEdit_widget,teTagListWidget*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr);
+    teTagListControl(colorsWidget*in_onEdit_widget,teTagListWidget*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr,QString title = QString{});
     ~teTagListControl(){
         delete onEdit_widget;
     }
