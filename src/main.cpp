@@ -20,5 +20,6 @@ int main(int argc, char *argv[])
     CreateAutoSaveThread(&w);
     w.checkForUpdate();
     a.exec();
+    w.autoSaveThread.join();
     save_config();
 }

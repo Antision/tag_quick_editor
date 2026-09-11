@@ -1095,7 +1095,6 @@ struct ponytail_buttongroup :teTagButtonGroup {
             twintailsTag=newtagcore;
             taglistwidget->tagInsertAbove(false,newtagcore,2);
         }
-
         QString ponytailFinalString;
         for(int i=0;i<4;++i){
             if(kindOfPonytail[i])
@@ -1173,7 +1172,7 @@ struct ponytail_buttongroup :teTagButtonGroup {
             if(twintailsTag&&twintailsTag!=tag){
                 getPrefix(tag,kindOfTwintails);
                 tag->type=teTagCore::deleteTag;
-                taglistwidget->tagEdit(tag,"",1,true);
+                taglistwidget->tagErase(tag);
                 setTagTextFromBoolArray(twintailsTag,kindOfTwintails);
             }else if(!twintailsTag){
                 twintailsTag=tag;
@@ -1187,7 +1186,7 @@ struct ponytail_buttongroup :teTagButtonGroup {
             if(ponytailTag&&ponytailTag!=tag){
                 getPrefix(tag,kindOfPonytail);
                 tag->type=teTagCore::deleteTag;
-                taglistwidget->tagEdit(tag,"",1,true);
+                taglistwidget->tagErase(tag);
                 setTagTextFromBoolArray(ponytailTag,kindOfPonytail);
             }else if(!ponytailTag){
                 ponytailTag=tag;
@@ -2004,7 +2003,7 @@ teEditor_nsfw::teEditor_nsfw(teTagListWidget*in_taglistwidget,QString &&name, QS
         teTagCheckBox*otoko_no_ko_cb = new teTagCheckBox({qsl("otoko no ko")});
         insertToEditor(layouts[++i],controls,{futanari_cb,tomgirl_cb,otoko_no_ko_cb},"gender");
 
-        teTagCheckBox* nakadashi_cb = new teTagCheckBox({ "nakadashi" });
+        teTagCheckBox* nakadashi_cb = new teTagCheckBox({ "cum inside" });
         teTagCheckBox* lacatation_cb = new teTagCheckBox({ "lactation" });
         teTagCheckBox* sweat_cb = new teTagCheckBox({ "sweat" });
         insertToEditor(layouts[++i],controls,{nakadashi_cb,lacatation_cb,sweat_cb},"liquid");

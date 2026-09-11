@@ -15,17 +15,7 @@ int findWidgetIndexInLayout(QBoxLayout* layout, QWidget* widget) {
 }
 
 
-bool autoMerge=true;
-bool MergeSwitch=true;
-int nsfwMode=0;
-int autoSaveSec=20;
-QString defaultPath;
-QStringList custom_tags;
-std::atomic<int> loading_count=0;
-QMap<QString,teEditorControl*>* custom_controls;
-editorListLayout editorlistlayout;
-int mainWindowSplitterLength[MainWindowWidgetCount];
-QRect mainwindowGeometry;
+
 extern QWidget* global_window;
 
 void editorLayoutFix(editorListLayout&layout){
@@ -198,12 +188,26 @@ int save_config() {
 }
 
 void CreateAutoSaveThread(MainWindow*w){
-    thread_pool.detach_task([=]{
-        while(autoSaveSec){
-            std::this_thread::sleep_for(std::chrono::seconds(autoSaveSec));
+
+    w->autoSaveThread=std::thread([=] {
+        std::condition_variable cv;
+        std::mutex mtx;
+        std::unique_lock<std::mutex> lock(mtx);
+
+        while(programRunning)
+        {
+            if(cv.wait_for(
+                    lock,
+                    std::chrono::seconds(autoSaveSec),
+                    [&]{ return !programRunning; }))
+            {
+                break;
+            }
+
             w->saveState(true);
         }
     });
+
 }
 
 void MainWindow::checkForUpdate() {

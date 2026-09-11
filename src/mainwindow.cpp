@@ -4,8 +4,20 @@
 #include "ui_mainwindow.h"
 #include"tepicturefile.h"
 #include"teeditor_derive.h"
+
 QWidget* global_window;
-extern bool autoMerge;
+bool autoMerge=true;
+bool MergeSwitch=true;
+int nsfwMode=0;
+int autoSaveSec=20;
+std::atomic<bool> programRunning=true;
+QString defaultPath;
+QStringList custom_tags;
+std::atomic<int> loading_count=0;
+QMap<QString,teEditorControl*>* custom_controls;
+editorListLayout editorlistlayout;
+int mainWindowSplitterLength[MainWindowWidgetCount];
+QRect mainwindowGeometry;
 
 QPair<QList<tePictureFile*>, QList<tePictureFile*>> findDifferences(
     QList<tePictureFile*> lastfiles,

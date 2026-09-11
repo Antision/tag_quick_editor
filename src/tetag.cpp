@@ -633,6 +633,7 @@ teTagBase:hover{
 )"));
 
 
+
 QList<ParsedPiece> splitTextToPieces(const QString& raw)
 {
     QList<ParsedPiece> out;
@@ -641,46 +642,131 @@ QList<ParsedPiece> splitTextToPieces(const QString& raw)
     text.replace("\r\n", "\n");
     text.replace('\r', '\n');
 
-    const QStringList lines = text.split('\n', Qt::KeepEmptyParts);
+    const QStringList lines =
+        text.split('\n', Qt::KeepEmptyParts);
+
+    // 判断当前位置的 "..." 是否属于连续三个点。
+    // 只要这里是 "...", 就绝不能把其中任何一个 '.' 当成句号。
+    auto isEllipsis = [](const QString& line, int pos) -> bool {
+        return pos >= 0 &&
+               pos + 3 <= line.size() &&
+               line.mid(pos, 3) == "...";
+    };
+
+    // 找真正的句号。
+    //
+    // 例如：
+    //   "abc."       -> 找到
+    //   "d..."       -> 找不到
+    //   "..."        -> 找不到
+    //   "abc...,def" -> 找不到
+    auto findSentenceDot =
+        [&](const QString& line, int start) -> int
+    {
+        int pos = start;
+
+        while (pos < line.size()) {
+            if (line[pos] != '.') {
+                ++pos;
+                continue;
+            }
+
+            // "...": 整组三个点跳过去
+            if (isEllipsis(line, pos)) {
+                pos += 3;
+                continue;
+            }
+
+            // 单独的 '.' 才是真正的句号
+            return pos;
+        }
+
+        return -1;
+    };
 
     for (QString line : lines) {
         line = line.trimmed();
+
         if (line.isEmpty())
             continue;
 
-        // Contains periods: treat the entire segment as a sentence, split by periods
-        if (line.contains('.')) {
-            int start = 0;
+        /*
+         * 先判断这一行有没有真正的句号。
+         *
+         * 没有真正句号：
+         *     完全按照普通 tag 处理。
+         *
+         * 例如：
+         *     ...,a,b,d...,...
+         *
+         * 得到：
+         *     ...
+         *     a
+         *     b
+         *     d...
+         *     ...
+         */
+        const int firstDot =
+            findSentenceDot(line, 0);
 
-            while (start < line.size()) {
-                int dot = line.indexOf('.', start);
+        if (firstDot < 0) {
+            const QStringList parts =
+                line.split(',', Qt::SkipEmptyParts);
 
-                if (dot < 0) {
-                    QString tail = line.mid(start).trimmed();
-                    if (!tail.isEmpty()) {
-                        if (!tail.endsWith('.'))
-                            tail += '.';
-                        out.push_back({tail, true});
-                    }
-                    break;
-                }
-
-                QString piece = line.mid(start, dot - start + 1).trimmed();
-                if (!piece.isEmpty())
-                    out.push_back({piece, true});
-
-                start = dot + 1;
-                while (start < line.size() && line[start].isSpace())
-                    ++start;
-            }
-        }
-        // No periods: normal tag segment, split by commas
-        else {
-            const QStringList parts = line.split(',', Qt::SkipEmptyParts);
             for (QString part : parts) {
                 part = part.trimmed();
+
                 if (!part.isEmpty())
                     out.push_back({part, false});
+            }
+
+            continue;
+        }
+
+        /*
+         * 这一行存在真正的句号，
+         * 因此按照 sentence 解析。
+         *
+         * 注意：
+         * sentence 内部的逗号全部保留，
+         * 不能再用 ',' 拆分。
+         */
+        int start = 0;
+
+        while (start < line.size()) {
+            const int dot =
+                findSentenceDot(line, start);
+
+            if (dot < 0) {
+                QString tail =
+                    line.mid(start).trimmed();
+
+                if (!tail.isEmpty()) {
+                    const QStringList parts =
+                        tail.split(',', Qt::SkipEmptyParts);
+
+                    for (QString part : parts) {
+                        part = part.trimmed();
+
+                        if (!part.isEmpty())
+                            out.push_back({part, false});
+                    }
+                }
+
+                break;
+            }
+
+            QString piece =
+                line.mid(start, dot - start + 1).trimmed();
+
+            if (!piece.isEmpty())
+                out.push_back({piece, true});
+
+            start = dot + 1;
+
+            while (start < line.size() &&
+                   line[start].isSpace()) {
+                ++start;
             }
         }
     }

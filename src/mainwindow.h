@@ -13,6 +13,21 @@ namespace Ui {
 class MainWindow;
 }
 QT_END_NAMESPACE
+
+
+extern bool autoMerge;
+extern bool MergeSwitch;
+extern int nsfwMode;
+extern int autoSaveSec;
+extern std::atomic<bool> programRunning;
+extern QString defaultPath;
+extern QStringList custom_tags;
+extern std::atomic<int> loading_count;
+extern QMap<QString,teEditorControl*>* custom_controls;
+extern editorListLayout editorlistlayout;
+extern int mainWindowSplitterLength[MainWindowWidgetCount];
+extern QRect mainwindowGeometry;
+
 bool is_image_file(const std::filesystem::path& file);
 extern std::vector<ctag> ctags;
 extern QWidget* global_window;
@@ -51,10 +66,11 @@ public:
     void onApplicationClose(){
         if(checkSave())
             QCoreApplication::quit();
+        programRunning=false;
     };
+    std::thread autoSaveThread;
 public slots:
     void dialog_LoadPath(bool clear=true);
-
 };
 
 #endif // MAINWINDOW_H
