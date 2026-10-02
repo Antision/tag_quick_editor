@@ -15,7 +15,7 @@ bool is_shade(const QString& shade_word){
 }
 QStringList editorNames{qsl("custom"),qsl("pretreat"),qsl("hair and eyes"),qsl("clothes"),qsl("nsfw")};
 
-QPair<int,int> is_color(teTagCore& tag,int offset=0) {
+QPair<int,int> is_color(teTag& tag,int offset=0) {
     int index;
     int size = tag.words.size();
     for (index = offset; index < size; ++index) {
@@ -28,7 +28,7 @@ QPair<int,int> is_color(teTagCore& tag,int offset=0) {
     }
     return {0,0};
 }
-QStringList extract_colors(std::shared_ptr<tetagcore> tag) {
+QStringList extract_colors(std::shared_ptr<teTag> tag) {
     QStringList colors;
     int pos = 0;
     while(pos < tag->words.size()) {
@@ -148,7 +148,7 @@ void teEditor_custom::addControl(const QString &str){
     string_controls.append({str,cbptr});
     controls.push_back(cbptr);
     if(taglist)
-        for(std::shared_ptr<tetagcore>tc:*taglist)
+        for(std::shared_ptr<teTag>tc:*taglist)
             cbptr->read(tc);
     flowLayout->addWidget(cbptr);   // addWidget() reparents the button
     controlReorderer->attach(cbptr);
@@ -229,7 +229,7 @@ teEditor_pretreat::teEditor_pretreat(teTagListWidget*in_taglistwidget,QString&& 
             if (linked_tags.empty()) { return QString{}; }
             else { return (QString)(*(*linked_tags.begin())); }
         }
-        bool filter(std::shared_ptr<tetagcore> tag)override {
+        bool filter(std::shared_ptr<teTag> tag)override {
             if (!tag) return false;
             QString tagStr = static_cast<QString>(*tag);
             QRegularExpression regex(QStringLiteral(R"(^(\d+)\+?%1s?$)").arg(objtext));
@@ -278,7 +278,7 @@ teEditor_pretreat::teEditor_pretreat(teTagListWidget*in_taglistwidget,QString&& 
                 }
             }
             if (linked_tags.empty()) {
-                std::shared_ptr<tetagcore>newtagcore = std::make_shared<tetagcore>(newTagText);
+                std::shared_ptr<teTag>newtagcore = std::make_shared<teTag>(newTagText);
                 newtagcore->load();
                 link(newtagcore);
                 taglistwidget->tagInsertAbove(false, newtagcore);
@@ -312,12 +312,12 @@ teEditor_pretreat::teEditor_pretreat(teTagListWidget*in_taglistwidget,QString&& 
             QString showing_string{};
             int i = 0;
             for(;i<3;++i){
-                for(std::shared_ptr<tetagcore>tag_ptr:((teTagLineedit_people*)children[i])->linked_tags)
+                for(std::shared_ptr<teTag>tag_ptr:((teTagLineedit_people*)children[i])->linked_tags)
                     showing_string+=(*tag_ptr)+',';
             }
             for(;i<7;++i){
                 if(((teTagCheckBox*)children[i])->isChecked())
-                    for(std::shared_ptr<tetagcore>tag_ptr:((teTagCheckBox*)children[i])->linked_tags)
+                    for(std::shared_ptr<teTag>tag_ptr:((teTagCheckBox*)children[i])->linked_tags)
                         showing_string+=(*tag_ptr)+',';
             }
 
@@ -402,12 +402,12 @@ void onClicked(int id)override{
     QString FinalStr=qsl("mature ")+Str[id];
 
     if(buttons[id]->isChecked()){
-        std::shared_ptr<tetagcore>newtagcore =std::make_shared<tetagcore>(FinalStr);
+        std::shared_ptr<teTag>newtagcore =std::make_shared<teTag>(FinalStr);
         newtagcore->load();
         link(newtagcore);
         taglistwidget->tagInsertAbove(false, newtagcore);
     }else{
-        for(std::shared_ptr<tetagcore>tc:linked_tags)
+        for(std::shared_ptr<teTag>tc:linked_tags)
             if((QString)*tc==FinalStr){
                 taglistwidget->tagErase(tc);
                 break;
@@ -425,14 +425,14 @@ controls.push_back(mature_bgop);
                                                     multipeople_CheckBox(QString key_string1, QWidget* parent = nullptr, QString* stylesheet = nullptr) :
                                                         teTagCheckBoxPlus({ key_string1 }, parent, stylesheet) {
                                                         }
-                                                    bool filter(std::shared_ptr<tetagcore> tag)override {
+                                                    bool filter(std::shared_ptr<teTag> tag)override {
                                                                                           static QRegularExpression reg(QStringLiteral(R"(^multiple\s?(girl(s)?|boy(s)?|other(s)?)$)"));
     if (reg.match(*tag).hasMatch()) {
         return true;
     }else
         return false;
 }
-bool filter2(std::shared_ptr<tetagcore> tag)override {
+bool filter2(std::shared_ptr<teTag> tag)override {
     static QRegularExpression reg(QStringLiteral(R"(^(2|[3-9]|\d{2,}|\d+\+)(girls|boys|others)$)"));
     if (reg.match(*tag).hasMatch()) {
         return true;
@@ -448,9 +448,9 @@ void onStateChanged(bool state)override {
             }
             linked_tags.clear();
         }else{
-            for (std::shared_ptr<tetagcore> tag : second_tags) {
+            for (std::shared_ptr<teTag> tag : second_tags) {
                 static QRegularExpression reg(QStringLiteral(R"(^\d+\+?([a-zA-Z]+)$)"));
-                taglistwidget->tagInsertAbove(false, std::make_shared<tetagcore>(QString(QStringLiteral("multiple ") + reg.match(*tag).captured(1))),1);
+                taglistwidget->tagInsertAbove(false, std::make_shared<teTag>(QString(QStringLiteral("multiple ") + reg.match(*tag).captured(1))),1);
             }
         }
     }
@@ -632,7 +632,7 @@ struct ClosedEyes_Buttongroup :teTagButtonGroup {
         }
         void refreshState()override{
             bool halfb=false,closedb=false;
-            for(std::shared_ptr<tetagcore>tc:linked_tags)
+            for(std::shared_ptr<teTag>tc:linked_tags)
                 if(tc->words[0]->text==qsl("half-closed")){
                     halfb=true;
                     closedb=true;
@@ -720,10 +720,10 @@ struct Breast_Buttongroup :teTagButtonGroup {
         }
     }
 
-    std::shared_ptr<tetagcore>breasts_ptr=nullptr;
+    std::shared_ptr<teTag>breasts_ptr=nullptr;
     std::unordered_set<QString>::iterator breasts_it;
     std::unordered_set<QString>::iterator filter_it;
-    bool filter(std::shared_ptr<tetagcore> tag) override
+    bool filter(std::shared_ptr<teTag> tag) override
     {
         filter_it = defaultFiltStrings.find(*tag);
         if (filter_it == defaultFiltStrings.end())
@@ -743,7 +743,7 @@ struct Breast_Buttongroup :teTagButtonGroup {
                 if (linked && !linked->words.empty()
                     && linked->words.begin() != linked->words.end()
                     && (*linked->words.begin())->text != qsl("breasts")) {
-                    tag->type = teTagCore::deleteTag;
+                    tag->type = teTag::deleteTag;
                     breasts_ptr.reset();
                     return false;
                 }
@@ -762,7 +762,7 @@ struct Breast_Buttongroup :teTagButtonGroup {
 
         return true;
     }
-    void unlink(std::shared_ptr<tetagcore>tag)override{
+    void unlink(std::shared_ptr<teTag>tag)override{
         if(tag==breasts_ptr)breasts_ptr.reset();
         teTagButtonGroup::unlink(tag);
     }
@@ -811,10 +811,10 @@ teEditor_hair_and_eyes::teEditor_hair_and_eyes(teTagListWidget*in_taglistwidget,
             sc->setMinimumHeight(110);
         }
 
-        bool filter(std::shared_ptr<tetagcore>in_tag)override{
+        bool filter(std::shared_ptr<teTag>in_tag)override{
             if(hairtag_types.contains(in_tag))
                 on_hairtag_edited(in_tag);
-            if(in_tag->type==teTagCore::deleteTag)
+            if(in_tag->type==teTag::deleteTag)
                 return false;
             if(in_tag->words.empty())return false;
             QString&&lastword=*in_tag->words.back();
@@ -835,8 +835,8 @@ teEditor_hair_and_eyes::teEditor_hair_and_eyes(teTagListWidget*in_taglistwidget,
             rawStreakHair,
             rawGradientHair
         };
-        QHash<std::shared_ptr<tetagcore>, Type> hairtag_types;
-        Type classify_tag(std::shared_ptr<tetagcore> tag) {
+        QHash<std::shared_ptr<teTag>, Type> hairtag_types;
+        Type classify_tag(std::shared_ptr<teTag> tag) {
             if(is_color(*tag).second==0||
                 (!(tag->contains("hair")||tag->contains("gradient")||tag->words.size()<3)))
                 return Unknown;
@@ -851,7 +851,7 @@ teEditor_hair_and_eyes::teEditor_hair_and_eyes(teTagListWidget*in_taglistwidget,
 
             return BaseHair;
         }
-        bool can_merge(std::shared_ptr<tetagcore> target,Type target_type, std::shared_ptr<tetagcore> source,Type source_type) {
+        bool can_merge(std::shared_ptr<teTag> target,Type target_type, std::shared_ptr<teTag> source,Type source_type) {
             static bool matrix[5][5]{
                 //basic   s    g    rs    rg
                 {false,false,false,true,false},
@@ -862,17 +862,17 @@ teEditor_hair_and_eyes::teEditor_hair_and_eyes(teTagListWidget*in_taglistwidget,
             };
             return matrix[target_type][source_type];
         }
-        std::shared_ptr<tetagcore> find_merge_target(std::shared_ptr<tetagcore> new_tag,Type type) {
+        std::shared_ptr<teTag> find_merge_target(std::shared_ptr<teTag> new_tag,Type type) {
             for(int i = layout->count()-2; i >=0; --i) {
-                teRefTag* widget = dynamic_cast<teRefTag*>(layout->itemAt(i)->widget());
-                std::shared_ptr<tetagcore> candidate;
+                teRefTagWidget* widget = dynamic_cast<teRefTagWidget*>(layout->itemAt(i)->widget());
+                std::shared_ptr<teTag> candidate;
                 if(widget&&widget->core)
                     candidate = widget->core;
                 else
                     continue;
                 if(!hairtag_types.contains(candidate)) continue;
                 if(candidate==new_tag)continue;
-                if(candidate->type==teTagCore::deleteTag)continue;
+                if(candidate->type==teTag::deleteTag)continue;
 
                 if(can_merge(candidate,hairtag_types[candidate], new_tag,type)){
                     return candidate;
@@ -880,7 +880,7 @@ teEditor_hair_and_eyes::teEditor_hair_and_eyes(teTagListWidget*in_taglistwidget,
             }
             return nullptr;
         }
-        void perform_merge(std::shared_ptr<tetagcore> target, std::shared_ptr<tetagcore> source,Type source_type) {
+        void perform_merge(std::shared_ptr<teTag> target, std::shared_ptr<teTag> source,Type source_type) {
             if(source_type == rawStreakHair||hairtag_types[target]==rawStreakHair) {
                 merge_streaks(target, source,source_type==rawStreakHair);
                 hairtag_types[target]=StreakHair;
@@ -890,7 +890,7 @@ teEditor_hair_and_eyes::teEditor_hair_and_eyes(teTagListWidget*in_taglistwidget,
             }else
                 telog("[perform_merge]:couldn't merge tag");
         }
-        void merge_streaks(std::shared_ptr<tetagcore> target, std::shared_ptr<tetagcore> source,bool source_to_target) {
+        void merge_streaks(std::shared_ptr<teTag> target, std::shared_ptr<teTag> source,bool source_to_target) {
             QStringList all_colors;
             if(source_to_target)
                 all_colors = extract_colors(target)+extract_colors(source);
@@ -908,7 +908,7 @@ teEditor_hair_and_eyes::teEditor_hair_and_eyes(teTagListWidget*in_taglistwidget,
             finalStr+=" streaks";
             taglistwidget->tagEdit(target,finalStr);
         }
-        void merge_gradient(std::shared_ptr<tetagcore> target, std::shared_ptr<tetagcore> source,bool source_to_target) {
+        void merge_gradient(std::shared_ptr<teTag> target, std::shared_ptr<teTag> source,bool source_to_target) {
             QStringList all_colors;
             if(source_to_target)
                 all_colors = extract_colors(target)+extract_colors(source);
@@ -917,17 +917,17 @@ teEditor_hair_and_eyes::teEditor_hair_and_eyes(teTagListWidget*in_taglistwidget,
             QString new_text = "gradient from " + all_colors.join(" to ");
             taglistwidget->tagEdit(target,new_text);
         }
-        void link_hair(std::shared_ptr<tetagcore> tag){
+        void link_hair(std::shared_ptr<teTag> tag){
             tag->teConnect(teCallbackType::edit_with_layout,this,&hair_and_eyes_color_list::on_hairtag_edited,tag);
             hairtag_types.insert(tag,classify_tag(tag));
         }
-        void unlink_hair(std::shared_ptr<tetagcore> tag){
+        void unlink_hair(std::shared_ptr<teTag> tag){
             if(hairtag_types.contains(tag)){
                 tag->teDisconnect(this,teCallbackType::edit_with_layout);
                 hairtag_types.remove(tag);
             }
         }
-        void on_hairtag_edited(std::shared_ptr<tetagcore> edited_tag) {
+        void on_hairtag_edited(std::shared_ptr<teTag> edited_tag) {
             Type still_valid = classify_tag(edited_tag);
             if(still_valid==Unknown) {
                 unlink_hair(edited_tag);
@@ -935,25 +935,25 @@ teEditor_hair_and_eyes::teEditor_hair_and_eyes(teTagListWidget*in_taglistwidget,
             }
             if(hairtag_types.contains(edited_tag))
                 hairtag_types[edited_tag]=still_valid;
-            std::shared_ptr<tetagcore> new_target = find_merge_target(edited_tag,still_valid);
+            std::shared_ptr<teTag> new_target = find_merge_target(edited_tag,still_valid);
             if(new_target) {
-                edited_tag->type=teTagCore::deleteTag;
+                edited_tag->type=teTag::deleteTag;
                 perform_merge(new_target, edited_tag,still_valid);
             }
         }
-        virtual void tagEdit(teTagBase*tag,teWordBase*word)override{
-            if(std::shared_ptr<tetagcore>core =tag->core; hairtag_types.contains(core)&&(hairtag_types[core]==StreakHair||hairtag_types[core]==GradientHair)){
+        virtual void tagEdit(teTagWidgetBase*tag,teWordWidgetBase*word)override{
+            if(std::shared_ptr<teTag>core =tag->core; hairtag_types.contains(core)&&(hairtag_types[core]==StreakHair||hairtag_types[core]==GradientHair)){
                 int maxsize=0;
                 editingTag=tag;
                 QString tagtext="";
-                for(tewordcore*&word:core->words){
+                for(teWord*&word:core->words){
                     maxsize+=word->text.size()+1;
                 }
                 tagtext.reserve(maxsize);
-                for(tewordcore*&word:core->words){
+                for(teWord*&word:core->words){
                     // Hide the words this editor shows for the tag; the widget a
                     // word core may carry belongs to the single image tag list.
-                    for(teWordBase* shown : tag->findChildren<teWordBase*>())
+                    for(teWordWidgetBase* shown : tag->findChildren<teWordWidgetBase*>())
                         shown->hide();
                     tagtext.append(word->text);
                     tagtext.append(' ');
@@ -973,7 +973,7 @@ teEditor_hair_and_eyes::teEditor_hair_and_eyes(teTagListWidget*in_taglistwidget,
                 onEdit_widget->move(QCursor::pos().x()-onEdit_widget->width(),QCursor::pos().y()-onEdit_widget->height()/2);
             }
         }
-        void link(std::shared_ptr<tetagcore>in_tag)override{
+        void link(std::shared_ptr<teTag>in_tag)override{
             if(autoMerge&&MergeSwitch&&(!in_tag->contains("eyes"))&&
                 (is_color(*in_tag).second>0)
                 )
@@ -983,10 +983,10 @@ teEditor_hair_and_eyes::teEditor_hair_and_eyes(teTagListWidget*in_taglistwidget,
                     telog("[hair_and_eyes]:unable to distinguish hair tag's type");
                     goto mergeEnd;
                 }
-                std::shared_ptr<tetagcore> target_tag = find_merge_target(in_tag,new_type);
+                std::shared_ptr<teTag> target_tag = find_merge_target(in_tag,new_type);
 
                 if(target_tag) {
-                    in_tag->type=teTagCore::deleteTag;
+                    in_tag->type=teTag::deleteTag;
                     perform_merge(target_tag,in_tag,new_type);
                     return;
                 } else {
@@ -996,17 +996,17 @@ teEditor_hair_and_eyes::teEditor_hair_and_eyes(teTagListWidget*in_taglistwidget,
             mergeEnd:
             linked_tags.insert(in_tag);
             in_tag->teConnect(teCallbackType::destroy,this,&teEditorControl::unlink,in_tag);
-            tetagbase*widget =taginsert(-1,in_tag,taglistwidget->showing_list);
+            teTagWidgetBase*widget =taginsert(-1,in_tag,taglistwidget->showing_list);
             extraWidgetPushBack(in_tag,widget);
         }
 
-        void unlink(std::shared_ptr<tetagcore>in_tag)override{
+        void unlink(std::shared_ptr<teTag>in_tag)override{
             teDisconnect(in_tag.get());
             hairtag_types.remove(in_tag);
             linked_tags.erase(in_tag);
             tagErase(in_tag);
         }
-        void extraWidgetPushBack(std::shared_ptr<tetagcore>in_tag,tetagbase*widget){
+        void extraWidgetPushBack(std::shared_ptr<teTag>in_tag,teTagWidgetBase*widget){
             if(hairtag_types.contains(in_tag)&&((hairtag_types[in_tag]==BaseHair)||(hairtag_types[in_tag]==rawStreakHair)||(hairtag_types[in_tag]==rawGradientHair))){
                 int wordcount = in_tag->words.size();
                 QPushButton*streaked_btn = new QPushButton("s",widget);
@@ -1029,7 +1029,7 @@ teEditor_hair_and_eyes::teEditor_hair_and_eyes(teTagListWidget*in_taglistwidget,
                             if(*in_tag->words[i]==qsl("streaked"))
                             {if(auto* editorTag=tagWidgetFor(in_tag)) editorTag->destroyWord(i);--i;--wordcount;}
                     }
-                    if(in_tag->type==teTagCore::deleteTag)
+                    if(in_tag->type==teTag::deleteTag)
                         taglistwidget->tagErase(in_tag);
                 },Qt::DirectConnection);
                 widget->insertExtraWidgets(this,streaked_btn);
@@ -1053,7 +1053,7 @@ teEditor_hair_and_eyes::teEditor_hair_and_eyes(teTagListWidget*in_taglistwidget,
                             if(*in_tag->words[i]==qsl("gradient"))
                             {if(auto* editorTag=tagWidgetFor(in_tag)) editorTag->destroyWord(i);--i;--wordcount;}
                     }
-                    if(in_tag->type==teTagCore::deleteTag)
+                    if(in_tag->type==teTag::deleteTag)
                         taglistwidget->tagErase(in_tag);
                 },Qt::DirectConnection);
                 widget->insertExtraWidgets(this,gradient_btn);
@@ -1097,10 +1097,10 @@ struct ponytail_buttongroup :teTagButtonGroup {
             teshort,low,braided,side,pony,twin,tail
         };
         bool kindOfPonytail[4];
-        std::shared_ptr<tetagcore>ponytailTag=nullptr;
+        std::shared_ptr<teTag>ponytailTag=nullptr;
         bool kindOfTwintails[4];
         const QStringList prefixes = {QString("short"),QString("low"),QString("braided"),QString("side")};
-        std::shared_ptr<tetagcore>twintailsTag=nullptr;
+        std::shared_ptr<teTag>twintailsTag=nullptr;
     virtual void reform(int id)override {
         if (id==twin&&buttons[twin]->isChecked()) {
             buttons[pony]->setChecked(false);
@@ -1149,12 +1149,12 @@ struct ponytail_buttongroup :teTagButtonGroup {
             if(twintailsTag)
                 taglistwidget->tagEdit(twintailsTag,twintailsFinalString,1);
             else{
-                std::shared_ptr<tetagcore> newtagcore = std::make_shared<tetagcore>(twintailsFinalString);
+                std::shared_ptr<teTag> newtagcore = std::make_shared<teTag>(twintailsFinalString);
                 twintailsTag=newtagcore;
                 taglistwidget->tagInsertAbove(false,newtagcore,2);
             }
         } else if(!twintailsTag&&buttons[twin]->isChecked()){
-            std::shared_ptr<tetagcore> newtagcore = std::make_shared<tetagcore>(qsl("twintails"));
+            std::shared_ptr<teTag> newtagcore = std::make_shared<teTag>(qsl("twintails"));
             twintailsTag=newtagcore;
             taglistwidget->tagInsertAbove(false,newtagcore,2);
         }
@@ -1168,18 +1168,18 @@ struct ponytail_buttongroup :teTagButtonGroup {
             if(ponytailTag)
                 taglistwidget->tagEdit(ponytailTag,ponytailFinalString,1,true);
             else{
-                std::shared_ptr<tetagcore> newtagcore = std::make_shared<tetagcore>(ponytailFinalString);
+                std::shared_ptr<teTag> newtagcore = std::make_shared<teTag>(ponytailFinalString);
                 ponytailTag=newtagcore;
                 taglistwidget->tagInsertAbove(false,newtagcore,2);
             }
         } else if(!ponytailTag&&buttons[pony]->isChecked()){
-            std::shared_ptr<tetagcore> newtagcore = std::make_shared<tetagcore>("ponytail");
+            std::shared_ptr<teTag> newtagcore = std::make_shared<teTag>("ponytail");
             ponytailTag=newtagcore;
             taglistwidget->tagInsertAbove(false,newtagcore,2);
         }
 
     }
-    void unlink(std::shared_ptr<tetagcore>in_tag)override{
+    void unlink(std::shared_ptr<teTag>in_tag)override{
         if(in_tag==ponytailTag){
             clearTailMemeory(pony);
             ponytailTag.reset();
@@ -1196,10 +1196,10 @@ struct ponytail_buttongroup :teTagButtonGroup {
             memset(kindOfTwintails,0,4);
         }
     }
-    void getPrefix(std::shared_ptr<tetagcore>in_tag,bool boolarray[4]){
+    void getPrefix(std::shared_ptr<teTag>in_tag,bool boolarray[4]){
         if(in_tag->words.count()<2)return;
         QStringList in_tag_words;
-        for(tewordcore* wordptr: in_tag->words){
+        for(teWord* wordptr: in_tag->words){
             in_tag_words.push_back(*wordptr);
         }
         std::sort(in_tag_words.begin(),in_tag_words.end());
@@ -1213,12 +1213,12 @@ struct ponytail_buttongroup :teTagButtonGroup {
             }
         }
     }
-    void setTagTextFromBoolArray(std::shared_ptr<tetagcore>in_tag,bool boolarray[4]){
-        tewordcore*backword = in_tag->words.takeAt(in_tag->words.size()-1);
+    void setTagTextFromBoolArray(std::shared_ptr<teTag>in_tag,bool boolarray[4]){
+        teWord*backword = in_tag->words.takeAt(in_tag->words.size()-1);
         in_tag->clear();
         for(int i =0;i<3;++i){
             if(boolarray[i]){
-                teWordCore* newword =new tewordcore(prefixes[i]);
+                teWord* newword =new teWord(prefixes[i]);
                 in_tag->words.push_back(newword);
             }
         }
@@ -1226,9 +1226,9 @@ struct ponytail_buttongroup :teTagButtonGroup {
         // Only a tag list that owns a widget per word needs the widgets moved by
         // hand; the editors' tag lists rebuild their words from the core, which
         // is what edited_with_layout() below makes them do.
-        if(teTagBase* editorTag = tagWidgetFor(in_tag)){
+        if(teTagWidgetBase* editorTag = tagWidgetFor(in_tag)){
             if(editorTag->ownsWordWidgets()){
-                for(tewordcore* wc : in_tag->words) if(wc && !wc->widget) wc->load();
+                for(teWord* wc : in_tag->words) if(wc && !wc->widget) wc->load();
                 for(int i = 0;i<in_tag->words.size();++i)
                     if(in_tag->words[i]->widget)
                         editorTag->layout->insertWidget(editorTag->layout->count()-2,
@@ -1237,11 +1237,11 @@ struct ponytail_buttongroup :teTagButtonGroup {
         }
         in_tag->edited_with_layout();
     }
-    bool merge(std::shared_ptr<tetagcore>tag){
+    bool merge(std::shared_ptr<teTag>tag){
         if(*tag->words.back()==QString("twintails")){
             if(twintailsTag&&twintailsTag!=tag){
                 getPrefix(tag,kindOfTwintails);
-                tag->type=teTagCore::deleteTag;
+                tag->type=teTag::deleteTag;
                 taglistwidget->tagErase(tag);
                 setTagTextFromBoolArray(twintailsTag,kindOfTwintails);
             }else if(!twintailsTag){
@@ -1255,7 +1255,7 @@ struct ponytail_buttongroup :teTagButtonGroup {
         }else if(*tag->words.back()==QString("ponytail")){
             if(ponytailTag&&ponytailTag!=tag){
                 getPrefix(tag,kindOfPonytail);
-                tag->type=teTagCore::deleteTag;
+                tag->type=teTag::deleteTag;
                 taglistwidget->tagErase(tag);
                 setTagTextFromBoolArray(ponytailTag,kindOfPonytail);
             }else if(!ponytailTag){
@@ -1269,7 +1269,7 @@ struct ponytail_buttongroup :teTagButtonGroup {
         }
         refreshState();
 
-        return tag->type==teTagCore::deleteTag;
+        return tag->type==teTag::deleteTag;
     }
     void clear()override{
         clearTailMemeory(pony);
@@ -1278,7 +1278,7 @@ struct ponytail_buttongroup :teTagButtonGroup {
         twintailsTag=nullptr;
         teTagButtonGroup::clear();
     }
-    bool filter(std::shared_ptr<tetagcore>tag)override{
+    bool filter(std::shared_ptr<teTag>tag)override{
         QString tagstring=*tag;
         int index = tagstring.lastIndexOf("tail");
         if(index<0)return false;
@@ -1306,7 +1306,7 @@ contentLayout->addWidget(two_side_up_cb);
 controls.push_back(two_side_up_cb);
 
 struct BangsList: teTagListControl{
-    std::shared_ptr<tetagcore>editcore=nullptr;
+    std::shared_ptr<teTag>editcore=nullptr;
     BangsList(colorsWidget*in_onEdit_widget,teTagListWidget*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr)
         :teTagListControl(in_onEdit_widget,parentlist,parent,styleSheet,"bangs"){
         QPushButton*curtained_button=nullptr;
@@ -1326,7 +1326,7 @@ struct BangsList: teTagListControl{
         else telog("[BangsList::BangsList]could not find the \"bangs\" button or \"curtained\" button");
         sc->setMinimumHeight(110);
     }
-    bool filter(std::shared_ptr<tetagcore>in_tag)override{
+    bool filter(std::shared_ptr<teTag>in_tag)override{
         if(in_tag->words.empty())return false;
         QString tagtext = *in_tag;
         QString&&lastword=*in_tag->words.back();
@@ -1340,7 +1340,7 @@ struct BangsList: teTagListControl{
         }
         return false;
     }
-    void extraWidgetPushBack(std::shared_ptr<tetagcore>in_tag,tetagbase*widget){}
+    void extraWidgetPushBack(std::shared_ptr<teTag>in_tag,teTagWidgetBase*widget){}
     void refreshState()override{}
 }*bangs_list = new BangsList(
     new colorsWidget({
@@ -1411,13 +1411,13 @@ struct HairLength_Buttongroup :teTagButtonGroup {
         }
     }
 
-    std::shared_ptr<tetagcore>long_hair_ptr=nullptr;
-    std::shared_ptr<tetagcore>very_long_hair_ptr=nullptr;
+    std::shared_ptr<teTag>long_hair_ptr=nullptr;
+    std::shared_ptr<teTag>very_long_hair_ptr=nullptr;
     std::unordered_set<QString>::iterator long_hair_iterator;
     std::unordered_set<QString>::iterator very_long_hair_iterator;
 
     std::unordered_set<QString>::iterator filter_it;
-    bool filter(std::shared_ptr<tetagcore>tag)override{
+    bool filter(std::shared_ptr<teTag>tag)override{
         if(filter_it = defaultFiltStrings.find(*tag);filter_it!=defaultFiltStrings.end()){
             if(autoMerge&&MergeSwitch){
                 if(filter_it==long_hair_iterator){
@@ -1425,7 +1425,7 @@ struct HairLength_Buttongroup :teTagButtonGroup {
                         very_long_hair_ptr=nullptr;
                     }
                     if(very_long_hair_ptr){
-                        tag->type=teTagCore::deleteTag;
+                        tag->type=teTag::deleteTag;
                         long_hair_ptr=nullptr;
                         return false;
                     }
@@ -1446,7 +1446,7 @@ struct HairLength_Buttongroup :teTagButtonGroup {
             return true;
         }else return false;
     }
-    void unlink(std::shared_ptr<tetagcore>tag)override{
+    void unlink(std::shared_ptr<teTag>tag)override{
         if(tag==long_hair_ptr)long_hair_ptr=nullptr;
         else if(tag==very_long_hair_ptr)very_long_hair_ptr=nullptr;
         teTagButtonGroup::unlink(tag);
@@ -1556,7 +1556,7 @@ QStringList preposwords{
 
 /// True when a word before the trailing type word is a preposition, i.e. the
 /// tag describes what someone does with a garment rather than the garment.
-bool looksLikeActionPhrase(const teTagCore& tag){
+bool looksLikeActionPhrase(const teTag& tag){
     const int last = tag.words.size()-1;
     for(int i=0;i<last;++i)
         if(preposwords.contains(tag.words[i]->text))
@@ -1565,23 +1565,23 @@ bool looksLikeActionPhrase(const teTagCore& tag){
 }
 teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&name, QString *styleSheet, QWidget *parent):teEditor_standard(in_taglistwidget,name, &teEditor_clothes_style, parent){
     struct ClothesList: teTagListControl{
-        std::shared_ptr<tetagcore> clothes_editing=nullptr;
+        std::shared_ptr<teTag> clothes_editing=nullptr;
         struct teClothes:public teObject{
             ClothesList*parentList = nullptr;
             teTagListWidget*parentTagListWidget=nullptr;
-            std::shared_ptr<tetagcore>core=nullptr;
-            QVector<teWordCore*>colors;
-            QVector<teWordCore*>front_adjectives;
-            QVector<teWordCore*>adjectives;
-            QVector<teWordCore*>back_adjectives;
-            QVector<teWordCore*>exclusiveModifiers;
+            std::shared_ptr<teTag>core=nullptr;
+            QVector<teWord*>colors;
+            QVector<teWord*>front_adjectives;
+            QVector<teWord*>adjectives;
+            QVector<teWord*>back_adjectives;
+            QVector<teWord*>exclusiveModifiers;
             QString type;
-            teClothes(std::shared_ptr<tetagcore>core,ClothesList*parent,teTagListWidget*in_parentTagListWidget):parentList(parent),parentTagListWidget(in_parentTagListWidget){
+            teClothes(std::shared_ptr<teTag>core,ClothesList*parent,teTagListWidget*in_parentTagListWidget):parentList(parent),parentTagListWidget(in_parentTagListWidget){
                 readCore(core);
                 core->teConnect(teCallbackType::edit,this,&teClothes::reReadClothes,core);
                 core->teConnect(teCallbackType::edit_with_layout,this,&teClothes::reReadClothes,core);
             }
-            teClothes(std::shared_ptr<tetagcore>core){
+            teClothes(std::shared_ptr<teTag>core){
                 readCore(core);
             }
             teClothes(QString t){
@@ -1590,9 +1590,9 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
             ~teClothes(){
             }
 
-            void reReadClothes(std::shared_ptr<tetagcore>tag){
+            void reReadClothes(std::shared_ptr<teTag>tag){
                 if(tag==parentList->clothes_editing)return;
-                if(tag->type==teTagCore::deleteTag)
+                if(tag->type==teTag::deleteTag)
                     return;
                 teClothes*tagClothes = nullptr;
                 if(tagClothes=parentList->findClothes(tag);!tagClothes){
@@ -1602,7 +1602,7 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
                 for(teClothes*clz:parentList->all_clothes){
                     if(clz==this) continue;
                     if(clz->merge(tag)){
-                        tag->type=teTagCore::deleteTag;
+                        tag->type=teTag::deleteTag;
                         parentTagListWidget->tagErase(tag);
                         delete tagClothes;
                         return;
@@ -1614,26 +1614,26 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
                     delete tagClothes;
                 }
             }
-            int readCore(std::shared_ptr<tetagcore>in_core=nullptr){
+            int readCore(std::shared_ptr<teTag>in_core=nullptr){
                 if((core||!in_core)&&parentList->clothes_editing==core)return 0;
                 if(core==in_core) in_core=nullptr;
 
-                bool ifnew=false;
+                bool isNewEntry=false;
                 bool ifhascolor=in_core?(!colors.empty()):false;
-                bool ifTypeChanged=false;
+                bool isTypeChanged=false;
                 if(in_core&&(!core)){
-                    ifnew=true;
+                    isNewEntry=true;
                     core=in_core;
                     type=*in_core->words.back();
                 }
                 else if((!in_core)&&core){
-                    ifnew=true;
+                    isNewEntry=true;
                     colors.clear();
                     front_adjectives.clear();
                     adjectives.clear();
                     back_adjectives.clear();
                     if(type!= *core->words.back()){
-                        ifTypeChanged=true;
+                        isTypeChanged=true;
                         auto it = parentList->all_clothes.find(this);
                         if(it!=parentList->all_clothes.end()){
                             parentList->all_clothes.erase(it);
@@ -1669,8 +1669,8 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
                         }
                     return false;
                 };
-                static auto ifduplicate = [](QVector<teWordCore*>vec,QString str)->bool{
-                    for(teWordCore*wc:vec)
+                static auto ifduplicate = [](QVector<teWord*>vec,QString str)->bool{
+                    for(teWord*wc:vec)
                         if(wc->text==str)
                             return true;
                     return false;
@@ -1679,20 +1679,20 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
                 for(int i=0;i<wordcountMinusOne;++i){
                     if(i>=colorpos&&i<colorpos+colorcount){
                         if(ifhascolor)continue;
-                        if(ifnew||!ifduplicate(colors,in_core->words[i]->text)){
+                        if(isNewEntry||!ifduplicate(colors,in_core->words[i]->text)){
                             colors.push_back(in_core->words[i]);
-                            if(!ifnew){
-                                teWordCore*takecore = in_core->takeWordAt(i,false);
+                            if(!isNewEntry){
+                                teWord*takecore = in_core->takeWordAt(i,false);
                                 takecore->ensureWidget();
                                 --i;--wordcountMinusOne;--colorpos;
                             }
                         }
                     }
                     else if(findInMultimap(prefix_front,type,in_core->words[i]->text)){
-                        if(ifnew||!ifduplicate(front_adjectives,in_core->words[i]->text)){
+                        if(isNewEntry||!ifduplicate(front_adjectives,in_core->words[i]->text)){
                             front_adjectives.push_back(in_core->words[i]);
-                            if(!ifnew){
-                                teWordCore*takecore = in_core->takeWordAt(i,false);
+                            if(!isNewEntry){
+                                teWord*takecore = in_core->takeWordAt(i,false);
 
                                 takecore->ensureWidget();
                                 --i;--wordcountMinusOne;--colorpos;
@@ -1700,19 +1700,19 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
                         }
                     }
                     else if(findInMultimap(prefix_back,type,in_core->words[i]->text)){
-                        if(ifnew||!ifduplicate(back_adjectives,in_core->words[i]->text)){
+                        if(isNewEntry||!ifduplicate(back_adjectives,in_core->words[i]->text)){
                             back_adjectives.push_back(in_core->words[i]);
-                            if(!ifnew){
-                                teWordCore*takecore = in_core->takeWordAt(i,false);
+                            if(!isNewEntry){
+                                teWord*takecore = in_core->takeWordAt(i,false);
                                 takecore->ensureWidget();
                                 --i;--wordcountMinusOne;--colorpos;
                             }
                         }
                     }
-                    else if(ifnew||!ifduplicate(adjectives,in_core->words[i]->text)){
+                    else if(isNewEntry||!ifduplicate(adjectives,in_core->words[i]->text)){
                         adjectives.push_back(in_core->words[i]);
-                        if(!ifnew){
-                            teWordCore*takecore = in_core->takeWordAt(i,false);
+                        if(!isNewEntry){
+                            teWord*takecore = in_core->takeWordAt(i,false);
                             if(!takecore->widget){
                                 takecore->load();
                             }
@@ -1721,30 +1721,30 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
                     }
                 }
                 int wordindex=-1;
-                for(teWordCore*wc:colors)
+                for(teWord*wc:colors)
                     if(core->words[++wordindex]!=wc)
                         goto sortwords;
-                for(teWordCore*wc:front_adjectives)
+                for(teWord*wc:front_adjectives)
                     if(core->words[++wordindex]!=wc)
                         goto sortwords;
-                for(teWordCore*wc:adjectives)
+                for(teWord*wc:adjectives)
                     if(core->words[++wordindex]!=wc)
                         goto sortwords;
-                for(teWordCore*wc:back_adjectives)
+                for(teWord*wc:back_adjectives)
                     if(core->words[++wordindex]!=wc)
                         goto sortwords;
 
                 return 0;
                 sortwords:
-                static auto insertWords = [](std::shared_ptr<tetagcore>tag,QVector<QVector<teWordCore*>>wordListList,teTagBase* tagWidget){
+                static auto insertWords = [](std::shared_ptr<teTag>tag,QVector<QVector<teWord*>>wordListList,teTagWidgetBase* tagWidget){
                         bool hasWidget=tagWidget!=nullptr;
                         if(hasWidget)
                             tagWidget->disconnectWord();
                         tag->words.clear();
                         int pos=-1;
                         QHash<QString, bool> seen;
-                        for(QVector<teWordCore*>& wordList:wordListList)
-                            for(teWordCore*wc:wordList){
+                        for(QVector<teWord*>& wordList:wordListList)
+                            for(teWord*wc:wordList){
                                 if(seen[*wc]){
                                     delete wc;
                                     continue;
@@ -1756,9 +1756,9 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
                                     tag->words.append(wc);
                             }
                     };
-                teWordCore*typeWord;
-                if(ifTypeChanged){
-                    typeWord=new teWordCore{type};
+                teWord*typeWord;
+                if(isTypeChanged){
+                    typeWord=new teWord{type};
                     delete core->words.back();
                 }else{
                     typeWord=core->words.back();
@@ -1769,7 +1769,7 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
                 parentList->clothes_editing = nullptr;
                 if(in_core&&in_core!=core){
                     parentList->clothes_editing = in_core;
-                    in_core->type=teTagCore::deleteTag;
+                    in_core->type=teTag::deleteTag;
                     in_core->edited_with_layout();
                     parentList->clothes_editing=nullptr;
                 }
@@ -1786,19 +1786,19 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
             }
             QString text(){
                 QString final;
-                for(teWordCore*wd:colors){
+                for(teWord*wd:colors){
                     final.append(wd->text);
                     final.append(qsl(" "));
                 }
-                for(teWordCore*wd:front_adjectives){
+                for(teWord*wd:front_adjectives){
                     final.append(wd->text);
                     final.append(qsl(" "));
                 }
-                for(teWordCore*wd:adjectives){
+                for(teWord*wd:adjectives){
                     final.append(wd->text);
                     final.append(qsl(" "));
                 }
-                for(teWordCore*wd:back_adjectives){
+                for(teWord*wd:back_adjectives){
                     final.append(wd->text);
                     final.append(qsl(" "));
                 }
@@ -1807,16 +1807,16 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
             }
             QStringList allAdjectives(){
                 QStringList final;
-                for(teWordCore*wd:front_adjectives)
+                for(teWord*wd:front_adjectives)
                     final.append(wd->text);
-                for(teWordCore*wd:adjectives)
+                for(teWord*wd:adjectives)
                     final.append(wd->text);
-                for(teWordCore*wd:back_adjectives)
+                for(teWord*wd:back_adjectives)
                     final.append(wd->text);
                 return final;
             }
 
-            bool merge(std::shared_ptr<tetagcore>in_core){
+            bool merge(std::shared_ptr<teTag>in_core){
                 if(!sameType(in_core))return false;
                 if(auto[cp,cc] = is_color(*in_core);cc>0&&!colors.empty()){
                     if(cc!=colors.count())return false;
@@ -1829,7 +1829,7 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
                 readCore(in_core);
                 return true;
             }
-            bool sameType(std::shared_ptr<tetagcore>core){
+            bool sameType(std::shared_ptr<teTag>core){
                 if(type.isEmpty()||core->words.empty())
                     return false;
                 // Synonyms ("underwear" / "panties") count as the same garment,
@@ -1844,7 +1844,7 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
             else
                 return a->type<b->type;
         }};
-        teClothes* findClothes(std::shared_ptr<tetagcore>tag){
+        teClothes* findClothes(std::shared_ptr<teTag>tag){
             for(teClothes*clz:all_clothes){
                 if(clz->core==tag){
                     return clz;
@@ -1858,7 +1858,7 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
             this->info=QStringLiteral("ClothesList");
             sc->setMinimumHeight(110);
         }
-        bool filter(std::shared_ptr<tetagcore>in_tag)override{
+        bool filter(std::shared_ptr<teTag>in_tag)override{
             if(in_tag==clothes_editing)return true;
             if(in_tag->words.empty())return false;
             // "reaching through panties" and friends are actions, not garments.
@@ -1878,7 +1878,7 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
                         }
                         for(;begin!=end;++begin){
                             if((*begin)->merge(in_tag)){
-                                in_tag->type=teTagCore::deleteTag;
+                                in_tag->type=teTag::deleteTag;
                                 return false;
                             }
                         }
@@ -1901,16 +1901,16 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
             }
             teTagListControl::clear();
         };
-        void link(std::shared_ptr<tetagcore>in_tag)override{
+        void link(std::shared_ptr<teTag>in_tag)override{
             linked_tags.insert(in_tag);
             in_tag->teConnect(teCallbackType::destroy,this,&teEditorControl::unlink,in_tag);
-            tetagbase*widget =taginsert(-1,in_tag,taglistwidget->showing_list);
+            teTagWidgetBase*widget =taginsert(-1,in_tag,taglistwidget->showing_list);
             extraWidgetPushBack(in_tag,widget);
         }
-        void connectTag(tetagbase*tag)override{
+        void connectTag(teTagWidgetBase*tag)override{
             teTagListWidgetBase::connectTag(tag);
         }
-        void unlink(std::shared_ptr<tetagcore>in_tag)override{
+        void unlink(std::shared_ptr<teTag>in_tag)override{
             // teDisconnect(in_tag.get());
             for(auto it= all_clothes.begin(),end = all_clothes.end();it!=end;++it)
                 if((*it)->core==in_tag){
@@ -1921,7 +1921,7 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
             tagErase(in_tag);
             linked_tags.erase(in_tag);
         }
-        void extraWidgetPushBack(std::shared_ptr<tetagcore>in_tag,tetagbase*widget){
+        void extraWidgetPushBack(std::shared_ptr<teTag>in_tag,teTagWidgetBase*widget){
             if(*in_tag->words.back()==qsl("bow")){
                 int wordcount = in_tag->words.size();
                 QPushButton*hairbow_btn = new QPushButton("hair",widget);
@@ -2008,15 +2008,15 @@ struct Ears_Buttongroup :teTagButtonGroup {
         if(buttons[id]->isChecked())
         for(int i =1;i<7;++i)
             buttons[(id+i)%7]->setChecked(false);}
-        std::shared_ptr<tetagcore>animal_ears_ptr;
+        std::shared_ptr<teTag>animal_ears_ptr;
         bool explicit_ear=false;
-bool filter(std::shared_ptr<tetagcore>in)override{
-    QVector<tewordcore*>&words = in->words;
+bool filter(std::shared_ptr<teTag>in)override{
+    QVector<teWord*>&words = in->words;
     if(words.size()!=2)return false;
     if(words.back()->text!=qsl("ears"))return false;
     if(words.front()->text==qsl("animal")){
         if(explicit_ear){
-            in->type=teTagCore::deleteTag;
+            in->type=teTag::deleteTag;
             animal_ears_ptr=nullptr;
             return false;
         }
@@ -2038,7 +2038,7 @@ void clear()override{
     explicit_ear=false;
     teTagButtonGroup::clear();
 }
-void unlink(std::shared_ptr<tetagcore>tag)override{
+void unlink(std::shared_ptr<teTag>tag)override{
     if(tag==animal_ears_ptr)animal_ears_ptr=nullptr;
     teTagButtonGroup::unlink(tag);
 }
@@ -2066,13 +2066,13 @@ teEditor_nsfw::teEditor_nsfw(teTagListWidget*in_taglistwidget,QString &&name, QS
     static QSet<QString> object1 {qsl("cum"),qsl("erection"),qsl("tentacle"),qsl("egg"),qsl("slime"),qsl("worm"),qsl("insect")};
     static QSet<QString> bodyparts{qsl("pussy"),qsl("ass"),qsl("body"),qsl("face"),qsl("mouth"),qsl("breasts"),qsl("uterus"),qsl("clothes"),qsl("panties"),qsl("penis"),qsl("nipples"),qsl("urethra")};
     struct Object_list: teTagListControl{
-        std::shared_ptr<tetagcore>editcore=nullptr;
+        std::shared_ptr<teTag>editcore=nullptr;
 
         Object_list(colorsWidget*in_onEdit_widget,teTagListWidget*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr)
             :teTagListControl(in_onEdit_widget,parentlist,parent,styleSheet,"object"){
             sc->setMinimumHeight(110);
         }
-        bool filter(std::shared_ptr<tetagcore>in_tag)override{
+        bool filter(std::shared_ptr<teTag>in_tag)override{
             if(in_tag->words.count()!=3)return false;
             if(object1.contains(in_tag->words[0]->text)&&
                 preposwords.contains(in_tag->words[1]->text)&&
@@ -2266,8 +2266,8 @@ struct legUp_Buttongroup :teTagButtonGroup {
     }
 }
 
-bool filter(std::shared_ptr<tetagcore>in)override{
-    QVector<tewordcore*>&words = in->words;
+bool filter(std::shared_ptr<teTag>in)override{
+    QVector<teWord*>&words = in->words;
     if(words.size()<2)return false;
     if(words.at(words.size()-2)->text.startsWith(qsl("leg"))&&in->words.back()->text==qsl("up"))
         return true;

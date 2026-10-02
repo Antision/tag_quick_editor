@@ -5,10 +5,10 @@
 
 /// One rule of the filter window: all / any / none / exactly one of.
 struct teFiltRule{
-    QVector<tetagcore> a;
-    QVector<tetagcore> r;
-    QVector<tetagcore> n;
-    QVector<tetagcore> x;
+    QVector<teTag> a;
+    QVector<teTag> r;
+    QVector<teTag> n;
+    QVector<teTag> x;
 };
 
 class tePictureListView;

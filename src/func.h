@@ -10,8 +10,8 @@ extern QRect mainwindowGeometry;
 int load_config();
 
 int save_config();
-class teTagCore;
-std::string joinTag(const teTagCore& tag);
+class teTag;
+std::string joinTag(const teTag& tag);
 
 class teEditorControl;
 /// The custom-tag controls of the "custom" editor, in *insertion* order.

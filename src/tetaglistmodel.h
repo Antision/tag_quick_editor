@@ -58,14 +58,14 @@ public:
     QStringList mimeTypes() const override;
 
     /// Tag shown in `row`, or nullptr when the row does not exist.
-    teTagCore* tagAt(int row) const;
+    teTag* tagAt(int row) const;
     /// Row of `tag`, or -1.
-    int rowOf(teTagCore* tag) const;
+    int rowOf(teTag* tag) const;
 
     /// Inserts `tag` at `row`. Returns -1 when it was refused as a duplicate.
     /// `removeDuplicate`: 0 = allow duplicates, 1 = refuse, 2 = merge (the tags
     /// already there are erased first, so the result is a single tag).
-    int insertTag(int row,std::shared_ptr<teTagCore> tag,int removeDuplicate=1);
+    int insertTag(int row,std::shared_ptr<teTag> tag,int removeDuplicate=1);
     /// Erases one row (and the tag behind it).
     bool eraseTag(int row);
     /// Erases `count` rows starting at `row`.
@@ -81,9 +81,9 @@ public:
     void notifyExternalReorder();
 
 private slots:
-    void onListInserted(std::shared_ptr<teTagCore> tag);
-    void onListErased(std::shared_ptr<teTagCore> tag);
-    void onListEdited(std::shared_ptr<teTagCore> tag);
+    void onListInserted(std::shared_ptr<teTag> tag);
+    void onListErased(std::shared_ptr<teTag> tag);
+    void onListEdited(std::shared_ptr<teTag> tag);
 
 private:
     void connectList(teTagList* list);

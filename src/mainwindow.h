@@ -31,7 +31,7 @@ extern QWidget* global_window;
 
 class tePictureFileModel;
 class teMultitagListView;
-class teMultiTagListModel;
+class teSelectionTagModel;
 class LogWindow;
 
 /// Outcome of teResolveDuplicateStems().
@@ -58,7 +58,7 @@ struct teDuplicateStemReport{
  *
  * @param imagePaths updated in place with the new paths.
  */
-teDuplicateStemReport teResolveDuplicateStems(QVector<tepath>& imagePaths);
+teDuplicateStemReport teResolveDuplicateStems(QVector<tePath>& imagePaths);
 
 class MainWindow : public QMainWindow
 {
@@ -76,7 +76,7 @@ public:
     tePictureFileModel*picturefileModel;
     tePictureListView* picturefileListView;
     teImageWidget*imageWidget=nullptr;
-    teMultiTagListModel* multitaglistmodel;
+    teSelectionTagModel* multitaglistmodel;
     teMultitagListView*multitaglist;
     filterWidget*filterWindow=nullptr;
     EditorListLayoutWidget* editorlistlayoutwidget;

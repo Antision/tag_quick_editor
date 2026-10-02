@@ -31,13 +31,13 @@ struct teTagListWidget;
  * realloc(). The destructor deliberately does nothing, so shutdown order can
  * never turn the bookkeeping into a double delete.
  *
- * @tparam TagType Type of tag widget (must derive from teTagBase)
+ * @tparam TagType Type of tag widget (must derive from teTagWidgetBase)
  * @tparam WordType Type of word widget (must derive from teWordBase)
  * @tparam total_tags_count/total_words_count Kept for the historical signature;
  *         the pool now grows on demand instead of pre-allocating.
  */
 template<typename TagType,typename WordType,size_t total_tags_count,size_t total_words_count>
-requires (std::derived_from<TagType,teTagBase>&&std::derived_from<WordType,teWordBase>)
+requires (std::derived_from<TagType,teTagWidgetBase>&&std::derived_from<WordType,teWordWidgetBase>)
 struct WidgetPool:public teObject{
     teTagListWidgetBase* parent=nullptr;///< Initialization widget; also the fallback parking parent
     QBoxLayout* parent_layout=nullptr;///< Layout the widgets will be shown in
@@ -77,14 +77,14 @@ struct WidgetPool:public teObject{
         return parking;
     }
 
-    TagType* getTag(std::shared_ptr<tetagcore> in){
+    TagType* getTag(std::shared_ptr<teTag> in){
         TagType* ret = takeTag();
         ret->readCore(std::move(in));
         ret->show();
         ret->clearExtraWidgets();
         return ret;
     }
-    WordType* getWord(teWordCore* in){
+    WordType* getWord(teWord* in){
         WordType* ret = takeWord();
         ret->readCore(in);
         ret->show();
@@ -93,7 +93,7 @@ struct WidgetPool:public teObject{
 
     /// Returns a word widget to the pool. Signalling the same widget twice is
     /// harmless (the second call is ignored).
-    void give_back(teWordBase*in_word){
+    void give_back(teWordWidgetBase*in_word){
         if(!in_word)
             return;
         in_word->hide();
@@ -107,7 +107,7 @@ struct WidgetPool:public teObject{
         }
         in_word->teDisconnect();
         // Never leave the core pointing at a widget that is about to be reused.
-        if(in_word->core && static_cast<teWordBase*>(in_word->core->widget) == in_word)
+        if(in_word->core && static_cast<teWordWidgetBase*>(in_word->core->widget) == in_word)
             in_word->core->widget = nullptr;
         if(auto* typed = dynamic_cast<WordType*>(in_word)){
             if(typed->inWidgetPool)
@@ -128,7 +128,7 @@ struct WidgetPool:public teObject{
     }
 
     /// Returns a tag widget (and the words it owns) to the pool.
-    void give_back(teTagBase*in_tag){
+    void give_back(teTagWidgetBase*in_tag){
         if(!in_tag)
             return;
         in_tag->hide();
@@ -149,7 +149,7 @@ struct WidgetPool:public teObject{
         in_tag->clearExtraWidgets();
         in_tag->teDisconnect();
         // Never leave the core pointing at a widget that is about to be reused.
-        if(in_tag->core && static_cast<teTagBase*>(in_tag->core->widget) == in_tag)
+        if(in_tag->core && static_cast<teTagWidgetBase*>(in_tag->core->widget) == in_tag)
             in_tag->core->widget = nullptr;
         in_tag->reset();                // the tag no longer owns a core
         if(auto* typed = dynamic_cast<TagType*>(in_tag)){
@@ -235,7 +235,7 @@ private:
     mutable QPointer<QWidget> parking;///< Widget recycled widgets wait under
 };
 
-extern WidgetPool<tetag,teword,512,1024> widgetpool;
-extern WidgetPool<tereftag,terefword,128,256> widgetpool_ref;
+extern WidgetPool<teTagWidget,teWordWidget,512,1024> widgetpool;
+extern WidgetPool<teRefTagWidget,teRefWordWidget,128,256> widgetpool_ref;
 
 #endif // WIDGET_POOL_H

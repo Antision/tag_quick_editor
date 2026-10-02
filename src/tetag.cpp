@@ -1,53 +1,53 @@
 #include "tetag.h"
 #include "teeditorcontrol.h"
-teTag::teTag(const QString &str,QWidget*parent):
-    teTagBase(std::make_shared<tetagcore>(str),parent)
+teTagWidget::teTagWidget(const QString &str,QWidget*parent):
+    teTagWidgetBase(std::make_shared<teTag>(str),parent)
 {
     core->widget=this;
     load();
-    setStyle(teTag::normal);
+    setStyle(teTagWidget::normal);
 }
 
-void teTag::readCore(std::shared_ptr<tetagcore>in_core){
+void teTagWidget::readCore(std::shared_ptr<teTag>in_core){
     if((core!=nullptr)&&core!=in_core){
         core->widget=nullptr;
     }
     core = in_core;
-    in_core->teConnect(teCallbackType::edit,this,&teTag::load);
+    in_core->teConnect(teCallbackType::edit,this,&teTagWidget::load);
     in_core->widget=this;
 
-    if(in_core->type==teTagCore::sentence)
+    if(in_core->type==teTag::sentence)
         setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Fixed);
     load();
 }
 
-teTag::teTag(std::shared_ptr<tetagcore>incore,QWidget*parent):teTagBase(incore,parent){
+teTagWidget::teTagWidget(std::shared_ptr<teTag>incore,QWidget*parent):teTagWidgetBase(incore,parent){
     if(incore->widget&&incore->widget!=this){
         widgetpool.give_back(incore->widget);
     }
     incore->widget=this;
     load();
-    setStyle(teTag::normal);
+    setStyle(teTagWidget::normal);
 }
-teTagBase::teTagBase(std::shared_ptr<tetagcore>incore, QWidget *parent){
+teTagWidgetBase::teTagWidgetBase(std::shared_ptr<teTag>incore, QWidget *parent){
     core=incore;
     initialize();
 }
 
-void teTagBase::clearWordWidgets(){
-    for(teWordBase*word:findChildren<teWordBase*>()){
+void teTagWidgetBase::clearWordWidgets(){
+    for(teWordWidgetBase*word:findChildren<teWordWidgetBase*>()){
         widgetpool.give_back(word);
     }
 }
 
-void teTagBase::takeWordWidgets(){
+void teTagWidgetBase::takeWordWidgets(){
     int layoutItemCount = layout->count();
     for(int i=0;i<layoutItemCount-1;++i){
         layout->takeAt(0);
     }
 }
 
-void teTagBase::initialize(){
+void teTagWidgetBase::initialize(){
     setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
     layout = new QHBoxLayout(this);
     QSpacerItem* rightspacer = new QSpacerItem(0,0,QSizePolicy::Expanding,QSizePolicy::Fixed);
@@ -55,13 +55,13 @@ void teTagBase::initialize(){
     layout->setContentsMargins(2,4,0,4);
 }
 
-extern QString tetag_selectCurrentStyle;
-extern QString tetag_selectStyle;
-extern QString tetag_normalStyle;
-extern QString tetagMulti_selectCurrentStyle;
-extern QString tetagMulti_selectStyle;
-extern QString tetagMulti_normalStyle;
-void teTagBase::setStyle(tetagStyle in){
+extern QString teTag_selectCurrentStyle;
+extern QString teTag_selectStyle;
+extern QString teTag_normalStyle;
+extern QString teTagMulti_selectCurrentStyle;
+extern QString teTagMulti_selectStyle;
+extern QString teTagMulti_normalStyle;
+void teTagWidgetBase::setStyle(teTagStyle in){
     // Qt re-parses a sheet on every setStyleSheet() call (about 3 ms for these
     // small widgets), and the tag list sets the style of every tag on every
     // load, so re-applying the sheet that is already in place is skipped.
@@ -69,19 +69,19 @@ void teTagBase::setStyle(tetagStyle in){
         return;
     currentStyle=int(in);
     switch(in){
-    case normal:setStyleSheet(tetag_normalStyle);break;
-    case select:setStyleSheet(tetag_selectStyle);break;
-    case select_current:setStyleSheet(tetag_selectCurrentStyle);break;
-    case multi:setStyleSheet(tetagMulti_normalStyle);break;
-    case multi_select:setStyleSheet(tetagMulti_selectStyle);break;
-    case multi_select_current:setStyleSheet(tetagMulti_selectCurrentStyle);break;
+    case normal:setStyleSheet(teTag_normalStyle);break;
+    case select:setStyleSheet(teTag_selectStyle);break;
+    case select_current:setStyleSheet(teTag_selectCurrentStyle);break;
+    case multi:setStyleSheet(teTagMulti_normalStyle);break;
+    case multi_select:setStyleSheet(teTagMulti_selectStyle);break;
+    case multi_select_current:setStyleSheet(teTagMulti_selectCurrentStyle);break;
 
-    default:telog("unknown tetag style");
+    default:telog("unknown teTag style");
     }
 }
 
-teTagBase::~teTagBase(){
-    for(teWordBase*word:findChildren<teWordBase*>()){
+teTagWidgetBase::~teTagWidgetBase(){
+    for(teWordWidgetBase*word:findChildren<teWordWidgetBase*>()){
         word->setParent(this->parentWidget());
     }
     if(core!=nullptr){
@@ -90,19 +90,19 @@ teTagBase::~teTagBase(){
     }
 }
 
-teTagBase& teTagBase::operator=(const QString& input_string){
+teTagWidgetBase& teTagWidgetBase::operator=(const QString& input_string){
     setText(input_string);
     return *this;
 };
 
-teTagBase &teTagBase::operator=(const teTagBase &in){
+teTagWidgetBase &teTagWidgetBase::operator=(const teTagWidgetBase &in){
     setText(in);
     core->weight=in.core->weight;
     core->type=in.core->type;
     return *this;
 }
 
-bool teTagBase::operator==(const teTag &in) const{
+bool teTagWidgetBase::operator==(const teTagWidget &in) const{
     if(core->words.size()!=in.core->words.size()) return false;
     else{
         int size = core->words.size();
@@ -114,7 +114,7 @@ bool teTagBase::operator==(const teTag &in) const{
     }
 }
 
-int teTagBase::fit_goodness(const QString &find_word, int *return_index, int *return_questionable_index) const{
+int teTagWidgetBase::fit_goodness(const QString &find_word, int *return_index, int *return_questionable_index) const{
     int&& size=core->words.size();
     int index=-1;
     int questionable_index=-1;
@@ -137,18 +137,18 @@ int teTagBase::fit_goodness(const QString &find_word, int *return_index, int *re
     else return -2;
 }
 
-void teTag::load(){
-    static int tetagLoadNum=0;
+void teTagWidget::load(){
+    static int teTagLoadNum=0;
     int wordscount = core->words.count();
     clearWordWidgets();
     for(int i=0;i<wordscount;++i){
-        teWordBase* newword = widgetpool.getWord(core->words[i]);
+        teWordWidgetBase* newword = widgetpool.getWord(core->words[i]);
         layout->insertWidget(i,newword);
         connectWord(newword);
     }
     if(wordscount==0){
-        tewordcore* newwordcore = new tewordcore(QStringLiteral(""));
-        teWordBase* newword = widgetpool.getWord(newwordcore);
+        teWord* newwordcore = new teWord(QStringLiteral(""));
+        teWordWidgetBase* newword = widgetpool.getWord(newwordcore);
         core->words.push_back(newword->core);
         layout->insertWidget(0,newword);
         connectWord(newword);
@@ -156,7 +156,7 @@ void teTag::load(){
 }
 
 
-void teTagBase::mouseMoveEvent(QMouseEvent *event) {
+void teTagWidgetBase::mouseMoveEvent(QMouseEvent *event) {
     if (event->buttons() & Qt::LeftButton) {
         extern QWidget* global_window;
         if (!global_window->rect().contains(global_window->mapFromGlobal(event->globalPosition()).toPoint())){
@@ -178,7 +178,7 @@ void teTagBase::mouseMoveEvent(QMouseEvent *event) {
         }
     }
 }
-void teTagBase::mousePressEvent(QMouseEvent *event) {
+void teTagWidgetBase::mousePressEvent(QMouseEvent *event) {
     if (event->button() == Qt::LeftButton) {
         start_y = event->pos().y();
         mousePosInWidget = start_y;
@@ -191,7 +191,7 @@ void teTagBase::mousePressEvent(QMouseEvent *event) {
         emit rightButtonPress(this,event->pos(),event->modifiers());
     }
 }
-void teTagBase::mouseReleaseEvent(QMouseEvent *event) {
+void teTagWidgetBase::mouseReleaseEvent(QMouseEvent *event) {
     if (event->button() == Qt::LeftButton) {
         // Only a real drag reorders the list. Emitting this for a plain click
         // made tagdroped() re-apply the selection, so ctrl+clicking a tag that
@@ -203,12 +203,12 @@ void teTagBase::mouseReleaseEvent(QMouseEvent *event) {
         emit droped(this,event->modifiers());
     }
 }
-void teTagBase::worddroped(teWordBase *in_word, int xpos){
+void teTagWidgetBase::worddroped(teWordWidgetBase *in_word, int xpos){
     int wordcount = core->words.count();
     int in_id=-1;
     int i=0;
     for(;i<wordcount;++i){
-        teWordBase*wordptr = core->words[i]->widget;
+        teWordWidgetBase*wordptr = core->words[i]->widget;
         if(wordptr!=in_word){
             if(xpos < wordptr->x()+wordptr->width()){
                 break;
@@ -239,7 +239,7 @@ words_loop_end:
 }
 int teTagList::initialize_push_back(const QString& str, bool forceSentence)
 {
-    return initialize_push_back(std::make_shared<tetagcore>(str, nullptr, forceSentence));
+    return initialize_push_back(std::make_shared<teTag>(str, nullptr, forceSentence));
 }
 
 int teTagList::initialize_push_back(const std::string &in, bool forceSentence)
@@ -247,7 +247,7 @@ int teTagList::initialize_push_back(const std::string &in, bool forceSentence)
     return initialize_push_back(QString::fromStdString(in), forceSentence);
 }
 
-int teTagList::initialize_push_back(std::shared_ptr<tetagcore> tag)
+int teTagList::initialize_push_back(std::shared_ptr<teTag> tag)
 {
     if (remove_duplicate(tag, false)) {
         return -1;
@@ -260,7 +260,7 @@ int teTagList::initialize_push_back(std::shared_ptr<tetagcore> tag)
     }
 }
 
-bool teTagList::remove_duplicate(std::shared_ptr<tetagcore> tag, bool keepself)
+bool teTagList::remove_duplicate(std::shared_ptr<teTag> tag, bool keepself)
 {
     std::lock_guard<std::recursive_mutex> lg(tagsMt);
 
@@ -303,14 +303,14 @@ void teTagList::erase(int id)
         telog(QString("[teTagList::erase] index %1 out of range (size %2)").arg(id).arg(tags.size()));
         return;
     }
-    std::shared_ptr<tetagcore> core = tags.takeAt(id);
+    std::shared_ptr<teTag> core = tags.takeAt(id);
     onTagErased(core, id, isTagsLoaded);
     core->unload();
     core->teDisconnect(this);
     core->teemit(teCallbackType::destroy, false);
 }
 
-int teTagList::edit(std::shared_ptr<tetagcore> core, QString text, int removeDuplicate, bool ifemit)
+int teTagList::edit(std::shared_ptr<teTag> core, QString text, int removeDuplicate, bool ifemit)
 {
     if (!core)
         return -1;
@@ -328,12 +328,12 @@ int teTagList::edit(std::shared_ptr<tetagcore> core, QString text, int removeDup
     }
 
     onTagEdited(core, ifemit);
-    return core->type == teTagCore::deleteTag ? -1 : 0;
+    return core->type == teTag::deleteTag ? -1 : 0;
 }
 
 int teTagList::edit(int index, QString text, int removeDuplicate, bool ifemit)
 {
-    std::shared_ptr<tetagcore> core;
+    std::shared_ptr<teTag> core;
     {
         std::lock_guard<std::recursive_mutex> lg(tagsMt);
         if (index < 0 || index >= tags.size()) {
@@ -345,13 +345,13 @@ int teTagList::edit(int index, QString text, int removeDuplicate, bool ifemit)
     return edit(core, text, removeDuplicate, ifemit);
 }
 
-int teTagList::insert(int pos, std::shared_ptr<tetagcore> tag, int removeDuplicate, bool ifSendSignal)
+int teTagList::insert(int pos, std::shared_ptr<teTag> tag, int removeDuplicate, bool ifSendSignal)
 {
     if (!tag)
         return -1;
     if (removeDuplicate == 1 && remove_duplicate(tag, false))
         return -1;
-    if (tag->type == teTagCore::deleteTag)
+    if (tag->type == teTag::deleteTag)
         return -1;
 
     connectTag(tag);
@@ -372,7 +372,7 @@ int teTagList::insert(int pos, std::shared_ptr<tetagcore> tag, int removeDuplica
 
 void teTagList::move(int originPos, int newPos)
 {
-    std::shared_ptr<tetagcore> taketag;
+    std::shared_ptr<teTag> taketag;
     {
         std::lock_guard<std::recursive_mutex> lg(tagsMt);
         if (originPos < 0 || originPos >= tags.size()) {
@@ -386,7 +386,7 @@ void teTagList::move(int originPos, int newPos)
     onTagMoved(taketag, originPos, newPos);
 }
 
-void teTagList::move(std::shared_ptr<tetagcore> tag, int newPos)
+void teTagList::move(std::shared_ptr<teTag> tag, int newPos)
 {
     const int o = tags.indexOf(tag);
     if (o < 0) {
@@ -401,7 +401,7 @@ void teTagList::reorderBlock(int from, int count, int insertAt)
     if (count <= 0)
         return;
 
-    QVector<std::shared_ptr<tetagcore>> block;
+    QVector<std::shared_ptr<teTag>> block;
     {
         std::lock_guard<std::recursive_mutex> lg(tagsMt);
         if (from < 0 || from + count > int(tags.size())) {
@@ -427,57 +427,57 @@ void teTagList::reorderBlock(int from, int count, int insertAt)
 
 QString teTagList::toText()
 {
-    return serializePieces(size(), [this](int i) -> std::shared_ptr<tetagcore> {
+    return serializePieces(size(), [this](int i) -> std::shared_ptr<teTag> {
         return tags[i];
     }, true);
 }
 
 
-void teWordBase::initialize(){
+void teWordWidgetBase::initialize(){
     setContentsMargins(0,0,0,0);
     setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
     setMaximumHeight(27);
     setStyleSheet(QStringLiteral(R"(
-teWordBase{
+teWordWidgetBase{
     color: white;
 }
 QWidget{
     background-color:transparent;
 }
-teWordBase:hover{
+teWordWidgetBase:hover{
     border:1px solid #21ffbd;
     padding:-1px;
 }
-teWordBase:!hover{
+teWordWidgetBase:!hover{
     border:1px solid transparent;
     padding:-1px;
 }
 )"));
 }
 
-void teWordBase::readCore(tewordcore *in){
+void teWordWidgetBase::readCore(teWord *in){
     core=in;
     QLabel::setText(*in);
 }
 
-bool teWordBase::event(QEvent *e){
+bool teWordWidgetBase::event(QEvent *e){
     if(e->type()==QEvent::Type::MouseButtonDblClick){
         mouseDoubleClickEvent((QMouseEvent*)e);
         return true;
     }else QLabel::event(e);
 }
 
-void teWordBase::mousePressEvent(QMouseEvent *event) {
+void teWordWidgetBase::mousePressEvent(QMouseEvent *event) {
     if (event->button() == Qt::LeftButton) {
         start_x = event->pos().x();
         mousePosInWidget = start_x;
         isDragging = false;
         raise();
     }
-    return ((teTagBase*)parent())->mousePressEvent(event);
+    return ((teTagWidgetBase*)parent())->mousePressEvent(event);
 }
 
-void teWordBase::mouseMoveEvent(QMouseEvent *event) {
+void teWordWidgetBase::mouseMoveEvent(QMouseEvent *event) {
     if (event->buttons() & Qt::LeftButton) {
         int current_x = event->pos().x();
         int distance = current_x - start_x;
@@ -488,62 +488,62 @@ void teWordBase::mouseMoveEvent(QMouseEvent *event) {
             move(mapToParent(QPoint{distance,0}));
         }
     }
-    return ((teTagBase*)parent())->mouseMoveEvent(event);
+    return ((teTagWidgetBase*)parent())->mouseMoveEvent(event);
 }
 
-void teWordBase::mouseReleaseEvent(QMouseEvent *event) {
+void teWordWidgetBase::mouseReleaseEvent(QMouseEvent *event) {
     if (event->button() == Qt::LeftButton) {
         isDragging = false;
     }
     emit droped(this,mapToParent(event->pos()).x());
-    return ((teTagBase*)parent())->mouseReleaseEvent(event);
+    return ((teTagWidgetBase*)parent())->mouseReleaseEvent(event);
 }
 
-void teWordBase::mouseDoubleClickEvent(QMouseEvent *event){
+void teWordWidgetBase::mouseDoubleClickEvent(QMouseEvent *event){
     emit mouseDoubleClicked(this);
 }
 
-teTagCore::teTagCore(const QList<teWordCore *> in, teTagBase *child):widget(child){
-    for(tewordcore*w:in)
-        words.push_back(new teWordCore(w->text));
+teTag::teTag(const QList<teWord *> in, teTagWidgetBase *child):widget(child){
+    for(teWord*w:in)
+        words.push_back(new teWord(w->text));
 }
 
-teTagCore::teTagCore(const QString &str, teTagBase *child, bool forceSentence):widget(child){
+teTag::teTag(const QString &str, teTagWidgetBase *child, bool forceSentence):widget(child){
     read(str);
 }
 
-teTagCore::teTagCore(const char *str, teTagBase *child, bool forceSentence):widget(child){
+teTag::teTag(const char *str, teTagWidgetBase *child, bool forceSentence):widget(child){
     read(QString(str));
 }
 
-teTagCore::teTagCore(teTagCore &&in):words(std::move(in.words)),widget(in.widget){
+teTag::teTag(teTag &&in):words(std::move(in.words)),widget(in.widget){
     info=in.info;
     if(in.widget!=nullptr)
         in.widget->core.reset();
     in.widget=nullptr;
 }
 
-void teTagCore::load(){
+void teTag::load(){
     if(widget==nullptr)
-        widget = (tetag*)widgetpool.getTag(shared_from_this());
+        widget = (teTagWidget*)widgetpool.getTag(shared_from_this());
     else
         widget->load();
 }
 
-teTagCore &teTagCore::operator=(const teTagCore &in){
+teTag &teTag::operator=(const teTag &in){
     if(!words.empty()){
-        for(tewordcore*wc:words)
+        for(teWord*wc:words)
             delete wc;
         words.clear();
     }
-    for(tewordcore*wc:in.words)
-        words.push_back(new tewordcore{*wc});
+    for(teWord*wc:in.words)
+        words.push_back(new teWord{*wc});
     weight=in.weight;
     edited();
     return *this;
 }
 
-void teTagCore::read(const QString &str, bool ifclear, bool forceSentence)
+void teTag::read(const QString &str, bool ifclear, bool forceSentence)
 {
     if (ifclear)
         clear();
@@ -555,7 +555,7 @@ void teTagCore::read(const QString &str, bool ifclear, bool forceSentence)
         if (!text.endsWith('.'))
             text += '.';
 
-        words.push_back(new teWordCore(text));
+        words.push_back(new teWord(text));
         type = sentence;
 
         if (widget)
@@ -568,7 +568,7 @@ void teTagCore::read(const QString &str, bool ifclear, bool forceSentence)
 
     // Manually adding a tag: if it ends with a period, treat it as a sentence
     if (text.endsWith('.')) {
-        words.push_back(new teWordCore(text));
+        words.push_back(new teWord(text));
         type = sentence;
 
         if (widget)
@@ -605,7 +605,7 @@ void teTagCore::read(const QString &str, bool ifclear, bool forceSentence)
         wordlist.append(s.split(" ", Qt::SkipEmptyParts));
 
     for (QString &tmpword : wordlist)
-        words.push_back(new teWordCore(std::move(tmpword)));
+        words.push_back(new teWord(std::move(tmpword)));
 
     type = tag;
 
@@ -613,9 +613,9 @@ void teTagCore::read(const QString &str, bool ifclear, bool forceSentence)
         edited();
 }
 
-teWordCore *teTagCore::takeWordAt(int index, bool ifSendSignal){
+teWord *teTag::takeWordAt(int index, bool ifSendSignal){
     while(index<0)index += words.size();
-    teWordCore* wc = words.takeAt(index);
+    teWord* wc = words.takeAt(index);
     if(wc->widget){
         wc->widget->teDisconnect();
         if(this->widget)
@@ -626,7 +626,7 @@ teWordCore *teTagCore::takeWordAt(int index, bool ifSendSignal){
     return wc;
 }
 
-bool teTagCore::operator==(const teTagCore &in) const{
+bool teTag::operator==(const teTag &in) const{
     if(this->words.size()!=in.words.size()) return false;
     else{
         int size = words.size();
@@ -638,7 +638,7 @@ bool teTagCore::operator==(const teTagCore &in) const{
     }
 }
 
-teTagCore::operator QString() const
+teTag::operator QString() const
 {
     QString out;
 
@@ -653,7 +653,7 @@ teTagCore::operator QString() const
     QString prev;
     bool first = true;
 
-    for (tewordcore* word : words) {
+    for (teWord* word : words) {
         if (!word)
             continue;
 
@@ -679,93 +679,93 @@ teTagCore::operator QString() const
     return out;
 }
 
-teTagCore::~teTagCore(){
+teTag::~teTag(){
     onDestroy();
     clear();
     unload();
 }
 
-void teTagCore::unload(){
+void teTag::unload(){
     if(widget!=nullptr){
         widgetpool.give_back(widget);
         widget=nullptr;
     }
-    for(tewordcore*w:words)
+    for(teWord*w:words)
         w->unload();
 }
-teWord* teWordCore::load(){
+teWordWidget* teWord::load(){
     if(!widget)
         widget = widgetpool.getWord(this);
     return widget;
 }
 
-void teWordCore::unload(){
+void teWord::unload(){
     if(widget!=nullptr){
         widgetpool.give_back(widget);
         widget=nullptr;
     }
 }
-teWordCore::~teWordCore(){
+teWord::~teWord(){
     unload();
 }
 
-QString tetag_normalStyle(QStringLiteral(R"(
-teTagBase:!hover{
+QString teTag_normalStyle(QStringLiteral(R"(
+teTagWidgetBase:!hover{
     border:1px solid #43367b;
     background-color:black;
 }
-teTagBase:hover{
+teTagWidgetBase:hover{
     border:1px solid #b288ff;
     background-color:black;
 }
 )"));
-QString tetag_selectStyle(QStringLiteral(R"(
-teTagBase:!hover{
+QString teTag_selectStyle(QStringLiteral(R"(
+teTagWidgetBase:!hover{
     border:1px solid #3e5e4b;
     background-color:#173d3e;
 }
-teTagBase:hover{
+teTagWidgetBase:hover{
     border:1px solid #2a6b45;
     background-color:#173d3e;
 }
 )"));
-QString tetag_selectCurrentStyle(QStringLiteral(R"(
-teTagBase:!hover{
+QString teTag_selectCurrentStyle(QStringLiteral(R"(
+teTagWidgetBase:!hover{
     border:1px solid #109452;
     background-color:#1a5759;
 }
-teTagBase:hover{
+teTagWidgetBase:hover{
     border:1px solid #00d96d;
     background-color:#1a5759;
 }
 )"));
 
-QString tetagMulti_normalStyle(QStringLiteral(R"(
-teTagBase:!hover{
+QString teTagMulti_normalStyle(QStringLiteral(R"(
+teTagWidgetBase:!hover{
     border:1px solid #90922a;
     background-color:black;
 }
-teTagBase:hover{
+teTagWidgetBase:hover{
     border:1px solid #e9ec47;
     background-color:black;
 }
 )"));
-QString tetagMulti_selectStyle(QStringLiteral(R"(
-teTagBase:!hover{
+QString teTagMulti_selectStyle(QStringLiteral(R"(
+teTagWidgetBase:!hover{
     border:1px solid #3dc22b;
     background-color:#102b18;
 }
-teTagBase:hover{
+teTagWidgetBase:hover{
     border:1px solid #4ce638;
     background-color:#153f22;
 }
 )"));
-QString tetagMulti_selectCurrentStyle(QStringLiteral(R"(
-teTagBase:!hover{
+QString teTagMulti_selectCurrentStyle(QStringLiteral(R"(
+teTagWidgetBase:!hover{
     border:1px solid #58d347;
     background-color:#206836;
 }
-teTagBase:hover{
+teTagWidgetBase:hover{
     border:1px solid #69f057;
     background-color:#247f40;
 }

@@ -145,7 +145,7 @@ bool isCloseBracket(const std::string &s) {
     return s == ")" || s == "\\)";
 }
 
-std::string joinTag(const teTagCore& tag) {
+std::string joinTag(const teTag& tag) {
     std::string res;
     int wordCount = tag.words.size();
     for (int i = 0; i < wordCount; ++i) {

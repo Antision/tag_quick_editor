@@ -122,7 +122,7 @@ MainWindow::MainWindow(QWidget *parent)
     multitaglist = new teMultitagListView;
     multitaglistmodel=multitaglist->model;
 
-    connect(ui->GlobalMultiTaglistView->model,&teMultiTagListModel::listModified,this,[this]{
+    connect(ui->GlobalMultiTaglistView->model,&teSelectionTagModel::listModified,this,[this]{
         connect(ui->TaglistTabWidget,&QTabWidget::currentChanged,ui->taglist,[this]{
             tePictureFile* tmpPictureFile = ui->taglist->file;
             QItemSelection tmpSelection= picturefileListView->selectionModel()->selection();
@@ -221,8 +221,8 @@ MainWindow::MainWindow(QWidget *parent)
                     imageWidget->setImage(file->filepath.qstring);
             }, Qt::DirectConnection);
 
-    connect(picturefileModel,&tePictureFileModel::newFileLoaded,ui->GlobalMultiTaglistView->model,&teMultiTagListModel::loadFiles,Qt::DirectConnection);
-    connect(picturefileModel,&tePictureFileModel::clearAllFiles,ui->GlobalMultiTaglistView->model,&teMultiTagListModel::clear,Qt::DirectConnection);
+    connect(picturefileModel,&tePictureFileModel::newFileLoaded,ui->GlobalMultiTaglistView->model,&teSelectionTagModel::loadFiles,Qt::DirectConnection);
+    connect(picturefileModel,&tePictureFileModel::clearAllFiles,ui->GlobalMultiTaglistView->model,&teSelectionTagModel::clear,Qt::DirectConnection);
 
     // Removing files (recycle bin) has to go through the model so the rows
     // disappear and the objects are deleted exactly once.
@@ -468,7 +468,7 @@ int MainWindow::saveState(bool ifRunning)
         QJsonArray tags;
         const int tagCount = int(taglist.size());
         for (int t = 0; t < tagCount; ++t) {
-            teTagCore* tag = taglist.at(t);
+            teTag* tag = taglist.at(t);
             if (tag)
                 tags.append(QString::fromStdString(joinTag(*tag)));
         }
@@ -735,16 +735,16 @@ saveFlag:
     }
     return 1;
 }
-std::set<tepath>folder_paths;
+std::set<tePath>folder_paths;
 
-QList<QPair<tepath,bool>> is_duplicate_path(const tepath&in){
+QList<QPair<tePath,bool>> is_duplicate_path(const tePath&in){
     if(folder_paths.empty()) return {};
-    std::set<tepath>::iterator l = folder_paths.lower_bound(in);
+    std::set<tePath>::iterator l = folder_paths.lower_bound(in);
 
     if(l==folder_paths.end()) return {};
     else if(in==*l||in.isSubpath(*l)) return {{*l,true}};
     else if(l->isSubpath(in)){
-        QList<QPair<tepath,bool>> r{{*l,false}};
+        QList<QPair<tePath,bool>> r{{*l,false}};
         for(++l;l!=folder_paths.end();++l){
             if(l->isSubpath(in)){
                 r.push_back({*l,false});
@@ -796,7 +796,7 @@ QSet<QString> folderBaseNames(const QString& folder)
 
 }
 
-teDuplicateStemReport teResolveDuplicateStems(QVector<tepath>& imagePaths)
+teDuplicateStemReport teResolveDuplicateStems(QVector<tePath>& imagePaths)
 {
     teDuplicateStemReport report;
 
@@ -923,13 +923,13 @@ void MainWindow::dialog_LoadPath(bool clear){
 
     if(folderPath.size()<2)return;
     try{
-        const tepath rootpath(folderPath);
-        QVector<tepath> paths;
+        const tePath rootpath(folderPath);
+        QVector<tePath> paths;
 
-        auto collectFrom = [&paths](const tepath& root){
+        auto collectFrom = [&paths](const tePath& root){
             for(const std::filesystem::directory_entry& entry : std::filesystem::recursive_directory_iterator(root.stdpath)){
                 if(!entry.is_directory()&&is_image_file(entry.path()))
-                    paths.append(tepath(entry));
+                    paths.append(tePath(entry));
             }
         };
 
@@ -945,13 +945,13 @@ void MainWindow::dialog_LoadPath(bool clear){
             collectFrom(rootpath);
             folder_paths.insert(rootpath);
         }else{
-            const QList<QPair<tepath,bool>> duplicate_list = is_duplicate_path(rootpath);
+            const QList<QPair<tePath,bool>> duplicate_list = is_duplicate_path(rootpath);
             if(duplicate_list.size()==1&&duplicate_list.front().second==true)
                 return;
             else if(!duplicate_list.empty()){
                 for (const auto& entry : std::filesystem::directory_iterator(rootpath.stdpath)) {
                     if (entry.is_directory()) {
-                        const tepath currentPath(QString::fromStdString(entry.path().string())+'/');
+                        const tePath currentPath(QString::fromStdString(entry.path().string())+'/');
                         bool shouldExclude = false;
                         for (const auto& excludedFolder : folder_paths) {
                             if (currentPath.isSubpath(excludedFolder)||currentPath==excludedFolder) {
@@ -962,7 +962,7 @@ void MainWindow::dialog_LoadPath(bool clear){
                         if (!shouldExclude)
                             collectFrom(currentPath);
                     }else if(is_image_file(entry.path())){
-                        paths.append(tepath(entry));
+                        paths.append(tePath(entry));
                     }
                 }
             }else{
@@ -983,7 +983,7 @@ void MainWindow::dialog_LoadPath(bool clear){
 
         QList<tePictureFile*> appendPicturelist;
         appendPicturelist.reserve(paths.size());
-        for (const tepath& path : paths)
+        for (const tePath& path : paths)
             appendPicturelist.push_back(new tePictureFile(path));
         picturefileModel->append(appendPicturelist);
     }catch(const std::exception& e){

@@ -10,7 +10,7 @@ void teEditor::reset(){
         control->reset();
 }
 
-bool teEditor::read(std::shared_ptr<tetagcore>tag){
+bool teEditor::read(std::shared_ptr<teTag>tag){
     for(teEditorControl*ctrl_ptr:controls){
         if(ctrl_ptr->read(tag)){
             return true;
@@ -18,8 +18,8 @@ bool teEditor::read(std::shared_ptr<tetagcore>tag){
     }
     return false;
 }
-bool teEditor::re_read(std::shared_ptr<tetagcore>tag){
-    if(tag->type==teTagCore::deleteTag)
+bool teEditor::re_read(std::shared_ptr<teTag>tag){
+    if(tag->type==teTag::deleteTag)
         return true;
     tag->ensureWidget();
     for(teEditorControl*ctrl_ptr:controls){
@@ -27,7 +27,7 @@ bool teEditor::re_read(std::shared_ptr<tetagcore>tag){
             if(ctrl_ptr->read(tag)){
                 return true;
             }
-        }else if(tag->type==teTagCore::deleteTag){
+        }else if(tag->type==teTag::deleteTag){
             return true;
         }
     }

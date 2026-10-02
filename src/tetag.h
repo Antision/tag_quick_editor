@@ -3,25 +3,25 @@
 #include"pch.h"
 #include"suggestionlineedit.h"
 
-class teWord;
-class teTagBase;
+class teWordWidget;
+class teTagWidgetBase;
 class obj_callback_function_base;
 
-typedef class teWordCore:public teObject{
+class teWord:public teObject{
 public:
     QString text;
-    teWord*widget=nullptr;
-    teWordCore(){}
-    teWordCore(const QString& input_string){
+    teWordWidget*widget=nullptr;
+    teWord(){}
+    teWord(const QString& input_string){
         text=input_string;
     }
-    teWordCore(QString&& input_string){
+    teWord(QString&& input_string){
         text=std::move(input_string);
     }
-    teWordCore(const teWordCore& in_core){
+    teWord(const teWord& in_core){
         text = in_core.text;
     }
-    teWord* load();
+    teWordWidget* load();
     void unload();
     /// Makes sure the word is displayed, i.e. that it owns a widget.
     /// See teTagCore::ensureWidget().
@@ -29,7 +29,7 @@ public:
         if(!widget)
             load();
     }
-    bool operator==(const teWordCore& in) const{
+    bool operator==(const teWord& in) const{
         return text == in.text;
     }
     bool operator==(const QString& in) const{
@@ -38,32 +38,31 @@ public:
     operator QString(){
         return text;
     }
-    ~teWordCore();
-}tewordcore;
+    ~teWord();
+};
 
-
-typedef class teWordBase:public QLabel,public teObject{
+class teWordWidgetBase:public QLabel,public teObject{
     Q_OBJECT
 public:
-    tewordcore*core=nullptr;
-    teWordBase(QWidget*parent=nullptr):QLabel(parent){initialize();}
-    teWordBase(const QString& input_string,QWidget* parent=nullptr):
+    teWord*core=nullptr;
+    teWordWidgetBase(QWidget*parent=nullptr):QLabel(parent){initialize();}
+    teWordWidgetBase(const QString& input_string,QWidget* parent=nullptr):
         QLabel(input_string,parent){initialize();}
-    teWordBase(QString&& input_string,QWidget* parent=nullptr):
+    teWordWidgetBase(QString&& input_string,QWidget* parent=nullptr):
         QLabel(input_string,parent)
     {initialize();}
-    teWordBase(tewordcore&in):QLabel(in.text),core(&in)
+    teWordWidgetBase(teWord&in):QLabel(in.text),core(&in)
     {initialize();}
-    teWordBase(const teWordBase&in):QLabel(in.core->text),core(in.core)
+    teWordWidgetBase(const teWordWidgetBase&in):QLabel(in.core->text),core(in.core)
     {initialize();}
-    teWordBase(teWordBase&&in)=delete;
+    teWordWidgetBase(teWordWidgetBase&&in)=delete;
     virtual void setText(const QString&text){
         if(!core)telog("[teRefWord::setText]:no core specified for this refword");
         core->text=text;
         QLabel::setText(text);
     }
     void initialize();
-    virtual void readCore(tewordcore*in);
+    virtual void readCore(teWord*in);
     bool event(QEvent*e)override;
     void mousePressEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
@@ -76,23 +75,23 @@ public:
     /// guard against registering the same widget twice (which would hand it out
     /// to two owners at once).
     bool inWidgetPool=false;
-    bool operator==(const teWordBase& in) const{
+    bool operator==(const teWordWidgetBase& in) const{
         return core->text == in.core->text;
     }
     bool operator==(const QString& in) const{
         return core->text == in;
     }
-    teWordBase& operator=(QString&&in){
+    teWordWidgetBase& operator=(QString&&in){
         core->text = std::move(in);
         QLabel::setText(core->text);
         return *this;
     }
-    teWordBase& operator=(const teWordBase&in){
+    teWordWidgetBase& operator=(const teWordWidgetBase&in){
         core->text = in.core->text;
         QLabel::setText(core->text);
         return *this;
     }
-    teWordBase& operator=(teWordBase&&in){
+    teWordWidgetBase& operator=(teWordWidgetBase&&in){
         core->text = std::move(in.core->text);
         QLabel::setText(core->text);
         return *this;
@@ -105,65 +104,65 @@ public:
         if(!core) telog("core is nullptr");
         return core->text;
     };
-    tewordcore& get_core(){
+    teWord& get_core(){
         return *core;
     }
-    virtual ~teWordBase(){
+    virtual ~teWordWidgetBase(){
         if(core!=nullptr){
             core->widget=nullptr;
             core=nullptr;
         }
     }
 signals:
-    void mouseDoubleClicked(teWordBase*);
-    void droped(teWordBase*,int xpos);
-}tewordbase;
+    void mouseDoubleClicked(teWordWidgetBase*);
+    void droped(teWordWidgetBase*,int xpos);
+};
 
-typedef class teWord:public teWordBase{
+class teWordWidget:public teWordWidgetBase{
 public:
-    teWord(QWidget*parent=nullptr):teWordBase(parent){}
-    ~teWord(){
+    teWordWidget(QWidget*parent=nullptr):teWordWidgetBase(parent){}
+    ~teWordWidget(){
 
     }
-    teWord(const QString& input_string,QWidget* parent=nullptr):teWordBase(input_string,parent){
-        core=new tewordcore(input_string);
+    teWordWidget(const QString& input_string,QWidget* parent=nullptr):teWordWidgetBase(input_string,parent){
+        core=new teWord(input_string);
         core->widget=this;
     }
-    teWord(QString&& input_string,QWidget* parent=nullptr):teWord(input_string,parent){
-        core=new tewordcore(std::move(input_string));
+    teWordWidget(QString&& input_string,QWidget* parent=nullptr):teWordWidget(input_string,parent){
+        core=new teWord(std::move(input_string));
         core->widget=this;
     }
-    teWord(tewordcore&in):teWordBase(in){
+    teWordWidget(teWord&in):teWordWidgetBase(in){
         in.widget=this;
     }
-    teWord(const teWordBase&in):teWordBase(in){
+    teWordWidget(const teWordWidgetBase&in):teWordWidgetBase(in){
         core->widget=this;
     }
 
-    teWord(teWordBase&&in)=delete;
-    virtual void readCore(tewordcore*in)override{
-        teWordBase::readCore(in);
+    teWordWidget(teWordWidgetBase&&in)=delete;
+    virtual void readCore(teWord*in)override{
+        teWordWidgetBase::readCore(in);
         in->widget=this;
     }
 
-}teword;
-typedef class teRefWord:public teWordBase{
+};
+
+class teRefWordWidget:public teWordWidgetBase{
 public:
-    teRefWord(QWidget*parent=nullptr):teWordBase(parent){initialize();}
-    teRefWord(const QString& input_string,QWidget* parent=nullptr)=delete;
-    teRefWord(QString&& input_string,QWidget* parent=nullptr)=delete;
-    teRefWord(tewordcore&in_word):teWordBase(in_word){
-        in_word.teConnect(teCallbackType::edit,this,&teRefWord::readCore,&in_word);
+    teRefWordWidget(QWidget*parent=nullptr):teWordWidgetBase(parent){initialize();}
+    teRefWordWidget(const QString& input_string,QWidget* parent=nullptr)=delete;
+    teRefWordWidget(QString&& input_string,QWidget* parent=nullptr)=delete;
+    teRefWordWidget(teWord&in_word):teWordWidgetBase(in_word){
+        in_word.teConnect(teCallbackType::edit,this,&teRefWordWidget::readCore,&in_word);
         initialize();
     }
-    teRefWord(const teWordBase&in):teWordBase(in){initialize();}
-    teRefWord(teWordBase&&in)=delete;
+    teRefWordWidget(const teWordWidgetBase&in):teWordWidgetBase(in){initialize();}
+    teRefWordWidget(teWordWidgetBase&&in)=delete;
     void initialize(){
         setMaximumHeight(20);
     }
-}terefword;
-
-typedef class teTagCore:public teObject,public std::enable_shared_from_this<teTagCore>{
+};
+class teTag:public teObject,public std::enable_shared_from_this<teTag>{
 public:
     enum teTagType{
         tag=0,
@@ -172,7 +171,8 @@ public:
         deleteTag
     };
 
-    QList<tewordcore*> words;
+    QList<teWord*> words;
+
     /**
      * @brief The widget that shows this tag, if any.
      *
@@ -180,28 +180,29 @@ public:
      * list draws its tags through a delegate now and owns no widget per tag, so
      * the only widget a tag has is the one an editor created for it - hence the
      * common base class. Everything the editors call through this pointer
-     * (setText, insertWord, destroyWord, disconnectWord, layout) is a teTagBase
+     * (setText, insertWord, destroyWord, disconnectWord, layout) is a teTagWidgetBase
      * member.
      */
-    teTagBase* widget=nullptr;
+
+    teTagWidgetBase* widget=nullptr;
     int weight=99;
     teTagType type = tag;
-    teTagCore(){
+    teTag(){
 
     }
-    teTagCore(bool iftmp){
+    teTag(bool iftmp){
         if(iftmp)info=QStringLiteral("tmp tagcore");
     }
-    teTagCore(const QList<teWordCore*>in,teTagBase*child=nullptr);
-    teTagCore(QList<teWordCore*>&&in,teTagBase*child=nullptr):words(std::move(in)),widget(child){}
-    teTagCore(const QString &str,teTagBase*child=nullptr, bool forceSentence=false);
-    teTagCore(const char* str,teTagBase*child=nullptr, bool forceSentence=false);
-    teTagCore(const teTagCore&in):weight(in.weight),type(in.type){
+    teTag(const QList<teWord*>in,teTagWidgetBase*child=nullptr);
+    teTag(QList<teWord*>&&in,teTagWidgetBase*child=nullptr):words(std::move(in)),widget(child){}
+    teTag(const QString &str,teTagWidgetBase*child=nullptr, bool forceSentence=false);
+    teTag(const char* str,teTagWidgetBase*child=nullptr, bool forceSentence=false);
+    teTag(const teTag&in):weight(in.weight),type(in.type){
         info=in.info;
-        for(tewordcore*wc:in.words)
-            words.push_back(new tewordcore{*wc});
+        for(teWord*wc:in.words)
+            words.push_back(new teWord{*wc});
     }
-    teTagCore(teTagCore&&in);
+    teTag(teTag&&in);
     void load();
     void unload();
     /**
@@ -226,17 +227,17 @@ public:
             load();
     }
     void read(const QString &str,bool ifclear=true, bool forceSentence=false);
-    teWordCore* takeWordAt(int index,bool ifSendSignal=true);
-    QList<tewordcore*>::iterator begin(){
+    teWord* takeWordAt(int index,bool ifSendSignal=true);
+    QList<teWord*>::iterator begin(){
         return words.begin();
     }
-    QList<tewordcore*>::iterator end(){
+    QList<teWord*>::iterator end(){
         return words.end();
     }
-    QList<tewordcore*>::const_iterator begin() const{
+    QList<teWord*>::const_iterator begin() const{
         return words.begin();
     }
-    QList<tewordcore*>::const_iterator end() const {
+    QList<teWord*>::const_iterator end() const {
         return words.end();
     }
     void clear(){
@@ -245,13 +246,13 @@ public:
         words.clear();
     }
     bool contains(const QString&str)const{
-        for(const tewordcore*wc:words)
+        for(const teWord*wc:words)
             if(wc->text==str)
                 return true;
         return false;
     }
-    teTagCore& operator=(const teTagCore&in);
-    bool operator== (const teTagCore&in)const;
+    teTag& operator=(const teTag&in);
+    bool operator== (const teTag&in)const;
     operator QString() const;
     void edited(){
         teemit(teCallbackType::edit);
@@ -259,19 +260,19 @@ public:
     void edited_with_layout(){
         teemit(teCallbackType::edit_with_layout);
     }
-    ~teTagCore();
-}tetagcore;
+    ~teTag();
+};
 class teInputWidget;
 class teEditorControl;
 
-typedef class teTagBase: public QFrame,public teObject{
+class teTagWidgetBase: public QFrame,public teObject{
     Q_OBJECT
 public:
-    teTagBase(){ }
-    virtual ~teTagBase();
-    teTagBase(QWidget*parent):QFrame(parent){initialize();}
-    teTagBase(std::shared_ptr<tetagcore>incore,QWidget*parent=nullptr);
-    std::shared_ptr<teTagCore> core{};
+    teTagWidgetBase(){ }
+    virtual ~teTagWidgetBase();
+    teTagWidgetBase(QWidget*parent):QFrame(parent){initialize();}
+    teTagWidgetBase(std::shared_ptr<teTag>incore,QWidget*parent=nullptr);
+    std::shared_ptr<teTag> core{};
     QHBoxLayout* layout=nullptr;
 
     std::multimap<teEditorControl*,QWidget*>extra_widgets;
@@ -309,7 +310,7 @@ public:
         }
     }
 
-    enum tetagStyle{
+    enum teTagStyle{
         normal,
         select,
         select_current,
@@ -317,11 +318,11 @@ public:
         multi_select,
         multi_select_current,
     };
-    void setStyle(tetagStyle in);
-    virtual void readCore(std::shared_ptr<tetagcore>in_core)=0;
+    void setStyle(teTagStyle in);
+    virtual void readCore(std::shared_ptr<teTag>in_core)=0;
     virtual void setText(const QString& str){
         if(core==nullptr){
-            core = std::make_shared<tetagcore>(str);
+            core = std::make_shared<teTag>(str);
         }
         else
             core->read(str,true);
@@ -332,9 +333,9 @@ public:
         core->words.erase(core->words.begin()+index);
         if(ifSendSignal)core->edited_with_layout();
     }
-    teWordCore* takeWordAt(int index,bool ifSendSignal=true){
+    teWord* takeWordAt(int index,bool ifSendSignal=true){
         while(index<0)index += core->words.size();
-        teWordCore* wc = core->words.takeAt(index);
+        teWord* wc = core->words.takeAt(index);
         if(wc->widget){
             wc->widget->teDisconnect(this);
             QApplication::disconnect(wc->widget,0,this,0);
@@ -345,7 +346,7 @@ public:
     }
     void insertWord(int index,QString string ,bool ifSendSignal=true){
         while(index<0)index += core->words.size()+1;
-        tewordcore*wordcore = new tewordcore{std::move(string)};
+        teWord*wordcore = new teWord{std::move(string)};
         core->words.insert(index,wordcore);
         // Only a list that owns a widget per word (the widget based tag list)
         // needs the word widget here. The model/view based list and the editors'
@@ -358,7 +359,7 @@ public:
         }
         if(ifSendSignal)core->edited_with_layout();
     }
-    void insertWord(int index,teWordCore* inwc, bool ifconnect,bool ifSendSignal=true){
+    void insertWord(int index,teWord* inwc, bool ifconnect,bool ifSendSignal=true){
         while(index<0)index += core->words.size()+1;
         core->words.insert(index,inwc);
         if(ownsWordWidgets()){
@@ -377,9 +378,9 @@ public:
      * itself, and the editors' tag lists build their words from the tag core.
      */
     virtual bool ownsWordWidgets() const { return true; }
-    void connectWord(teWordBase*inw){
-        connect(inw,&teWordBase::droped,this,&teTagBase::worddroped);
-        connect(inw,&teWordBase::mouseDoubleClicked,this,[this](teWordBase*inw){
+    void connectWord(teWordWidgetBase*inw){
+        connect(inw,&teWordWidgetBase::droped,this,&teTagWidgetBase::worddroped);
+        connect(inw,&teWordWidgetBase::mouseDoubleClicked,this,[this](teWordWidgetBase*inw){
             emit mouseDoubleClicked(this,inw);},Qt::DirectConnection
                 );
     }
@@ -396,9 +397,9 @@ public:
             return;
         layout->insertItem(to,layout->takeAt(from));
     }
-    void disconnectWord(teWordBase*inw=nullptr){
+    void disconnectWord(teWordWidgetBase*inw=nullptr){
         if(!inw){
-            for(tewordcore*wc:core->words)
+            for(teWord*wc:core->words)
                 if(wc->widget){
                     disconnect(wc->widget,0,this,0);
                     wc->teDisconnect(this);
@@ -421,16 +422,16 @@ public:
     void mouseDoubleClickEvent(QMouseEvent *event)override{
         emit mouseDoubleClicked(this,nullptr);
     }
-    teTagBase& operator=(const QString& input_string);
-    teTagBase &operator=(const teTagBase &in);
-    bool operator== (const teTag&in)const;
-    teTagCore& getcore()const{return *core;}
+    teTagWidgetBase& operator=(const QString& input_string);
+    teTagWidgetBase &operator=(const teTagWidgetBase &in);
+    bool operator== (const teTagWidget&in)const;
+    teTag& getcore()const{return *core;}
     virtual operator QString() const {return *core;}
     int fit_goodness(const QString& find_word,int*return_index=nullptr,int*return_questionable_index=nullptr) const;
-    QList<teWordCore*>::iterator begin(){return core->words.begin();}
-    QList<teWordCore*>::iterator end(){return core->words.end();}
-    QList<teWordCore*>::const_iterator begin() const{return core->words.begin();}
-    QList<teWordCore*>::const_iterator end() const {return core->words.end();}
+    QList<teWord*>::iterator begin(){return core->words.begin();}
+    QList<teWord*>::iterator end(){return core->words.end();}
+    QList<teWord*>::const_iterator begin() const{return core->words.begin();}
+    QList<teWord*>::const_iterator end() const {return core->words.end();}
     bool isDragging=false;
     int start_y=0;
     int mousePosInWidget=0;
@@ -439,24 +440,24 @@ public:
     /// The sheet currently applied by setStyle(); -1 means "none yet".
     int currentStyle=-1;
 signals:
-    void rightButtonPress(teTagBase*,QPoint,int);
-    void leftButtonPress(teTagBase*,QPoint,int);
-    void droped(teTagBase*,int);
-    void mouseDoubleClicked(teTagBase*,teWordBase*);
+    void rightButtonPress(teTagWidgetBase*,QPoint,int);
+    void leftButtonPress(teTagWidgetBase*,QPoint,int);
+    void droped(teTagWidgetBase*,int);
+    void mouseDoubleClicked(teTagWidgetBase*,teWordWidgetBase*);
 public slots:
-    virtual void worddroped(teWordBase*in_word,int xpos);
-}tetagbase;
+    virtual void worddroped(teWordWidgetBase*in_word,int xpos);
+};
 
-typedef class teTag:public teTagBase
+class teTagWidget:public teTagWidgetBase
 {
     Q_OBJECT
 public:
-    teTag(QWidget*parent=nullptr):teTagBase(parent){setStyle(teTag::normal);}
-    teTag(const QString &str,QWidget*parent=nullptr);
-    teTag(std::shared_ptr<tetagcore>incore,QWidget*parent=nullptr);
-    virtual void readCore(std::shared_ptr<tetagcore>in_core)override;
+    teTagWidget(QWidget*parent=nullptr):teTagWidgetBase(parent){setStyle(teTagWidget::normal);}
+    teTagWidget(const QString &str,QWidget*parent=nullptr);
+    teTagWidget(std::shared_ptr<teTag>incore,QWidget*parent=nullptr);
+    virtual void readCore(std::shared_ptr<teTag>in_core)override;
     void load()override;
-} tetag;
+};
 struct teTagOperation{
 public:
     enum teOperationType{
@@ -467,10 +468,10 @@ public:
         tagmove,
         tagerase
     };
-    std::weak_ptr<tetagcore> tag_ptr;
+    std::weak_ptr<teTag> tag_ptr;
     teOperationType type;
-    teTagCore prevCore{true};
-    teTagCore nowCore{true};
+    teTag prevCore{true};
+    teTag nowCore{true};
     int idp=-1;
     int idn=-1;
 };
@@ -481,7 +482,7 @@ public:
     int inip=0;
     int rwp=0;
     int end=0;
-    void addEditOperation(std::shared_ptr<tetagcore> in_ptr,teTagCore in_now){
+    void addEditOperation(std::shared_ptr<teTag> in_ptr,teTag in_now){
         if(rwp==operations.size())
             operations.push_back({});
         teTagOperation&newoperation=operations[rwp++];
@@ -490,7 +491,7 @@ public:
         newoperation.tag_ptr=in_ptr;
         newoperation.nowCore=in_now;
     }
-    void addInsertOperation(std::shared_ptr<tetagcore> in_ptr,int id,teTagCore in_now){
+    void addInsertOperation(std::shared_ptr<teTag> in_ptr,int id,teTag in_now){
         if(rwp==operations.size())
             operations.push_back({});
         teTagOperation&newoperation=operations[rwp++];
@@ -501,7 +502,7 @@ public:
         newoperation.tag_ptr=in_ptr;
         newoperation.nowCore=in_now;
     }
-    void addEraseOperation(std::shared_ptr<tetagcore> in_ptr,int id,teTagCore in_prev){
+    void addEraseOperation(std::shared_ptr<teTag> in_ptr,int id,teTag in_prev){
         if(rwp==operations.size())
             operations.push_back({});
         teTagOperation&newoperation=operations[rwp++];
@@ -512,7 +513,7 @@ public:
         newoperation.tag_ptr=in_ptr;
         newoperation.prevCore=in_prev;
     }
-    void addMoveOperation(std::shared_ptr<tetagcore> in_ptr,int idp,int idn){
+    void addMoveOperation(std::shared_ptr<teTag> in_ptr,int idp,int idn){
         if(rwp==operations.size())
             operations.push_back({});
         teTagOperation&newoperation=operations[rwp++];
@@ -528,7 +529,7 @@ public:
         rwp=0;
         end=0;
     }
-    int previousEditOperation(std::shared_ptr<tetagcore>tag){
+    int previousEditOperation(std::shared_ptr<teTag>tag){
         int tmpp=rwp-1;
         while(tmpp>-1){
             if(operations[tmpp].tag_ptr.lock()==tag&&(operations[tmpp].type==teTagOperation::tagedit||operations[tmpp].type==teTagOperation::taginsert)){
@@ -538,7 +539,7 @@ public:
         }
         return tmpp;
     }
-    void replaceTag(std::shared_ptr<tetagcore>prev_tag,std::shared_ptr<tetagcore>new_tag){
+    void replaceTag(std::shared_ptr<teTag>prev_tag,std::shared_ptr<teTag>new_tag){
         for(teTagOperation&op:operations){
             if(op.tag_ptr.lock()==prev_tag)
                 op.tag_ptr=new_tag;
@@ -589,25 +590,25 @@ public:
         ChangeSuppressor& operator=(const ChangeSuppressor&)=delete;
     };
 
-    int initialize_push_back(std::shared_ptr<tetagcore>);
+    int initialize_push_back(std::shared_ptr<teTag>);
     int initialize_push_back(const QString&, bool forceSentence);
     int initialize_push_back(const std::string&in, bool forceSentence);
-    void connectTag(std::shared_ptr<tetagcore>tag){
+    void connectTag(std::shared_ptr<teTag>tag){
         tag->teConnect(teCallbackType::edit_with_layout,this,&teTagList::onTagEdited,tag,true);
     }
-    void disconnectTag(std::shared_ptr<tetagcore>tag){
+    void disconnectTag(std::shared_ptr<teTag>tag){
         tag->teDisconnect(this);
     }
     bool recordingChanges() const { return signalSuppression<=0; }
 
-    void onTagEdited(std::shared_ptr<tetagcore> tag,bool ifemit=true){
+    void onTagEdited(std::shared_ptr<teTag> tag,bool ifemit=true){
         isSaved=false;
         if(recordingChanges())
             operationlist.addEditOperation(tag,*tag);
         if(ifemit)
             emit tagEdited(tag);
     }
-    void onTagErased(std::shared_ptr<tetagcore> tag,int id,bool ifemit=true){
+    void onTagErased(std::shared_ptr<teTag> tag,int id,bool ifemit=true){
         isSaved=false;
         if(recordingChanges())
             operationlist.addEraseOperation(tag,id,*tag);
@@ -616,13 +617,13 @@ public:
             teemit(teCallbackType::edit);
         }
     }
-    void onTagMoved(std::shared_ptr<tetagcore> tag,int prev,int now){
+    void onTagMoved(std::shared_ptr<teTag> tag,int prev,int now){
         isSaved=false;
         if(recordingChanges())
             operationlist.addMoveOperation(tag,prev,now);
         emit tagMoved(tag);
     }
-    void onTagInserted(std::shared_ptr<tetagcore> tag,int pos,bool ifemit=true){
+    void onTagInserted(std::shared_ptr<teTag> tag,int pos,bool ifemit=true){
         isSaved=false;
         if(recordingChanges())
             operationlist.addInsertOperation(tag,pos,*tag);
@@ -633,14 +634,14 @@ public:
     }
     void load(){
         if(isWidgetLoaded)return;
-        for(std::shared_ptr<tetagcore> tag:tags){
+        for(std::shared_ptr<teTag> tag:tags){
             tag->load();
         }
         isWidgetLoaded=true;
     }
     void unload(){
         if(!isWidgetLoaded)return;
-        for(std::shared_ptr<tetagcore> tag:tags){
+        for(std::shared_ptr<teTag> tag:tags){
             tag->unload();
         }
         isWidgetLoaded=false;
@@ -651,17 +652,17 @@ public:
         operationlist.clear();
     }
     /// Unchecked access; `at()` is the bounds-checked variant.
-    tetagcore& operator[](int index){
+    teTag& operator[](int index){
         return *tags[index];
     }
     /// Bounds-checked access. Returns nullptr when `index` is out of range.
-    tetagcore* at(int index){
+    teTag* at(int index){
         if(index<0||index>=tags.size())
             return nullptr;
         return tags[index].get();
     }
     /// Bounds-checked access that keeps the owning shared_ptr alive.
-    std::shared_ptr<tetagcore> shareAt(int index) const{
+    std::shared_ptr<teTag> shareAt(int index) const{
         if(index<0||index>=tags.size())
             return nullptr;
         return tags[index];
@@ -673,13 +674,13 @@ public:
     ///    (nothing is removed).
     ///  - `keepself == true`: erases every *other* tag identical to `tag` and
     ///    returns true when something was erased.
-    bool remove_duplicate(std::shared_ptr<tetagcore> tag=nullptr,bool keepself=false);
+    bool remove_duplicate(std::shared_ptr<teTag> tag=nullptr,bool keepself=false);
 
-    int insert(int pos,std::shared_ptr<tetagcore>tag,int removeDuplicate=1,bool ifSendSignal=true);
+    int insert(int pos,std::shared_ptr<teTag>tag,int removeDuplicate=1,bool ifSendSignal=true);
 
     /// Removes and destroys the tag at `id`. Out-of-range ids are ignored.
     void erase(int id);
-    void erase(std::shared_ptr<tetagcore>core){
+    void erase(std::shared_ptr<teTag>core){
         const int index = tags.indexOf(core);
         if(index<0){
             telog("Can't find the pointer in taglist");
@@ -692,11 +693,11 @@ public:
     /// `removeDuplicate == 1` merges: an existing tag with the same text is
     /// erased so the list never ends up with two identical tags.
     /// Returns -1 when the tag turned into a deleteTag marker, 0 otherwise.
-    int edit(std::shared_ptr<tetagcore>core,QString text,int removeDuplicate=1,bool ifemit=true);
+    int edit(std::shared_ptr<teTag>core,QString text,int removeDuplicate=1,bool ifemit=true);
     int edit(int index,QString text,int removeDuplicate=1,bool ifemit=true);
 
     void move(int originPos,int newPos);
-    void move(std::shared_ptr<tetagcore>tag,int newPos);
+    void move(std::shared_ptr<teTag>tag,int newPos);
     /**
      * @brief Moves `count` tags starting at `from` to `insertAt`.
      *
@@ -707,47 +708,47 @@ public:
      */
     void reorderBlock(int from,int count,int insertAt);
     QString toText();
-    int find(std::shared_ptr<tetagcore>in){
+    int find(std::shared_ptr<teTag>in){
         return tags.indexOf(in);
     }
     virtual ~teTagList(){
         tags.clear();
         onDestroy();
     }
-    QVector<std::shared_ptr<tetagcore>> getTags(){
+    QVector<std::shared_ptr<teTag>> getTags(){
         return tags;
     }
-    QList<std::shared_ptr<tetagcore>>::Iterator begin(){
+    QList<std::shared_ptr<teTag>>::Iterator begin(){
         return tags.begin();
     }
-    QList<std::shared_ptr<tetagcore>>::Iterator end(){
+    QList<std::shared_ptr<teTag>>::Iterator end(){
         return tags.end();
     }
-    QList<std::shared_ptr<tetagcore>>::const_iterator begin()const {
+    QList<std::shared_ptr<teTag>>::const_iterator begin()const {
         return tags.begin();
     }
-    QList<std::shared_ptr<tetagcore>>::const_iterator end()const {
+    QList<std::shared_ptr<teTag>>::const_iterator end()const {
         return tags.end();
     }
     size_t size() const{
         return tags.size();
     }
-    std::shared_ptr<tetagcore>& back(){
+    std::shared_ptr<teTag>& back(){
         return tags.back();
     }
-    std::shared_ptr<tetagcore>const& back()const{
+    std::shared_ptr<teTag>const& back()const{
         return tags.back();
     }
 protected:
-    QVector<std::shared_ptr<tetagcore>> tags;
+    QVector<std::shared_ptr<teTag>> tags;
     teOperationList operationlist;
 signals:
-    void tagInserted(std::shared_ptr<tetagcore>);
-    void tagEdited(std::shared_ptr<tetagcore>);
-    void tagErased(std::shared_ptr<tetagcore>);
+    void tagInserted(std::shared_ptr<teTag>);
+    void tagEdited(std::shared_ptr<teTag>);
+    void tagErased(std::shared_ptr<teTag>);
     /// Emitted whenever the order changed (used by the model based tag list,
     /// which cannot see the reorder any other way).
-    void tagMoved(std::shared_ptr<tetagcore>);
+    void tagMoved(std::shared_ptr<teTag>);
 };
 
 
@@ -761,11 +762,11 @@ QString serializePieces(int count, Getter getter, bool includeSentence = true)
     bool prevSentence = false;
 
     for (int i = 0; i < count; ++i) {
-        std::shared_ptr<tetagcore> tag = getter(i);
+        std::shared_ptr<teTag> tag = getter(i);
         if (!tag)
             continue;
 
-        const bool curSentence = (tag->type == teTagCore::sentence);
+        const bool curSentence = (tag->type == teTag::sentence);
 
         if (!includeSentence && curSentence)
             continue;

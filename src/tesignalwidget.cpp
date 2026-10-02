@@ -275,9 +275,9 @@ void colorsWidget::sendString(bool ifadd){
     uncheckAllButtons();
 }
 
-void colorsWidget::input_and_show(std::shared_ptr<tetagcore> in_tag){
+void colorsWidget::input_and_show(std::shared_ptr<teTag> in_tag){
     if(in_tag){
-        QList<tewordcore*>&words = in_tag->words;
+        QList<teWord*>&words = in_tag->words;
         int wordCount = words.count();
         if(extra_buttongroup){
             auto extrabuttonlist = extra_buttongroup->buttons();
@@ -290,7 +290,7 @@ void colorsWidget::input_and_show(std::shared_ptr<tetagcore> in_tag){
                 }
         }
         for(int i=0;i<wordCount;++i){
-            tewordcore*wc = words[i];
+            teWord*wc = words[i];
             QString wordtext = wc->text;
 
             for(auto&[layout,buttongroup]:objectLayoutList){
@@ -671,32 +671,32 @@ teInputWidget::teInputWidget(QWidget *parent):teSignalWidget(parent){
     resize(400,300);
 }
 
-void tePictureFileModel_filted::clear() {
+void teFilteredPictureModel::clear() {
     beginResetModel();
     picturefiles.clear();
     endResetModel();
     emit clearAllFiles();
 }
 
-void tePictureFileModel_filted::setdata(QList<QModelIndex> &&indexes){
+void teFilteredPictureModel::setdata(QList<QModelIndex> &&indexes){
     beginResetModel();
     picturefiles = std::move(indexes);
     endResetModel();
 }
 
-void tePictureFileModel_filted::append(const QList<QModelIndex> &files) {
+void teFilteredPictureModel::append(const QList<QModelIndex> &files) {
     if (files.isEmpty()) return;
     beginInsertRows(QModelIndex(), picturefiles.size(), picturefiles.size() + files.size() - 1);
     picturefiles.append(files);
     endInsertRows();
 }
 
-int tePictureFileModel_filted::rowCount(const QModelIndex &parent) const {
+int teFilteredPictureModel::rowCount(const QModelIndex &parent) const {
     if (parent.isValid()) return 0;
     return picturefiles.size();
 }
 
-QVariant tePictureFileModel_filted::data(const QModelIndex &index, int role) const {
+QVariant teFilteredPictureModel::data(const QModelIndex &index, int role) const {
     if (!index.isValid() || index.row() >= picturefiles.size())
         return QVariant();
     if (role == Qt::DisplayRole) {
@@ -841,7 +841,7 @@ void filterWidget::sendSelection(){
     if(lastSelected.indexes().empty()&&lastDeselected.indexes().empty())
         return;
 
-    auto* filteredModel = static_cast<tePictureFileModel_filted*>(myview->model());
+    auto* filteredModel = static_cast<teFilteredPictureModel*>(myview->model());
     const QModelIndexList selected = myview->selectionModel()->selectedIndexes();
 
     QItemSelection newSelection;

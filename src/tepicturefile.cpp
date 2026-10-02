@@ -49,7 +49,7 @@ QImage decodeThumbnail(const QString& path, int refered_pixels)
 
 }
 
-tePictureFile::tePictureFile(const tepath& input_filepath, int r)
+tePictureFile::tePictureFile(const tePath& input_filepath, int r)
     : filepath(input_filepath), refered_pixels(r*r)
 {
     image_slot = std::make_shared<ImageSlot>();
@@ -184,7 +184,7 @@ void tePictureFile::save()
     if (taglist.isSaved)
         return;
 
-    const QString text = serializePieces(taglist.size(), [&](int i) -> std::shared_ptr<tetagcore> {
+    const QString text = serializePieces(taglist.size(), [&](int i) -> std::shared_ptr<teTag> {
         return taglist.tags[i];
     }, true);
 

@@ -10,7 +10,7 @@ extern BS::thread_pool<> thread_pool;
  * Note: the two representations are only kept in sync by set(); constructing
  * from one and reading the other is fine, but do not mutate qstring directly.
  */
-typedef class tePath{
+class tePath{
 public:
     QString qstring;
     std::filesystem::path stdpath;
@@ -43,7 +43,7 @@ public:
             return false;
         return qstring.indexOf(in.qstring)==0;
     }
-} tepath;
+};
 
 /**
  * @brief One image of the opened dataset together with its caption (tag file).
@@ -69,7 +69,7 @@ public:
     int refered_pixels;
     teTagList taglist;
 
-    explicit tePictureFile(const tepath& input_filepath,int r=80);
+    explicit tePictureFile(const tePath& input_filepath,int r=80);
     ~tePictureFile();
 
     /// Reads the caption file and kicks off the asynchronous thumbnail decode.

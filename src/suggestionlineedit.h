@@ -1,7 +1,7 @@
 #ifndef SUGGESTIONLINEEDIT_H
 #define SUGGESTIONLINEEDIT_H
 #include"pch.h"
-struct teTag;
+class teTagWidget;
 extern const QString suggestionLineEditStyle;
 extern QString lineeditstyle;
 extern QWidget* global_window;

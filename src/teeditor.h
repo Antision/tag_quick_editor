@@ -1,14 +1,14 @@
 #ifndef TEEDITOR_H
 #define TEEDITOR_H
 #include "tetaglistwidget.h"
-class teTag;
+class teTagWidget;
 class teTagList;
 struct teTagOperation;
 class teTagOperationList;
-typedef class teTagCore tetagcore;
+class teTag;
 class teEditorControl;
 class teEditorList;
-struct teEditor:public QFrame,public teObject{
+class teEditor:public QFrame,public teObject{
 public:
     QString name;
     bool ifrun=true;
@@ -17,8 +17,8 @@ public:
     teTagListWidget*taglistwidget;
     teTagList*taglist=nullptr;
     virtual void reset();
-    virtual bool read(std::shared_ptr<tetagcore>tag);
-    virtual bool re_read(std::shared_ptr<tetagcore>tag);
+    virtual bool read(std::shared_ptr<teTag>tag);
+    virtual bool re_read(std::shared_ptr<teTag>tag);
     virtual void clear();
     void setTagListWidget(teTagListWidget*listwidget);
 };

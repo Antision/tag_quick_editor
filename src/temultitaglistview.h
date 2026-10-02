@@ -8,7 +8,7 @@
 #include "tepicturefile.h"
 #include "tetag.h"
 
-struct teMultiTagListModel;
+struct teSelectionTagModel;
 
 /**
  * @brief One row of the global multi-selection tag list.
@@ -16,26 +16,27 @@ struct teMultiTagListModel;
  * A multi tag is the union of one identical tag over every selected image.
  * `linked_tags` maps the per-image tag cores to the list they live in.
  */
-typedef struct teMultiTagCore:public teObject{
+class teSelectionTag:public teObject{
+public:
     QString text;
-    std::multimap<std::shared_ptr<tetagcore>,teTagList*>linked_tags;
-    teMultiTagListModel*model=nullptr;
+    std::multimap<std::shared_ptr<teTag>,teTagList*>linked_tags;
+    teSelectionTagModel*model=nullptr;
     bool ifexecute=true;
     bool re_read_switch=true;
 
-    teMultiTagCore(teMultiTagListModel*parent=nullptr):model(parent){}
-    teMultiTagCore(QString in_text,teMultiTagListModel*parent=nullptr):model(parent){
+    teSelectionTag(teSelectionTagModel*parent=nullptr):model(parent){}
+    teSelectionTag(QString in_text,teSelectionTagModel*parent=nullptr):model(parent){
         text=std::move(in_text);
     }
-    teMultiTagCore(std::shared_ptr<tetagcore>in_core,teTagList*in_list,teMultiTagListModel*parent=nullptr):model(parent){
+    teSelectionTag(std::shared_ptr<teTag>in_core,teTagList*in_list,teSelectionTagModel*parent=nullptr):model(parent){
         text=*in_core;
         linked_tags.insert({in_core,in_list});
     }
-    teMultiTagCore(std::multimap<std::shared_ptr<tetagcore>,teTagList*>&&in_tags,teMultiTagListModel*parent=nullptr):model(parent){
+    teSelectionTag(std::multimap<std::shared_ptr<teTag>,teTagList*>&&in_tags,teSelectionTagModel*parent=nullptr):model(parent){
         linked_tags=std::move(in_tags);
     }
-    void link(std::shared_ptr<tetagcore>in_core,teTagList*in_list);
-    void unlink(std::shared_ptr<tetagcore>in_core);
+    void link(std::shared_ptr<teTag>in_core,teTagList*in_list);
+    void unlink(std::shared_ptr<teTag>in_core);
     void setText(const QString& in_text);
     void setText(QString&& in_text);
     void setCoreText();
@@ -44,28 +45,28 @@ typedef struct teMultiTagCore:public teObject{
     void clear();
 
     void self_destroy();
-    void re_read(std::shared_ptr<tetagcore>in,teTagList*);
+    void re_read(std::shared_ptr<teTag>in,teTagList*);
     operator QString() const{
         return text;
     }
-}temultitagcore;
+};
 
 class teMultitagListView;
 
-class teMultiTagListModel : public QAbstractItemModel,public teObject {
+class teSelectionTagModel : public QAbstractItemModel,public teObject {
     Q_OBJECT
 public:
-    explicit teMultiTagListModel(QObject *parent = nullptr)
+    explicit teSelectionTagModel(QObject *parent = nullptr)
         : QAbstractItemModel(parent) {}
 
     QList<teTagList*>linked_taglists;
-    QList<teMultiTagCore*> tags;
+    QList<teSelectionTag*> tags;
     teEditorList* editorlist=nullptr;
     QListView*listview=nullptr;
     /// Nested `insert` notifications are suppressed while this is 0. Always
     /// decremented again - a leaked decrement used to silently stop the multi
     /// tag list from picking up newly typed tags.
-    int ifrecivenewtagcoreinsertsignal=1;
+    int tagInsertSuppression=1;
 
     void linkTagList(teTagList*in_list);
     void unlinkTagList(teTagList*in_list=nullptr);
@@ -91,14 +92,14 @@ public:
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
 
     /// Finds (or, when `row` is given, creates) the multi tag for `in_text`.
-    teMultiTagCore* getMultiTag(const QString& in_text,bool& ifnew,int row=-1,bool ifselect=false);
+    teSelectionTag* getMultiTag(const QString& in_text,bool& isNewEntry,int row=-1,bool ifselect=false);
     /// Multi tag whose text equals `in_text`, or nullptr. `exclude` is skipped.
-    teMultiTagCore* findMultiTag(const QString& in_text,teMultiTagCore* exclude=nullptr) const;
-    void linkNewTagcore(std::shared_ptr<tetagcore>in_core,teTagList*in_list);
+    teSelectionTag* findMultiTag(const QString& in_text,teSelectionTag* exclude=nullptr) const;
+    void linkNewTagcore(std::shared_ptr<teTag>in_core,teTagList*in_list);
 
     /// Inserts a placeholder row and starts editing it (used by "insert above").
-    teMultiTagCore* tagInsert(int row, std::shared_ptr<tetagcore>in_tag=nullptr,bool select=true);
-    teMultiTagCore* tagInsert(int row,const QString&text,bool select);
+    teSelectionTag* tagInsert(int row, std::shared_ptr<teTag>in_tag=nullptr,bool select=true);
+    teSelectionTag* tagInsert(int row,const QString&text,bool select);
     /// Moves the multi tag to the relative position it represents in every list.
     void setPos(int index);
     Qt::ItemFlags flags(const QModelIndex &index) const override {
@@ -119,19 +120,19 @@ public:
     /// current index space). Used by the view's drag & drop.
     bool moveTags(const QList<int>& rows, int destination);
 
-    void newTagTypeFinished(teMultiTagCore *in_tag);
+    void newTagTypeFinished(teSelectionTag *in_tag);
 
     void loadFiles(QList<tePictureFile *> in_filelist,bool ifclear);
     void eraseFiles(QList<tePictureFile *> in_filelist);
 
     /// Makes sure every linked list holds exactly one tag with `in_tag->text`
     /// and that `in_tag` links to it. Returns the multi tag that owns it.
-    teMultiTagCore* insertToTaglist(teMultiTagCore *in_tag, double pos);
+    teSelectionTag* insertToTaglist(teSelectionTag *in_tag, double pos);
 
-    void connectTag(teMultiTagCore*in_tag){
-        in_tag->teConnect(ready_destroy,this,(void(teMultiTagListModel::*)(teMultiTagCore *))&teMultiTagListModel::tagErase,in_tag);
+    void connectTag(teSelectionTag*in_tag){
+        in_tag->teConnect(ready_destroy,this,(void(teSelectionTagModel::*)(teSelectionTag *))&teSelectionTagModel::tagErase,in_tag);
     }
-    void tagErase(teMultiTagCore *in_tag){
+    void tagErase(teSelectionTag *in_tag){
         tagErase(tags.indexOf(in_tag));
     }
     void tagErase(int index){
@@ -187,7 +188,7 @@ class teMultitagListView : public QListView,public teObject {
     Q_OBJECT
 public:
     QMenu* menu = new QMenu(this);
-    teMultiTagListModel*model;
+    teSelectionTagModel*model;
     teTagListDelegate delegate{this};
     explicit teMultitagListView(QWidget *parent = nullptr);
     QAction *editAction,*insertAction,*insertBelowAction,* deleteAction,*copyAction,*cutAction,*setposAction,*pasteAction;

@@ -147,28 +147,28 @@ QVector<QModelIndex> tePictureFileModel::filt(const teFiltRule &rule)
 
     for (int i=0;i<pictureCount;++i) {
         tePictureFile* file = picturefiles[i];
-        QSet<tetagcore> currentTags;
+        QSet<teTag> currentTags;
         currentTags.reserve(file->taglist.size());
-        for (std::shared_ptr<tetagcore> tag : file->taglist) {
+        for (std::shared_ptr<teTag> tag : file->taglist) {
             currentTags.insert(*tag);
         }
         if (!std::all_of(rule.a.cbegin(), rule.a.cend(),
-                         [&](const tetagcore& tag) { return currentTags.contains(tag); })) {
+                         [&](const teTag& tag) { return currentTags.contains(tag); })) {
             continue;
         }
         if (!rule.r.isEmpty() &&
             !std::any_of(rule.r.cbegin(), rule.r.cend(),
-                         [&](const tetagcore& tag) { return currentTags.contains(tag); })) {
+                         [&](const teTag& tag) { return currentTags.contains(tag); })) {
             continue;
         }
 
         if (!std::none_of(rule.n.cbegin(), rule.n.cend(),
-                          [&](const tetagcore& tag) { return currentTags.contains(tag); })) {
+                          [&](const teTag& tag) { return currentTags.contains(tag); })) {
             continue;
         }
         if (!rule.x.isEmpty()) {
             const int xCount = std::count_if(rule.x.cbegin(), rule.x.cend(),
-                                             [&](const tetagcore& tag) { return currentTags.contains(tag); });
+                                             [&](const teTag& tag) { return currentTags.contains(tag); });
             if (xCount != 1) continue;
         }
         result.append(index(i));

@@ -26,19 +26,19 @@ QScreen* screenAt(const QPoint& globalPos)
  * and every mouse event is forwarded to the popup so the whole tag can still be
  * dragged like in the tag list.
  */
-class teDisplayWord : public teWordBase {
+class teDisplayWord : public teWordWidgetBase {
 public:
-    explicit teDisplayWord(tewordcore& wordCore) : teWordBase(wordCore) {}
+    explicit teDisplayWord(teWord& wordCore) : teWordWidgetBase(wordCore) {}
     void mousePressEvent(QMouseEvent* event) override {
-        if (auto* tag = qobject_cast<teTagBase*>(parentWidget()))
+        if (auto* tag = qobject_cast<teTagWidgetBase*>(parentWidget()))
             tag->mousePressEvent(event);
     }
     void mouseMoveEvent(QMouseEvent* event) override {
-        if (auto* tag = qobject_cast<teTagBase*>(parentWidget()))
+        if (auto* tag = qobject_cast<teTagWidgetBase*>(parentWidget()))
             tag->mouseMoveEvent(event);
     }
     void mouseReleaseEvent(QMouseEvent* event) override {
-        if (auto* tag = qobject_cast<teTagBase*>(parentWidget()))
+        if (auto* tag = qobject_cast<teTagWidgetBase*>(parentWidget()))
             tag->mouseReleaseEvent(event);
     }
 };
@@ -46,7 +46,7 @@ public:
 }
 
 teTagDisplayWidget::teTagDisplayWidget(teTagListWidgetBase* owner)
-    : teTagBase(), m_owner(owner)
+    : teTagWidgetBase(), m_owner(owner)
 {
     // A tool window: it floats above the main window, never takes focus and is
     // not part of the window's z-order.
@@ -75,14 +75,14 @@ teTagDisplayWidget::~teTagDisplayWidget()
 
 void teTagDisplayWidget::deleteWordWidgets()
 {
-    const QList<teWordBase*> words = findChildren<teWordBase*>();
-    for (teWordBase* word : words)
+    const QList<teWordWidgetBase*> words = findChildren<teWordWidgetBase*>();
+    for (teWordWidgetBase* word : words)
         word->core = nullptr;       // ~teWordBase must not clear core->widget
-    for (teWordBase* word : words)
+    for (teWordWidgetBase* word : words)
         delete word;
 }
 
-void teTagDisplayWidget::readCore(std::shared_ptr<tetagcore> in_core)
+void teTagDisplayWidget::readCore(std::shared_ptr<teTag> in_core)
 {
     if (core == in_core) {
         load();
@@ -106,18 +106,18 @@ void teTagDisplayWidget::load()
 
     const int pointSize = displayPointSize();
     const QString style = QStringLiteral("teTagDisplayWidget{background-color:#2b2b2b;border:1px solid #6b6b6b;}"
-                                         "teWordBase{font:%1pt \"Segoe UI\";color:white;background:transparent;}"
-                                         "teWordBase:hover{border:1px solid #21ffbd;}")
+                                         "teWordWidgetBase{font:%1pt \"Segoe UI\";color:white;background:transparent;}"
+                                         "teWordWidgetBase:hover{border:1px solid #21ffbd;}")
                               .arg(pointSize);
     setStyleSheet(style);
 
-    for (tewordcore* wordCore : core->words) {
+    for (teWord* wordCore : core->words) {
         auto* word = new teDisplayWord(*wordCore);
         word->setParent(this);
         word->setMaximumHeight(QWIDGETSIZE_MAX);       // undo the 27px tag-list cap
         word->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
         word->show();
-        connect(word,&teWordBase::mouseDoubleClicked,this,[this](teWordBase* clicked){
+        connect(word,&teWordWidgetBase::mouseDoubleClicked,this,[this](teWordWidgetBase* clicked){
             startEditing(clicked);
         });
         m_flow->addWidget(word);
@@ -129,7 +129,7 @@ void teTagDisplayWidget::load()
     // left edge stays where it is.
     const QFontMetrics metrics(QFont(QStringLiteral("Segoe UI"),pointSize));
     int natural = 2*kHorizontalMargin;
-    for (tewordcore* wordCore : core->words)
+    for (teWord* wordCore : core->words)
         natural += metrics.horizontalAdvance(wordCore->text) + 8;
     natural = std::max(natural,60);
 
@@ -143,12 +143,12 @@ void teTagDisplayWidget::load()
 
 int teTagDisplayWidget::displayPointSize() const
 {
-    if (core && core->type == teTagCore::sentence)
+    if (core && core->type == teTag::sentence)
         return kTagListWordPointSize;           // sentences must not get bigger
     return int(kTagListWordPointSize * 1.5);
 }
 
-void teTagDisplayWidget::showFor(teTagBase* source,const QPoint& globalMousePos)
+void teTagDisplayWidget::showFor(teTagWidgetBase* source,const QPoint& globalMousePos)
 {
     if (!source || !source->core)
         return;
@@ -162,7 +162,7 @@ void teTagDisplayWidget::showFor(teTagBase* source,const QPoint& globalMousePos)
     raise();
 }
 
-void teTagDisplayWidget::showForCore(std::shared_ptr<teTagCore> tagCore,const QPoint& globalMousePos)
+void teTagDisplayWidget::showForCore(std::shared_ptr<teTag> tagCore,const QPoint& globalMousePos)
 {
     if (!tagCore)
         return;
@@ -248,7 +248,7 @@ void teTagDisplayWidget::mouseReleaseEvent(QMouseEvent* event)
         return;
     if (m_draggingTag && m_source && m_owner) {
         m_draggingTag = false;
-        teTagBase* source = m_source;
+        teTagWidgetBase* source = m_source;
         hideDisplay();                  // destroys nothing the reorder needs
         // Same entry point the tag itself uses when it is dropped.
         m_owner->tagdroped(source,event->modifiers());
@@ -260,9 +260,9 @@ void teTagDisplayWidget::mouseDoubleClickEvent(QMouseEvent* event)
     Q_UNUSED(event);
     if (!core)
         return;
-    if (core->type == teTagCore::sentence) {
+    if (core->type == teTag::sentence) {
         // Sentences are edited in the plain text window of the tag list.
-        const std::shared_ptr<teTagCore> tagCore = core;
+        const std::shared_ptr<teTag> tagCore = core;
         hideDisplay();
         if (m_owner)
             m_owner->tagEditCore(tagCore);
@@ -271,7 +271,7 @@ void teTagDisplayWidget::mouseDoubleClickEvent(QMouseEvent* event)
     startEditing(nullptr);
 }
 
-void teTagDisplayWidget::startEditing(teWordBase* clickedWord)
+void teTagDisplayWidget::startEditing(teWordWidgetBase* clickedWord)
 {
     if (!core || m_editor)
         return;
@@ -322,7 +322,7 @@ int teTagDisplayWidget::wordOffsetInText(int index) const
 {
     if (!core)
         return 0;
-    const bool sentence = (core->type == teTagCore::sentence);
+    const bool sentence = (core->type == teTag::sentence);
     QString out;
     for (int i = 0; i < core->words.size(); ++i) {
         const QString word = core->words[i]->text;
@@ -342,7 +342,7 @@ int teTagDisplayWidget::wordOffsetInText(int index) const
     return out.size();
 }
 
-void teTagDisplayWidget::worddroped(teWordBase* in_word,int xpos)
+void teTagDisplayWidget::worddroped(teWordWidgetBase* in_word,int xpos)
 {
     Q_UNUSED(in_word);
     Q_UNUSED(xpos);
@@ -356,21 +356,21 @@ void teTagDisplayWidget::syncWordOrderFromLayout()
     if (!core)
         return;
 
-    QList<tewordcore*> ordered;
+    QList<teWord*> ordered;
     for (int i = 0; i < m_flow->count(); ++i) {
-        if (auto* word = dynamic_cast<teWordBase*>(m_flow->itemAt(i)->widget())) {
+        if (auto* word = dynamic_cast<teWordWidgetBase*>(m_flow->itemAt(i)->widget())) {
             if (word->core && !ordered.contains(word->core))
                 ordered.append(word->core);
         }
     }
-    for (tewordcore* wordCore : core->words)
+    for (teWord* wordCore : core->words)
         if (!ordered.contains(wordCore))
             ordered.append(wordCore);
     if (ordered == core->words)
         return;
     core->words = ordered;
 
-    std::shared_ptr<tetagcore> tag = core;
+    std::shared_ptr<teTag> tag = core;
     teTagListWidgetBase* owner = m_owner;
     if (!owner)
         return;
@@ -390,5 +390,5 @@ void teTagDisplayWidget::keyPressEvent(QKeyEvent* event)
         event->accept();
         return;
     }
-    teTagBase::keyPressEvent(event);
+    teTagWidgetBase::keyPressEvent(event);
 }

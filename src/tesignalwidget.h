@@ -109,17 +109,17 @@ public:
 
     QPushButton* getColorButton(const QString&colorText,int r,int g,int b,bool ifblacktext=false);
     void sendString(bool ifadd);
-    virtual void input_and_show(std::shared_ptr<tetagcore> in_tag=nullptr);
+    virtual void input_and_show(std::shared_ptr<teTag> in_tag=nullptr);
 
 };
 
-class tePictureFileModel_filted : public QAbstractListModel,public teObject {
+class teFilteredPictureModel : public QAbstractListModel,public teObject {
     Q_OBJECT
 public:
     QList<QModelIndex> picturefiles;
     tePictureListView*listview;
-    tePictureFileModel_filted(tePictureListView*parentListView,QObject *parent = nullptr) : QAbstractListModel(parent),listview(parentListView) {
-        connect(dynamic_cast<tePictureFileModel*>(listview->model()),&tePictureFileModel::clearAllFiles,this,&tePictureFileModel_filted::clear,Qt::DirectConnection);
+    teFilteredPictureModel(tePictureListView*parentListView,QObject *parent = nullptr) : QAbstractListModel(parent),listview(parentListView) {
+        connect(dynamic_cast<tePictureFileModel*>(listview->model()),&tePictureFileModel::clearAllFiles,this,&teFilteredPictureModel::clear,Qt::DirectConnection);
     }
 
     void clear();
@@ -186,7 +186,7 @@ public:
     enum RuleType { AllOf, AnyOf, NoneOf, ExactOne };
     tePictureListView* listview;
     QListView* myview = new QListView;
-    tePictureFileModel_filted mymodel{listview};
+    teFilteredPictureModel mymodel{listview};
     tePictureFileDelegate pictureFileDelegate;
     FilterTagWidget* tagWidgets[4];
     QLineEdit* lineEdits[4];

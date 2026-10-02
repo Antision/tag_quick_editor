@@ -9,7 +9,7 @@ class teTagListWidgetBase;
 /**
  * @brief Floating, magnified view of the tag the pointer currently rests on.
  *
- * The popup shares the tag's `teTagCore` with the tag list, so anything done
+ * The popup shares the tag's `teTag` with the tag list, so anything done
  * here shows up there immediately:
  *  - its words are layed out by a QFlowLayout, i.e. a long tag wraps instead of
  *    being clipped, and word positions stay meaningful across lines;
@@ -23,7 +23,7 @@ class teTagListWidgetBase;
  * The popup is a focus-less tool window so it neither steals the keyboard from
  * the tag list nor disappears when the pointer moves from the tag to the popup.
  */
-class teTagDisplayWidget : public teTagBase
+class teTagDisplayWidget : public teTagWidgetBase
 {
     Q_OBJECT
 public:
@@ -31,7 +31,7 @@ public:
     ~teTagDisplayWidget();
 
     /// Makes the popup show `source` and places it next to `globalMousePos`.
-    void showFor(teTagBase* source,const QPoint& globalMousePos);
+    void showFor(teTagWidgetBase* source,const QPoint& globalMousePos);
     /**
      * @brief Shows the popup for a tag that has no widget of its own.
      *
@@ -40,13 +40,13 @@ public:
      * moves the source tag) is only available in the widget based list; word
      * dragging and double-click editing work the same.
      */
-    void showForCore(std::shared_ptr<teTagCore> tagCore,const QPoint& globalMousePos);
+    void showForCore(std::shared_ptr<teTag> tagCore,const QPoint& globalMousePos);
     /// Hides the popup and forgets the tag.
     void hideDisplay();
 
-    void readCore(std::shared_ptr<tetagcore> in_core) override;
+    void readCore(std::shared_ptr<teTag> in_core) override;
     void load() override;
-    void worddroped(teWordBase* in_word,int xpos) override;
+    void worddroped(teWordWidgetBase* in_word,int xpos) override;
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
@@ -61,7 +61,7 @@ protected:
     void leaveEvent(QEvent* event) override;
 
 private:
-    void startEditing(teWordBase* clickedWord);
+    void startEditing(teWordWidgetBase* clickedWord);
     void finishEditing(bool accept);
     /// Rewrites core->words from the current layout order (after a word drag).
     void syncWordOrderFromLayout();
@@ -75,7 +75,7 @@ private:
     void placeNextTo(const QPoint& globalMousePos);
 
     teTagListWidgetBase* m_owner=nullptr;
-    teTagBase* m_source=nullptr;
+    teTagWidgetBase* m_source=nullptr;
     QFlowLayout* m_flow=nullptr;
     QFlowLayoutReorderer* m_wordReorderer=nullptr;
     QLineEdit* m_editor=nullptr;

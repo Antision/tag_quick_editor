@@ -155,21 +155,21 @@ void teEditorList::readList(teTagList *input_taglist){
     connect(connectedList,&teTagList::tagInserted,this,&teEditorList::onNewTagInserted,Qt::DirectConnection);
     connect(connectedList,&teTagList::tagEdited,this,&teEditorList::onTagEdited,Qt::DirectConnection);
     int tagsize=connectedList->size();
-    QVector<std::shared_ptr<tetagcore>>temtaglist = connectedList->getTags();
+    QVector<std::shared_ptr<teTag>>temtaglist = connectedList->getTags();
     for(int i=0;i<tagsize;++i){
-        std::shared_ptr<tetagcore> co=temtaglist[i];
-        if(co->type!=tetagcore::tag)
+        std::shared_ptr<teTag> co=temtaglist[i];
+        if(co->type!=teTag::tag)
             continue;
         for(teEditor*e:editorlist){
             if(e->read(co)){
-                co->type=teTagCore::deleteTag;
+                co->type=teTag::deleteTag;
                 break;
             }
         }
     }
     temtaglist = connectedList->getTags();
-    for(std::shared_ptr<tetagcore> co:temtaglist){
-        if(co->type==teTagCore::deleteTag)
+    for(std::shared_ptr<teTag> co:temtaglist){
+        if(co->type==teTag::deleteTag)
             tagListWidget->tagErase(co);
     }
 }
@@ -184,8 +184,8 @@ void teEditorList::unloadList(){
     }
 }
 
-void teEditorList::onNewTagInserted(std::shared_ptr<tetagcore> in_tag){
-    if(in_tag->type!=tetagcore::tag)
+void teEditorList::onNewTagInserted(std::shared_ptr<teTag> in_tag){
+    if(in_tag->type!=teTag::tag)
         return;
     for(teEditor*e:editorlist)
         if(e->read(in_tag)){
@@ -193,7 +193,7 @@ void teEditorList::onNewTagInserted(std::shared_ptr<tetagcore> in_tag){
         }
 }
 
-void teEditorList::onTagEdited(std::shared_ptr<tetagcore> in_tag){
+void teEditorList::onTagEdited(std::shared_ptr<teTag> in_tag){
     for(teEditor*e:editorlist){
         if(e->re_read(in_tag)){
             return;

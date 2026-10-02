@@ -87,7 +87,7 @@ teTagListWidgetBase::~teTagListWidgetBase(){
     delete tagDisplay;
 }
 
-void teTagListWidgetBase::scheduleTagDisplay(teTagBase* tag){
+void teTagListWidgetBase::scheduleTagDisplay(teTagWidgetBase* tag){
     if(!tag||!tag->core||!tagDisplay)
         return;
     pendingDisplayCore.reset();
@@ -100,7 +100,7 @@ void teTagListWidgetBase::scheduleTagDisplay(teTagBase* tag){
         tagDisplayTimer->start(350);
 }
 
-void teTagListWidgetBase::scheduleTagDisplayCore(std::shared_ptr<teTagCore> core){
+void teTagListWidgetBase::scheduleTagDisplayCore(std::shared_ptr<teTag> core){
     if(!core||!tagDisplay)
         return;
     pendingDisplayTag = nullptr;
@@ -113,13 +113,13 @@ void teTagListWidgetBase::scheduleTagDisplayCore(std::shared_ptr<teTagCore> core
         tagDisplayTimer->start(350);
 }
 
-void teTagListWidgetBase::showTagDisplay(teTagBase* tag){
+void teTagListWidgetBase::showTagDisplay(teTagWidgetBase* tag){
     if(!tag||!tag->core||!tagDisplay)
         return;
     tagDisplay->showFor(tag,QCursor::pos());
 }
 
-void teTagListWidgetBase::showTagDisplayCore(std::shared_ptr<teTagCore> core){
+void teTagListWidgetBase::showTagDisplayCore(std::shared_ptr<teTag> core){
     if(!core||!tagDisplay)
         return;
     tagDisplay->showForCore(core,QCursor::pos());
@@ -150,10 +150,10 @@ void teTagListWidgetBase::tagDisplayHideTick(){
     // the platform, so rather than trusting the last event, look at what is
     // actually under the pointer.
     if(QWidget* under = QApplication::widgetAt(pos)){
-        teTagBase* tag = qobject_cast<teTagBase*>(under);
+        teTagWidgetBase* tag = qobject_cast<teTagWidgetBase*>(under);
         if(!tag){
-            if(auto* word = qobject_cast<teWordBase*>(under))
-                tag = qobject_cast<teTagBase*>(word->parentWidget());
+            if(auto* word = qobject_cast<teWordWidgetBase*>(under))
+                tag = qobject_cast<teTagWidgetBase*>(word->parentWidget());
         }
         if(tag&&isAncestorOf(tag)){
             showTagDisplay(tag);        // still over a tag of this list
@@ -167,10 +167,10 @@ bool teTagListWidgetBase::eventFilter(QObject* watched,QEvent* event){
     // The filter is installed on the tags *and* on their words: moving from a
     // tag onto one of its words sends a Leave event to the tag, which must not
     // be mistaken for "the pointer left the tag".
-    teTagBase* tag = qobject_cast<teTagBase*>(watched);
+    teTagWidgetBase* tag = qobject_cast<teTagWidgetBase*>(watched);
     if(!tag){
-        if(auto* word = qobject_cast<teWordBase*>(watched))
-            tag = qobject_cast<teTagBase*>(word->parentWidget());
+        if(auto* word = qobject_cast<teWordWidgetBase*>(watched))
+            tag = qobject_cast<teTagWidgetBase*>(word->parentWidget());
     }
     if(!tag)
         return QWidget::eventFilter(watched,event);
@@ -192,12 +192,12 @@ bool teTagListWidgetBase::eventFilter(QObject* watched,QEvent* event){
     return false;
 }
 
-void teTagListWidgetBase::installTagDisplayFilters(teTagBase* tag){
+void teTagListWidgetBase::installTagDisplayFilters(teTagWidgetBase* tag){
     if(!tag)
         return;
     tag->installEventFilter(this);
-    const QList<teWordBase*> words = tag->findChildren<teWordBase*>();
-    for(teWordBase* word : words)
+    const QList<teWordWidgetBase*> words = tag->findChildren<teWordWidgetBase*>();
+    for(teWordWidgetBase* word : words)
         word->installEventFilter(this);
 }
 
@@ -212,20 +212,20 @@ size_t teTagListWidget::size() const{
     return 0;
 }
 
-std::shared_ptr<teTagCore> teTagListWidget::currentCore() const
+std::shared_ptr<teTag> teTagListWidget::currentCore() const
 {
     if(!m_view)
         return nullptr;
     const QModelIndex index = m_view->currentIndex();
     if(!index.isValid())
         return nullptr;
-    teTagCore* raw = index.data(teTagListModel::TagCoreRole).value<teTagCore*>();
+    teTag* raw = index.data(teTagListModel::TagCoreRole).value<teTag*>();
     if(!raw)
         return nullptr;
     // Recover the owning shared_ptr through the tag list itself, which is the
     // only place that owns these tags.
     if(showing_list){
-        for(const std::shared_ptr<teTagCore>& core:*showing_list)
+        for(const std::shared_ptr<teTag>& core:*showing_list)
             if(core.get()==raw)
                 return core;
     }
@@ -246,7 +246,7 @@ void teTagListWidget::selectAllRows()
 
 // --------------------------------------------------------------- selection
 
-void teTagListWidget::setSelectCurrentCore(std::shared_ptr<teTagCore> core,bool ifclear)
+void teTagListWidget::setSelectCurrentCore(std::shared_ptr<teTag> core,bool ifclear)
 {
     if(!m_model||!m_view)
         return;
@@ -271,7 +271,7 @@ void teTagListWidget::setSelectCurrentCore(std::shared_ptr<teTagCore> core,bool 
     m_view->scrollTo(index,QAbstractItemView::EnsureVisible);
 }
 
-void teTagListWidget::setSelectCore(std::shared_ptr<teTagCore> core)
+void teTagListWidget::setSelectCore(std::shared_ptr<teTag> core)
 {
     if(!m_model||!m_view)
         return;
@@ -282,7 +282,7 @@ void teTagListWidget::setSelectCore(std::shared_ptr<teTagCore> core)
                                      QItemSelectionModel::Select|QItemSelectionModel::Rows);
 }
 
-int teTagListWidget::setUnselectCore(std::shared_ptr<teTagCore> core)
+int teTagListWidget::setUnselectCore(std::shared_ptr<teTag> core)
 {
     if(!m_model||!m_view)
         return 0;
@@ -299,7 +299,7 @@ int teTagListWidget::setUnselectCore(std::shared_ptr<teTagCore> core)
     return 1;
 }
 
-int teTagListWidget::setSelectRangeCore(std::shared_ptr<teTagCore> core,bool ifclear)
+int teTagListWidget::setSelectRangeCore(std::shared_ptr<teTag> core,bool ifclear)
 {
     if(!m_model||!m_view)
         return 0;
@@ -318,7 +318,7 @@ int teTagListWidget::setSelectRangeCore(std::shared_ptr<teTagCore> core,bool ifc
     return last-first+1;
 }
 
-bool teTagListWidget::isCoreSelected(std::shared_ptr<teTagCore> core) const
+bool teTagListWidget::isCoreSelected(std::shared_ptr<teTag> core) const
 {
     if(!m_model||!m_view||!core)
         return false;
@@ -328,7 +328,7 @@ bool teTagListWidget::isCoreSelected(std::shared_ptr<teTagCore> core) const
     return m_view->selectionModel()->isSelected(m_model->index(row,0));
 }
 
-void teTagListWidget::ensureCoreVisible(std::shared_ptr<teTagCore> core)
+void teTagListWidget::ensureCoreVisible(std::shared_ptr<teTag> core)
 {
     if(!m_model||!m_view||!core)
         return;
@@ -338,7 +338,7 @@ void teTagListWidget::ensureCoreVisible(std::shared_ptr<teTagCore> core)
     m_view->scrollTo(m_model->index(row,0),QAbstractItemView::EnsureVisible);
 }
 
-int teTagListWidget::setSelectRange(teTagBase *in,bool ifclear){
+int teTagListWidget::setSelectRange(teTagWidgetBase *in,bool ifclear){
     // Everything in this list is addressed by tag core; the widget based
     // implementation is only reachable from the editors' own tag lists.
     return setSelectRangeCore(in?in->core:nullptr,ifclear);
@@ -353,19 +353,19 @@ QString teTagListWidget::getSelectText(){
     if(rows.isEmpty()&&m_view->currentIndex().isValid())
         rows.append(m_view->currentIndex());        // nothing selected: the current row
     for(const QModelIndex& index:rows){
-        if(teTagCore* raw = index.data(teTagListModel::TagCoreRole).value<teTagCore*>())
+        if(teTag* raw = index.data(teTagListModel::TagCoreRole).value<teTag*>())
             result += static_cast<QString>(*raw)+"\n";
     }
     return result;
 }
 
-bool teTagListWidgetBase::isSelected(teTagBase *in){
+bool teTagListWidgetBase::isSelected(teTagWidgetBase *in){
     if(select_current==in) return true;
     else if(select.find(in)!=select.end()) return true;
     else return false;
 }
 
-teTagBase* teTagListWidgetBase::widgetForCore(const std::shared_ptr<teTagCore>& core) const
+teTagWidgetBase* teTagListWidgetBase::widgetForCore(const std::shared_ptr<teTag>& core) const
 {
     if(!core)
         return nullptr;
@@ -377,7 +377,7 @@ teTagBase* teTagListWidgetBase::widgetForCore(const std::shared_ptr<teTagCore>& 
     if(!layout)
         return nullptr;
     for(int i=0;i<layout->count();++i){
-        if(auto* tag = dynamic_cast<teTagBase*>(layout->itemAt(i)->widget())){
+        if(auto* tag = dynamic_cast<teTagWidgetBase*>(layout->itemAt(i)->widget())){
             if(tag->core==core)
                 return tag;
         }
@@ -385,37 +385,37 @@ teTagBase* teTagListWidgetBase::widgetForCore(const std::shared_ptr<teTagCore>& 
     return nullptr;
 }
 
-void teTagListWidgetBase::setSelectCurrentCore(std::shared_ptr<teTagCore> core,bool ifclear){
+void teTagListWidgetBase::setSelectCurrentCore(std::shared_ptr<teTag> core,bool ifclear){
     setSelectCurrent(widgetForCore(core),ifclear);
     ensureCoreVisible(core);
 }
 
-void teTagListWidgetBase::setSelectCore(std::shared_ptr<teTagCore> core){
-    if(teTagBase* tag = widgetForCore(core))
+void teTagListWidgetBase::setSelectCore(std::shared_ptr<teTag> core){
+    if(teTagWidgetBase* tag = widgetForCore(core))
         setSelect(tag);
 }
 
-int teTagListWidgetBase::setUnselectCore(std::shared_ptr<teTagCore> core){
+int teTagListWidgetBase::setUnselectCore(std::shared_ptr<teTag> core){
     if(!core)
         return setUnselect(nullptr);
-    if(teTagBase* tag = widgetForCore(core))
+    if(teTagWidgetBase* tag = widgetForCore(core))
         return setUnselect(tag);
     return 0;
 }
 
-int teTagListWidgetBase::setSelectRangeCore(std::shared_ptr<teTagCore> core,bool ifclear){
+int teTagListWidgetBase::setSelectRangeCore(std::shared_ptr<teTag> core,bool ifclear){
     return setSelectRange(widgetForCore(core),ifclear);
 }
 
-bool teTagListWidgetBase::isCoreSelected(std::shared_ptr<teTagCore> core) const{
-    teTagBase* tag = widgetForCore(core);
+bool teTagListWidgetBase::isCoreSelected(std::shared_ptr<teTag> core) const{
+    teTagWidgetBase* tag = widgetForCore(core);
     if(!tag)
         return false;
     return select_current==tag||select.find(tag)!=select.end();
 }
 
-void teTagListWidgetBase::ensureCoreVisible(std::shared_ptr<teTagCore> core){
-    teTagBase* tag = widgetForCore(core);
+void teTagListWidgetBase::ensureCoreVisible(std::shared_ptr<teTag> core){
+    teTagWidgetBase* tag = widgetForCore(core);
     if(!tag||!sc)
         return;
     sc->ensureWidgetVisible(tag);
@@ -426,13 +426,13 @@ void teTagListWidgetBase::ensureCoreVisible(std::shared_ptr<teTagCore> core){
     });
 }
 
-void teTagListWidgetBase::tagEdit(teTagBase *tag, teWordBase *inw){
+void teTagListWidgetBase::tagEdit(teTagWidgetBase *tag, teWordWidgetBase *inw){
     hideTagDisplay();
     editingTag = tag;
     if(!tag||!tag->core)
         return;                             // unknown tag: nothing to edit
     editingCore.reset();
-    if(tag->core->type==teTagCore::sentence){
+    if(tag->core->type==teTag::sentence){
         plaintextedit->start(*tag->core);
         plaintextedit->show();
         connect(plaintextedit,&teInputWidget::stringSignal,this,&teTagListWidgetBase::onPlainTextEditStop,Qt::DirectConnection);
@@ -446,8 +446,8 @@ void teTagListWidgetBase::tagEdit(teTagBase *tag, teWordBase *inw){
         int count=0;
         QString tagtext="";
         if(inw!=nullptr){
-            for(tewordcore*&word:tag->core->words){
-                if(inw!=(teWordBase*)word->widget){
+            for(teWord*&word:tag->core->words){
+                if(inw!=(teWordWidgetBase*)word->widget){
                     maxsize+=word->text.size()+1;
                 }else{
                     begin=maxsize;
@@ -456,12 +456,12 @@ void teTagListWidgetBase::tagEdit(teTagBase *tag, teWordBase *inw){
                 }
             }
         }else{
-            for(tewordcore*&word:tag->core->words){
+            for(teWord*&word:tag->core->words){
                 maxsize+=word->text.size()+1;
             }
         }
         tagtext.reserve(maxsize);
-        for(tewordcore*&word:tag->core->words){
+        for(teWord*&word:tag->core->words){
             word->widget->hide();
             tagtext.append(word->text);
             tagtext.append(' ');
@@ -489,7 +489,7 @@ void teTagListWidgetBase::onPlainTextEditStop(QString in_str){
     editingCore.reset();
 }
 
-void teTagListWidgetBase::tagEditCore(std::shared_ptr<teTagCore> core){
+void teTagListWidgetBase::tagEditCore(std::shared_ptr<teTag> core){
     tagEdit(widgetForCore(core));
 }
 
@@ -500,13 +500,13 @@ void teTagListWidgetBase::onLineEditStop(){
     editingTag=nullptr;
 }
 
-void teTagListWidgetBase::setSelectCurrent(teTagBase *tag, bool ifclear){
+void teTagListWidgetBase::setSelectCurrent(teTagWidgetBase *tag, bool ifclear){
     if(ifclear){
         if(select_current!=nullptr&&tag!=select_current){
             select_current->setStyle(normal_style_enum);
         }
         if(!select.empty()){
-            for(teTagBase*tp:select){
+            for(teTagWidgetBase*tp:select){
                 tp->setStyle(normal_style_enum);
             }
             select.clear();
@@ -522,25 +522,25 @@ void teTagListWidgetBase::setSelectCurrent(teTagBase *tag, bool ifclear){
         }
     }
     select_current=tag;
-    tmpSelectIndex = findWidgetIndexInLayout(layout,select_current);
+    pendingSelectionIndex = findWidgetIndexInLayout(layout,select_current);
 
     if(tag!=nullptr)
         tag->setStyle(select_current_style_enum);
 }
 
-void teTagListWidgetBase::setSelect(teTagBase *in){
+void teTagListWidgetBase::setSelect(teTagWidgetBase *in){
     in->setStyle(select_style_enum);
     select.insert(in);
 }
 
-int teTagListWidgetBase::setUnselect(teTagBase *in){
+int teTagListWidgetBase::setUnselect(teTagWidgetBase *in){
     if(in==nullptr){
         if(select_current!=nullptr){
             select_current->setStyle(normal_style_enum);
             select_current=nullptr;
         }
         if(!select.empty()){
-            for(teTagBase*tp:select){
+            for(teTagWidgetBase*tp:select){
                 tp->setStyle(normal_style_enum);
             }
             select.clear();
@@ -582,7 +582,7 @@ void teTagListWidget::tagErase(int index){
     scrollToTop();
 }
 
-void teTagListWidget::tagErase(std::shared_ptr<teTagCore>tag){
+void teTagListWidget::tagErase(std::shared_ptr<teTag>tag){
     if(!showing_list||!m_model)
         return;
     const int current = m_view->currentIndex().isValid()?m_view->currentIndex().row():-1;
@@ -628,7 +628,7 @@ void teTagListWidget::tagErase(std::shared_ptr<teTagCore>tag){
 }
 
 
-void teTagListWidget::tagEdit(std::shared_ptr<teTagCore>tag, QString text,int removeDuplicate,bool ifemit){
+void teTagListWidget::tagEdit(std::shared_ptr<teTag>tag, QString text,int removeDuplicate,bool ifemit){
     if(!showing_list)
         return;
     if(showing_list->edit(tag,text,removeDuplicate,ifemit)==-1&&removeDuplicate==1)
@@ -640,8 +640,8 @@ void teTagListWidget::startEditingRow(int row)
     if(!m_model||row<0||row>=m_model->rowCount())
         return;
     const QModelIndex index = m_model->index(row,0);
-    auto* raw = index.data(teTagListModel::TagCoreRole).value<teTagCore*>();
-    if(raw&&raw->type==teTagCore::sentence){
+    auto* raw = index.data(teTagListModel::TagCoreRole).value<teTag*>();
+    if(raw&&raw->type==teTag::sentence){
         // Sentences are edited in the plain text window, like before.
         hideTagDisplay();
         plaintextedit->start(static_cast<QString>(*raw));
@@ -657,7 +657,7 @@ void teTagListWidget::startEditingRow(int row)
     m_view->edit(index);
 }
 
-void teTagListWidget::tagEditCore(std::shared_ptr<teTagCore> core)
+void teTagListWidget::tagEditCore(std::shared_ptr<teTag> core)
 {
     hideTagDisplay();
     if(!core||!m_model)
@@ -667,11 +667,11 @@ void teTagListWidget::tagEditCore(std::shared_ptr<teTagCore> core)
         startEditingRow(row);
 }
 
-void teTagListWidget::tagInsertAbove(bool edit,std::shared_ptr<teTagCore>newtag,int removeDuplicate){
+void teTagListWidget::tagInsertAbove(bool edit,std::shared_ptr<teTag>newtag,int removeDuplicate){
     if(!showing_list||!m_model)
         return;
     if(newtag==nullptr){
-        newtag=std::make_shared<tetagcore>();
+        newtag=std::make_shared<teTag>();
         removeDuplicate=2;
     }
     const int current = m_view->currentIndex().isValid()?m_view->currentIndex().row():-1;
@@ -683,11 +683,11 @@ void teTagListWidget::tagInsertAbove(bool edit,std::shared_ptr<teTagCore>newtag,
         startEditingRow(row);
 }
 
-void teTagListWidget::tagInsertBelow(bool edit,std::shared_ptr<teTagCore>newtag,int removeDuplicate){
+void teTagListWidget::tagInsertBelow(bool edit,std::shared_ptr<teTag>newtag,int removeDuplicate){
     if(!showing_list||!m_model)
         return;
     if(newtag==nullptr){
-        newtag=std::make_shared<tetagcore>();
+        newtag=std::make_shared<teTag>();
         removeDuplicate=2;
     }
     const int current = m_view->currentIndex().isValid()?m_view->currentIndex().row():-1;
@@ -743,16 +743,16 @@ void teTagListWidgetBase::focusOutEvent(QFocusEvent *e){
 
 QString teTagListWidgetBase::getSelectText()
 {
-    QList<std::shared_ptr<tetagcore>> cores;
+    QList<std::shared_ptr<teTag>> cores;
 
     if (select_current && select_current->core)
         cores.push_back(select_current->core);
 
-    for (teTagBase* tw : select) {
+    for (teTagWidgetBase* tw : select) {
         if (tw && tw->core)
             cores.push_back(tw->core);
     }
-    return serializePieces(cores.size(), [&](int i) -> std::shared_ptr<tetagcore> {
+    return serializePieces(cores.size(), [&](int i) -> std::shared_ptr<teTag> {
         return cores[i];
     }, true);
 }
@@ -764,7 +764,7 @@ void teTagListWidgetBase::paste()
 
     for (const auto& piece : pieces) {
         if (!piece.text.isEmpty()) {
-            tagInsertBelow(false, std::make_shared<tetagcore>(piece.text, nullptr, piece.sentence), 1);
+            tagInsertBelow(false, std::make_shared<teTag>(piece.text, nullptr, piece.sentence), 1);
         }
     }
 }
@@ -778,16 +778,16 @@ void teTagListWidget::load(teTagList*newlist){
     // (and the word widgets below it). The view draws the tags itself, so the
     // only thing that has to happen is telling the editors that asking for a
     // widget would be pointless.
-    for(const std::shared_ptr<teTagCore>& core:*showing_list){
+    for(const std::shared_ptr<teTag>& core:*showing_list){
         if(core)
             core->ifViewOwned=true;
     }
-    const int tmptmpSelectIndex=tmpSelectIndex;
+    const int tmpSelectIndex=pendingSelectionIndex;
     m_model->setTagList(showing_list);
     emit newlistloaded(newlist);
 
-    if(tmptmpSelectIndex>-1&&m_model->rowCount()>0){
-        const int row = std::min(tmptmpSelectIndex,m_model->rowCount()-1);
+    if(tmpSelectIndex>-1&&m_model->rowCount()>0){
+        const int row = std::min(tmpSelectIndex,m_model->rowCount()-1);
         setSelectCurrentCore(showing_list->shareAt(row));
     }
 }
@@ -818,7 +818,7 @@ void teTagListWidget::clear(teTagList *in){
         if(m_model)
             m_model->setTagList(nullptr);
         if(showing_list){
-            for(const std::shared_ptr<teTagCore>& core:*showing_list){
+            for(const std::shared_ptr<teTag>& core:*showing_list){
                 if(core)
                     core->ifViewOwned=false;      // the editors may want widgets again
             }
@@ -830,27 +830,27 @@ void teTagListWidget::clear(teTagList *in){
         m_currentCoreBeforeReset.reset();
     }
 }
-void teTagListWidget::tagdroped(teTagBase *in_tag,int modifiers){
+void teTagListWidget::tagdroped(teTagWidgetBase *in_tag,int modifiers){
     // This list reorders through teTagListView/teTagListModel, so the widget
     // based drop path is unreachable here. It is still implemented because the
     // editors' tag lists share this base class.
     Q_UNUSED(in_tag);
     Q_UNUSED(modifiers);
 }
-void teTagListWidgetBase::connectTag(teTagBase*tagwidget){
-    connect(tagwidget,&teTagBase::droped,this,&teTagListWidgetBase::tagdroped);
-    connect(tagwidget,&teTagBase::rightButtonPress,this,&teTagListWidgetBase::onTagRightButtonClicked);
-    connect(tagwidget,&teTagBase::leftButtonPress,this,&teTagListWidgetBase::onTagLeftButtonClicked);
-    connect(tagwidget,&teTagBase::mouseDoubleClicked,this,static_cast<void(teTagListWidgetBase::*)(teTagBase*,teWordBase*)>(&teTagListWidgetBase::tagEdit),Qt::DirectConnection);
+void teTagListWidgetBase::connectTag(teTagWidgetBase*tagwidget){
+    connect(tagwidget,&teTagWidgetBase::droped,this,&teTagListWidgetBase::tagdroped);
+    connect(tagwidget,&teTagWidgetBase::rightButtonPress,this,&teTagListWidgetBase::onTagRightButtonClicked);
+    connect(tagwidget,&teTagWidgetBase::leftButtonPress,this,&teTagListWidgetBase::onTagLeftButtonClicked);
+    connect(tagwidget,&teTagWidgetBase::mouseDoubleClicked,this,static_cast<void(teTagListWidgetBase::*)(teTagWidgetBase*,teWordWidgetBase*)>(&teTagListWidgetBase::tagEdit),Qt::DirectConnection);
     // Drives the magnified hover view.
     installTagDisplayFilters(tagwidget);
 }
 
-void teTagListWidgetBase::disconnectTag(teTagBase *tagwidget){
+void teTagListWidgetBase::disconnectTag(teTagWidgetBase *tagwidget){
     disconnect(tagwidget,0,this,0);
     teDisconnect(tagwidget->core.get());
 }
-teTagBase* teTagListWidget::taginsert(int index, std::shared_ptr<teTagCore>in_tag,int removeDuplicate,bool select){
+teTagWidgetBase* teTagListWidget::taginsert(int index, std::shared_ptr<teTag>in_tag,int removeDuplicate,bool select){
     if(!showing_list||!m_model)
         return nullptr;
     while(index<0)
@@ -896,7 +896,7 @@ void teTagListWidget::undo(){
         UndoRedoGuard guard(showing_list);
         switch(lastOp.type){
         case teTagOperation::taginsert:{
-            std::shared_ptr<tetagcore>tagptr = lastOp.tag_ptr.lock();
+            std::shared_ptr<teTag>tagptr = lastOp.tag_ptr.lock();
             if(tagptr)
                 tagErase(tagptr);
             break;
@@ -925,7 +925,7 @@ void teTagListWidget::undo(){
             }
             // Keep the selection on the tag the user had selected: the reorder
             // only moves rows, not the tag identities.
-            const std::shared_ptr<teTagCore> currentTag = currentCore();
+            const std::shared_ptr<teTag> currentTag = currentCore();
             showing_list->tags.insert(lastOp.idp,showing_list->tags.takeAt(lastOp.idn));
             // The order changed behind the model's back; the old code moved the
             // widget in the layout, the view has to be told instead.
@@ -935,7 +935,7 @@ void teTagListWidget::undo(){
             break;
         }
         case teTagOperation::tagerase:{
-            std::shared_ptr<teTagCore> newcore(new teTagCore{lastOp.prevCore});
+            std::shared_ptr<teTag> newcore(new teTag{lastOp.prevCore});
             showing_list->operationlist.replaceTag(lastOp.tag_ptr.lock(),newcore);
             if(!taginsert(lastOp.idp,newcore,1)){
                 telog(QString("[teTagListWidget::undo]:insert tag failed, inserting a new tagerase operation at %1").arg(lastOp.idp));
@@ -956,7 +956,7 @@ void teTagListWidget::redo(){
         UndoRedoGuard guard(showing_list);
         switch(nextOp.type){
         case teTagOperation::taginsert:{
-            std::shared_ptr<teTagCore> newcore(new teTagCore{nextOp.nowCore});
+            std::shared_ptr<teTag> newcore(new teTag{nextOp.nowCore});
             showing_list->operationlist.replaceTag(nextOp.tag_ptr.lock(),newcore);
             if(!taginsert(nextOp.idn,newcore,1)){
                 telog(QString("[teTagListWidget::redo]:insert tag failed at %1").arg(nextOp.idn));
@@ -983,7 +983,7 @@ void teTagListWidget::redo(){
                 if(nextOp.idp<0)
                     throw std::exception("[teTagListWidget::redo]:tag in opereationList is disappered");
             }
-            const std::shared_ptr<teTagCore> currentTag = currentCore();
+            const std::shared_ptr<teTag> currentTag = currentCore();
             showing_list->tags.insert(nextOp.idn,showing_list->tags.takeAt(nextOp.idp));
             m_model->notifyExternalReorder();
             if(currentTag)
@@ -1001,7 +1001,7 @@ void teTagListWidget::redo(){
     }
 }
 
-void teTagListWidgetBase::onTagRightButtonClicked(teTagBase *tag, QPoint point, int modifiers){
+void teTagListWidgetBase::onTagRightButtonClicked(teTagWidgetBase *tag, QPoint point, int modifiers){
     if(tag)
         setSelectCurrent(tag,false);
     menu->show();
@@ -1024,7 +1024,7 @@ void teTagListWidgetBase::onTagRightButtonClicked(teTagBase *tag, QPoint point, 
 
 }
 
-void teTagListWidgetBase::onTagLeftButtonClicked(teTagBase *tag, QPoint point, int modifiers){
+void teTagListWidgetBase::onTagLeftButtonClicked(teTagWidgetBase *tag, QPoint point, int modifiers){
     if(modifiers&Qt::ShiftModifier&&select_current!=nullptr){
         if(modifiers&Qt::ControlModifier)
             setSelectRange(tag,false);
@@ -1041,7 +1041,7 @@ void teTagListWidgetBase::onTagLeftButtonClicked(teTagBase *tag, QPoint point, i
     }
 }
 
-void teTagListWidget::onTagEdited(std::shared_ptr<teTagCore>tag){
+void teTagListWidget::onTagEdited(std::shared_ptr<teTag>tag){
     // Editor controls may turn a tag into a copy of another one (a rename, a
     // colour swap, ...). Merging keeps the list free of duplicates; the old
     // code erased the tag twice here, which could take the index of a removed
@@ -1158,7 +1158,7 @@ void teTagListWidget::onViewCurrentChanged(const QModelIndex& current,const QMod
 {
     Q_UNUSED(previous);
     if(current.isValid())
-        tmpSelectIndex=current.row();
+        pendingSelectionIndex=current.row();
 }
 
 void teTagListWidget::onModelReset()
@@ -1184,7 +1184,7 @@ void teTagListWidget::finishRowEdit(int row)
 {
     if(!m_model||row<0||row>=m_model->rowCount())
         return;
-    teTagCore* raw = m_model->index(row,0).data(teTagListModel::TagCoreRole).value<teTagCore*>();
+    teTag* raw = m_model->index(row,0).data(teTagListModel::TagCoreRole).value<teTag*>();
     if(raw&&static_cast<QString>(*raw).trimmed().isEmpty()){
         // An empty tag is not worth keeping: this is how the old inline editor
         // behaved for a freshly inserted tag.
@@ -1211,10 +1211,10 @@ bool teTagListWidget::eventFilter(QObject* watched,QEvent* event)
             auto* mouseEvent = static_cast<QMouseEvent*>(event);
             const QModelIndex index = m_view->indexAt(mouseEvent->position().toPoint());
             if(index.isValid()){
-                teTagCore* raw = index.data(teTagListModel::TagCoreRole).value<teTagCore*>();
+                teTag* raw = index.data(teTagListModel::TagCoreRole).value<teTag*>();
                 if(raw){
                     // The hover popup works on tag cores here: a row has no widget.
-                    for(const std::shared_ptr<teTagCore>& core:*showing_list)
+                    for(const std::shared_ptr<teTag>& core:*showing_list)
                         if(core.get()==raw){
                             scheduleTagDisplayCore(core);
                             break;

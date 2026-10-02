@@ -14,20 +14,20 @@ struct anytype{
 
 class teEditorControl:virtual public teObject{
 public:
-    std::set<std::shared_ptr<tetagcore>>linked_tags;
+    std::set<std::shared_ptr<teTag>>linked_tags;
     teEditor* editor=nullptr;
     teTagListWidget* taglistwidget=nullptr;
     std::set<QString>captureList;
-    virtual bool filter(std::shared_ptr<tetagcore>tag)=0;
-    virtual bool re_read(std::shared_ptr<tetagcore>tag);
-    virtual bool read(std::shared_ptr<tetagcore>tag);
+    virtual bool filter(std::shared_ptr<teTag>tag)=0;
+    virtual bool re_read(std::shared_ptr<teTag>tag);
+    virtual bool read(std::shared_ptr<teTag>tag);
     virtual void reset()=0;
     virtual void clear()=0;
-    virtual void link(std::shared_ptr<tetagcore>in_tag);
-    virtual void unlink(std::shared_ptr<tetagcore> in_tag);
+    virtual void link(std::shared_ptr<teTag>in_tag);
+    virtual void unlink(std::shared_ptr<teTag> in_tag);
     bool ifrefreshState=true;
     virtual void refreshState()=0;
-    virtual bool linked(std::shared_ptr<tetagcore>tag);
+    virtual bool linked(std::shared_ptr<teTag>tag);
     virtual void setTaglistwidget(teTagListWidget* in_taglistwidget);
     /**
      * @brief The widget that displays `core` in this editor's tag list.
@@ -37,7 +37,7 @@ public:
      * delegate now and owns no widget per tag, so the editor has to resolve the
      * widget it made itself (returns nullptr when the tag is not shown here).
      */
-    teTagBase* tagWidgetFor(std::shared_ptr<tetagcore> core) const;
+    teTagWidgetBase* tagWidgetFor(std::shared_ptr<teTag> core) const;
     void edited();
     virtual ~teEditorControl(){};
 };
@@ -67,7 +67,7 @@ public:
     virtual void reset()override;
     virtual void onClicked(int id);
     virtual void clear()override;
-    virtual bool filter(std::shared_ptr<tetagcore>tag)override;
+    virtual bool filter(std::shared_ptr<teTag>tag)override;
     virtual void refreshState()override;
     virtual void reform(int id){};
     std::unordered_set<QString> defaultFiltStrings;
@@ -85,7 +85,7 @@ public:
     virtual void clearString();
     virtual void select();
     virtual void unselect();
-    virtual bool filter(std::shared_ptr<tetagcore>tag)override;
+    virtual bool filter(std::shared_ptr<teTag>tag)override;
     virtual void onStateChanged(bool state);
     virtual void refreshState()override;
 };
@@ -94,14 +94,14 @@ class teTagCheckBoxPlus:public teTagCheckBox{
     Q_OBJECT
 public:
     using teTagCheckBox::teTagCheckBox;
-    std::set<std::shared_ptr<tetagcore>>second_tags;
-    virtual void link2(std::shared_ptr<tetagcore> tag);
-    virtual void unlink2(std::shared_ptr<tetagcore> tag);
-    virtual bool filter2(std::shared_ptr<tetagcore>tag)=0;
-    bool read(std::shared_ptr<tetagcore>tag)override;
-    virtual bool re_read(std::shared_ptr<tetagcore>tag,int taggroup);
+    std::set<std::shared_ptr<teTag>>second_tags;
+    virtual void link2(std::shared_ptr<teTag> tag);
+    virtual void unlink2(std::shared_ptr<teTag> tag);
+    virtual bool filter2(std::shared_ptr<teTag>tag)=0;
+    bool read(std::shared_ptr<teTag>tag)override;
+    virtual bool re_read(std::shared_ptr<teTag>tag,int taggroup);
     virtual void clear()override;
-    bool linked(std::shared_ptr<tetagcore>tag)override{
+    bool linked(std::shared_ptr<teTag>tag)override{
         return linked_tags.find(tag)!=linked_tags.end()||second_tags.find(tag)!=second_tags.end();
     }
 };
@@ -112,7 +112,7 @@ public:
     int excute=1;
     QString default_text="...";
     teTagComboBox(QList<QPair<QString,QStringList>>&& string_datas,QString&&default_text, QWidget *parent = nullptr,QString*styleSheet=nullptr);
-    virtual bool filter(std::shared_ptr<tetagcore>tag)override;
+    virtual bool filter(std::shared_ptr<teTag>tag)override;
     virtual void clear()override;
     virtual void reset()override;
     virtual void onIndexChanged(int index);
@@ -166,8 +166,8 @@ public:
     ~teTagListControl(){
         delete onEdit_widget;
     }
-    void link(std::shared_ptr<tetagcore>in_tag)override;
-    void unlink(std::shared_ptr<tetagcore>in_tag)override;
+    void link(std::shared_ptr<teTag>in_tag)override;
+    void unlink(std::shared_ptr<teTag>in_tag)override;
     virtual void onAddButtonClicked();
     void reciveWidgetSignal(QString data,bool ifadd);
     void reciveDestroySignal();
@@ -180,10 +180,10 @@ public:
     virtual void reset()override{
         teRefTagListWidget::clear();
     };
-    virtual void tagEdit(teTagBase*tag,teWordBase*word)override;
-    virtual void setSelectCurrent(teTagBase*in=nullptr,bool ifclear=true)override;
-    virtual void setSelect(teTagBase* in)override;
-    virtual int setUnselect(teTagBase*in=nullptr)override;;
+    virtual void tagEdit(teTagWidgetBase*tag,teWordWidgetBase*word)override;
+    virtual void setSelectCurrent(teTagWidgetBase*in=nullptr,bool ifclear=true)override;
+    virtual void setSelect(teTagWidgetBase* in)override;
+    virtual int setUnselect(teTagWidgetBase*in=nullptr)override;;
     virtual void clear()override;;
 };
 #endif // TEEDITORCONTROL_H

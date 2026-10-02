@@ -93,7 +93,7 @@ QVariant teTagListModel::data(const QModelIndex& index,int role) const
     // The row is looked up instead of trusting a stored pointer: a stale index
     // (kept by a delegate or by the selection model) must not hand out a
     // dangling tag.
-    teTagCore* tag = m_list->at(index.row());
+    teTag* tag = m_list->at(index.row());
     if(!tag)
         return QVariant();
     switch(role){
@@ -124,14 +124,14 @@ Qt::ItemFlags teTagListModel::flags(const QModelIndex& index) const
            |Qt::ItemIsDragEnabled|Qt::ItemIsDropEnabled;
 }
 
-teTagCore* teTagListModel::tagAt(int row) const
+teTag* teTagListModel::tagAt(int row) const
 {
     if(!m_list||row<0||row>=int(m_list->size()))
         return nullptr;
     return m_list->at(row);
 }
 
-int teTagListModel::rowOf(teTagCore* tag) const
+int teTagListModel::rowOf(teTag* tag) const
 {
     if(!m_list||!tag)
         return -1;
@@ -141,11 +141,11 @@ int teTagListModel::rowOf(teTagCore* tag) const
     return -1;
 }
 
-int teTagListModel::insertTag(int row,std::shared_ptr<teTagCore> tag,int removeDuplicate)
+int teTagListModel::insertTag(int row,std::shared_ptr<teTag> tag,int removeDuplicate)
 {
     if(!m_list||!tag)
         return -1;
-    if(tag->type==teTagCore::deleteTag)
+    if(tag->type==teTag::deleteTag)
         return -1;
     // Refuse before announcing anything: the old widget based code announced the
     // insertion first and then had to take it back.
@@ -236,7 +236,7 @@ bool teTagListModel::setTagText(int row,const QString& text)
 {
     if(!m_list||row<0||row>=int(m_list->size()))
         return false;
-    teTagCore* tag = m_list->at(row);
+    teTag* tag = m_list->at(row);
     if(!tag)
         return false;
     if(static_cast<QString>(*tag)==text)
@@ -280,7 +280,7 @@ void teTagListModel::notifyExternalReorder(){
     emit layoutChanged();
 }
 
-void teTagListModel::onListInserted(std::shared_ptr<teTagCore> tag)
+void teTagListModel::onListInserted(std::shared_ptr<teTag> tag)
 {
     Q_UNUSED(tag);
     if(m_selfMutation)
@@ -293,7 +293,7 @@ void teTagListModel::onListInserted(std::shared_ptr<teTagCore> tag)
     endResetModel();
 }
 
-void teTagListModel::onListErased(std::shared_ptr<teTagCore> tag)
+void teTagListModel::onListErased(std::shared_ptr<teTag> tag)
 {
     Q_UNUSED(tag);
     if(m_selfMutation)
@@ -302,7 +302,7 @@ void teTagListModel::onListErased(std::shared_ptr<teTagCore> tag)
     endResetModel();
 }
 
-void teTagListModel::onListEdited(std::shared_ptr<teTagCore> tag)
+void teTagListModel::onListEdited(std::shared_ptr<teTag> tag)
 {
     if(m_selfMutation)
         return;

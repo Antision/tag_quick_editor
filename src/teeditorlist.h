@@ -31,8 +31,8 @@ public:
     void onNewTaglistLoaded();
     void readList(teTagList*input_taglist);
     void unloadList();
-    void onNewTagInserted(std::shared_ptr<tetagcore>in_tag);
-    void onTagEdited(std::shared_ptr<tetagcore>in_tag);
+    void onNewTagInserted(std::shared_ptr<teTag>in_tag);
+    void onTagEdited(std::shared_ptr<teTag>in_tag);
     QVector<teEditor*>::iterator begin(){
         return editorlist.begin();
     }

@@ -2,9 +2,9 @@
 #include "tetag.h"
 #include "tetaglistwidget.h"
 
-bool teEditorControl::re_read(std::shared_ptr<tetagcore>tag){
+bool teEditorControl::re_read(std::shared_ptr<teTag>tag){
     if(!filter(tag)){
-        if(tag->type==teTagCore::deleteTag){
+        if(tag->type==teTag::deleteTag){
             if(taglistwidget)
                 taglistwidget->tagErase(tag);
             return true;
@@ -14,9 +14,9 @@ bool teEditorControl::re_read(std::shared_ptr<tetagcore>tag){
     return false;       // this control does not handle the tag any more
 }
 
-bool teEditorControl::read(std::shared_ptr<tetagcore>tag){
+bool teEditorControl::read(std::shared_ptr<teTag>tag){
     const bool iffilt = filter(tag);
-    if(tag->type==teTagCore::deleteTag){
+    if(tag->type==teTag::deleteTag){
         if(taglistwidget)
             taglistwidget->tagErase(tag);
         return true;
@@ -24,7 +24,7 @@ bool teEditorControl::read(std::shared_ptr<tetagcore>tag){
     if(iffilt){
         tag->ensureWidget();
         link(tag);
-        if(tag->type==teTagCore::deleteTag){
+        if(tag->type==teTag::deleteTag){
             if(taglistwidget)
                 taglistwidget->tagErase(tag);
             return true;
@@ -33,7 +33,7 @@ bool teEditorControl::read(std::shared_ptr<tetagcore>tag){
     return false;
 }
 
-void teEditorControl::link(std::shared_ptr<tetagcore>in_tag){
+void teEditorControl::link(std::shared_ptr<teTag>in_tag){
     in_tag->teConnect(teCallbackType::destroy,this,&teEditorControl::unlink,in_tag);
     in_tag->teConnect(teCallbackType::edit,qsl("teEditorControl::link"),this,&teEditorControl::re_read,in_tag);
     in_tag->teConnect(teCallbackType::edit_with_layout,this,&teEditorControl::re_read,in_tag);
@@ -41,14 +41,14 @@ void teEditorControl::link(std::shared_ptr<tetagcore>in_tag){
     refreshState();
 }
 
-void teEditorControl::unlink(std::shared_ptr<tetagcore>in_tag){
+void teEditorControl::unlink(std::shared_ptr<teTag>in_tag){
     in_tag->teDisconnect(this);
     linked_tags.erase(in_tag);
     if(ifrefreshState)
         refreshState();
 }
 
-bool teEditorControl::linked(std::shared_ptr<tetagcore>tag){
+bool teEditorControl::linked(std::shared_ptr<teTag>tag){
     return linked_tags.find(tag)!=linked_tags.end();
 }
 
@@ -56,7 +56,7 @@ void teEditorControl::setTaglistwidget(teTagListWidget *in_taglistwidget){
     taglistwidget=in_taglistwidget;
 }
 
-teTagBase* teEditorControl::tagWidgetFor(std::shared_ptr<tetagcore> core) const
+teTagWidgetBase* teEditorControl::tagWidgetFor(std::shared_ptr<teTag> core) const
 {
     // Every editor control is also a tag list (it shows its linked tags as
     // widgets), so the lookup of the tag list base class applies.
@@ -82,7 +82,7 @@ teTagComboBox::teTagComboBox(QList<QPair<QString,QStringList>>&& string_datas,QS
     connect(this,&teTagComboBox::currentIndexChanged,this,&teTagComboBox::onIndexChanged,Qt::DirectConnection);
 }
 
-bool teTagComboBox::filter(std::shared_ptr<tetagcore>tag){
+bool teTagComboBox::filter(std::shared_ptr<teTag>tag){
     if(captureList.find((QString)(*tag))!=captureList.end())
         return true;
     else
@@ -91,7 +91,7 @@ bool teTagComboBox::filter(std::shared_ptr<tetagcore>tag){
 
 void teTagComboBox::clear(){
     setStyleSheet("color:white;");
-    for(std::shared_ptr<tetagcore>tag:linked_tags){
+    for(std::shared_ptr<teTag>tag:linked_tags){
         tag->teDisconnect(this);
     }
     --excute;
@@ -116,7 +116,7 @@ void teTagComboBox::onIndexChanged(int index){
     auto linked_tags_tmp = linked_tags;
     auto it =linked_tags_tmp.begin();
     for (;it!=linked_tags_tmp.end();++it) {
-        std::shared_ptr<tetagcore> tag = *it;
+        std::shared_ptr<teTag> tag = *it;
         QString tagString = static_cast<QString>(*tag);
         if (!stringlist.contains(tagString)) {
             taglistwidget->tagErase(tag);
@@ -124,11 +124,11 @@ void teTagComboBox::onIndexChanged(int index){
     }
     for (const QString& tagstring : stringlist) {
         auto found = std::find_if(linked_tags.begin(), linked_tags.end(),
-                                  [&tagstring](std::shared_ptr<tetagcore> tag) {
+                                  [&tagstring](std::shared_ptr<teTag> tag) {
                                       return static_cast<QString>(*tag) == tagstring;
                                   });
         if (found == linked_tags.end()) {
-            taglistwidget->tagInsertAbove(false, std::make_shared<tetagcore>(tagstring));
+            taglistwidget->tagInsertAbove(false, std::make_shared<teTag>(tagstring));
         }
     }
     edited();
@@ -136,7 +136,7 @@ void teTagComboBox::onIndexChanged(int index){
 
 void teTagComboBox::refreshState(){
     QStringList tagstrings;
-    for(std::shared_ptr<tetagcore>tag:linked_tags){
+    for(std::shared_ptr<teTag>tag:linked_tags){
         tagstrings.push_back(*tag);
     }
     QString itemtext="";
@@ -219,7 +219,7 @@ void teTagButtonGroup::onClicked(int id){
     if(atLeastOneButtonTriggered){
         final_string.chop(1);
         if(linked_tags.empty()){
-            std::shared_ptr<tetagcore>newtagcore = std::make_shared<tetagcore>(final_string);
+            std::shared_ptr<teTag>newtagcore = std::make_shared<teTag>(final_string);
             newtagcore->load();
             link(newtagcore);
             taglistwidget->tagInsertAbove(false, newtagcore);
@@ -228,7 +228,7 @@ void teTagButtonGroup::onClicked(int id){
                 taglistwidget->tagErase(*linked_tags.begin());
             }
             // The editor's own tag widget shows that tag for this control.
-            if(teTagBase* editorTag = tagWidgetFor(*linked_tags.begin()))
+            if(teTagWidgetBase* editorTag = tagWidgetFor(*linked_tags.begin()))
                 editorTag->setText(final_string);
         }
     }else{
@@ -242,7 +242,7 @@ void teTagButtonGroup::onClicked(int id){
 }
 void teTagButtonGroup::clear(){
     setStyleSheet("color:white;");
-    for(std::shared_ptr<tetagcore>tag:linked_tags){
+    for(std::shared_ptr<teTag>tag:linked_tags){
         tag->teDisconnect(this);
     }
     linked_tags.clear();
@@ -300,7 +300,7 @@ void teTagButtonGroup::getDefaultFiltStrings(){
     } while (std::next_permutation(movableItems.begin(), movableItems.end(),
                                    [](const item& a, const item& b) { return a.data < b.data; }));
 }
-bool teTagButtonGroup::filter(std::shared_ptr<tetagcore>tag){
+bool teTagButtonGroup::filter(std::shared_ptr<teTag>tag){
     if(defaultFiltStrings.find(*tag)!=defaultFiltStrings.end()){
         return true;
     }else return false;
@@ -309,16 +309,16 @@ bool teTagButtonGroup::filter(std::shared_ptr<tetagcore>tag){
 void teTagButtonGroup::refreshState(){
     for(auto&[widget,data,ifbutton,ifspace,ifvariablePos]:allwidgets){
         if(!ifbutton)goto nextbutton;
-        for(std::shared_ptr<tetagcore>tag:linked_tags){
+        for(std::shared_ptr<teTag>tag:linked_tags){
             if(ifspace){
-                for(tewordcore*word:*tag){
+                for(teWord*word:*tag){
                     if(*word==data){
                         ((QPushButton*)widget)->setChecked(true);
                         goto nextbutton;
                     }
                 }
             }else{
-                for(tewordcore*word:*tag){
+                for(teWord*word:*tag){
                     if(word->text.size()>data.size()&&word->text.indexOf(data)==0){
                         QString suffix = word->text.last(word->text.size()-data.size());
                         for(auto&[widget2,data2,ifbutton2,ifspace2,ifvariablePos2]:allwidgets)
@@ -362,7 +362,7 @@ void teTagLineedit::onEditingFinished(){
     if(label->text().isEmpty())tagstr.removeLast();
     else tagstr.append(label->text());
     if (linked_tags.empty()) {
-        std::shared_ptr<tetagcore>newtagcore = std::make_shared<tetagcore>(tagstr);
+        std::shared_ptr<teTag>newtagcore = std::make_shared<teTag>(tagstr);
         newtagcore->load();
         link(newtagcore);
         taglistwidget->tagInsertAbove(false, newtagcore);
@@ -374,7 +374,7 @@ void teTagLineedit::onEditingFinished(){
 
 void teTagLineedit::clear(){
     setStyleSheet("color:white;");
-    for(std::shared_ptr<tetagcore>tag:linked_tags){
+    for(std::shared_ptr<teTag>tag:linked_tags){
         tag->teDisconnect(this);
     }
     reset();
@@ -402,7 +402,7 @@ void teTagCheckBox::reset(){
 }
 void teTagCheckBox::clear(){
     setStyleSheet("color:white;");
-    for(std::shared_ptr<tetagcore>tag:linked_tags){
+    for(std::shared_ptr<teTag>tag:linked_tags){
         tag->teDisconnect(this);
     }
     linked_tags.clear();
@@ -430,7 +430,7 @@ void teTagCheckBox::unselect(){
     ++excute;
 }
 
-bool teTagCheckBox::filter(std::shared_ptr<tetagcore>tag){
+bool teTagCheckBox::filter(std::shared_ptr<teTag>tag){
     if(strings.indexOf(QString(*tag))>-1){
         return true;
     }return false;
@@ -446,7 +446,7 @@ void teTagCheckBox::onStateChanged(bool state){
         }
         else{
             for(QString&string:strings){
-                taglistwidget->tagInsertAbove(false,std::make_shared<tetagcore>(string));
+                taglistwidget->tagInsertAbove(false,std::make_shared<teTag>(string));
             }
         }
     }
@@ -462,20 +462,20 @@ void teTagCheckBox::refreshState(){
     }
 }
 
-void teTagCheckBoxPlus::link2(std::shared_ptr<tetagcore>in_tag){
+void teTagCheckBoxPlus::link2(std::shared_ptr<teTag>in_tag){
     in_tag->teConnect(teCallbackType::destroy,this,&teTagCheckBoxPlus::unlink2,in_tag);
     in_tag->teConnect(teCallbackType::edit,qsl("teTagCheckBoxPlus::link2"),this,&teTagCheckBoxPlus::re_read,in_tag,2);
     in_tag->teConnect(teCallbackType::edit_with_layout,this,&teTagCheckBoxPlus::re_read,in_tag,2);
     second_tags.insert(in_tag);
 }
 
-void teTagCheckBoxPlus::unlink2(std::shared_ptr<tetagcore>tag){
+void teTagCheckBoxPlus::unlink2(std::shared_ptr<teTag>tag){
     tag->teDisconnect(this);
     second_tags.erase(tag);
     refreshState();
 }
 
-bool teTagCheckBoxPlus::read(std::shared_ptr<tetagcore>tag){
+bool teTagCheckBoxPlus::read(std::shared_ptr<teTag>tag){
     if(filter(tag)){
         tag->ensureWidget();
         link(tag);
@@ -486,21 +486,21 @@ bool teTagCheckBoxPlus::read(std::shared_ptr<tetagcore>tag){
             onStateChanged(true);
         }
     }
-    if(tag->type==teTagCore::deleteTag){
+    if(tag->type==teTag::deleteTag){
         taglistwidget->tagErase(tag);
         return true;
     }
     return false;
 }
 
-bool teTagCheckBoxPlus::re_read(std::shared_ptr<tetagcore>tag, int taggroup){
+bool teTagCheckBoxPlus::re_read(std::shared_ptr<teTag>tag, int taggroup){
     if(taggroup==1&&!filter(tag)){
         unlink(tag);
     }
     else if(taggroup==2&&!filter2(tag)){
         unlink2(tag);
     }
-    if(tag->type==teTagCore::deleteTag){
+    if(tag->type==teTag::deleteTag){
         if(taglistwidget)
             taglistwidget->tagErase(tag);
         return true;
@@ -510,11 +510,11 @@ bool teTagCheckBoxPlus::re_read(std::shared_ptr<tetagcore>tag, int taggroup){
 
 void teTagCheckBoxPlus::clear(){
     setStyleSheet("color:white;");
-    for(std::shared_ptr<tetagcore>tag:linked_tags){
+    for(std::shared_ptr<teTag>tag:linked_tags){
         tag->teDisconnect(this);
     }
     linked_tags.clear();
-    for(std::shared_ptr<tetagcore>tag:second_tags){
+    for(std::shared_ptr<teTag>tag:second_tags){
         tag->teDisconnect(this);
     }
     second_tags.clear();
@@ -557,7 +557,7 @@ font:italic 14px;color:rgb(200,200,200);
     connect(removeButton, &QPushButton::clicked, this,&teTagListControl::onSubButtonClicked,Qt::DirectConnection);
 }
 
-void teTagListControl::link(std::shared_ptr<tetagcore> in_tag){
+void teTagListControl::link(std::shared_ptr<teTag> in_tag){
     in_tag->teConnect(teCallbackType::destroy,this,&teEditorControl::unlink,in_tag);
     linked_tags.insert(in_tag);
     // The main list is the one that owns the tag; the editor only mirrors it.
@@ -567,7 +567,7 @@ void teTagListControl::link(std::shared_ptr<tetagcore> in_tag){
         taginsert(-1,in_tag);
 }
 
-void teTagListControl::unlink(std::shared_ptr<tetagcore> in_tag){
+void teTagListControl::unlink(std::shared_ptr<teTag> in_tag){
     teDisconnect(in_tag.get());
     linked_tags.erase(in_tag);
     tagErase(in_tag);
@@ -586,7 +586,7 @@ void teTagListControl::reciveWidgetSignal(QString data, bool ifadd){
             taglistwidget->tagEdit(select_current->core,data);
         }
     }else{
-        taglistwidget->tagInsertAbove(false,std::make_shared<tetagcore>(data),true);
+        taglistwidget->tagInsertAbove(false,std::make_shared<teTag>(data),true);
     }
 }
 
@@ -599,7 +599,7 @@ void teTagListControl::reciveDestroySignal(){
     }
 }
 
-void teTagListControl::tagEdit(teTagBase *tag, teWordBase *word){
+void teTagListControl::tagEdit(teTagWidgetBase *tag, teWordWidgetBase *word){
     ifedit=true;
     onEdit_widget->input_and_show(tag->core);
     onEdit_widget->move(QCursor::pos().x()-onEdit_widget->width(),QCursor::pos().y()-onEdit_widget->height()/2);
@@ -609,20 +609,20 @@ void teTagListControl::tagEdit(teTagBase *tag, teWordBase *word){
 // list. They address the tag by its core now: the editor only knows cores, and
 // a core does not necessarily own a widget (which is what the old
 // `in->core->widget` assumed - and it dereferenced it unchecked).
-void teTagListControl::setSelectCurrent(teTagBase *in, bool ifclear){
+void teTagListControl::setSelectCurrent(teTagWidgetBase *in, bool ifclear){
     teRefTagListWidget::setSelectCurrent(in);
     if(!taglistwidget)
         return;
     taglistwidget->setSelectCurrentCore(in?in->core:nullptr,ifclear);
 }
 
-void teTagListControl::setSelect(teTagBase *in){
+void teTagListControl::setSelect(teTagWidgetBase *in){
     teRefTagListWidget::setSelect(in);
     if(taglistwidget&&in)
         taglistwidget->setSelectCore(in->core);
 }
 
-int teTagListControl::setUnselect(teTagBase *in){
+int teTagListControl::setUnselect(teTagWidgetBase *in){
     teRefTagListWidget::setUnselect(in);
     if(taglistwidget&&in)
         taglistwidget->setUnselectCore(in->core);
@@ -630,8 +630,8 @@ int teTagListControl::setUnselect(teTagBase *in){
 }
 
 void teTagListControl::clear(){
-    std::set<std::shared_ptr<tetagcore>>tmplinked_tags = linked_tags;
-    for(std::shared_ptr<tetagcore>tag:tmplinked_tags){
+    std::set<std::shared_ptr<teTag>>tmplinked_tags = linked_tags;
+    for(std::shared_ptr<teTag>tag:tmplinked_tags){
         unlink(tag);
     }
     linked_tags.clear();

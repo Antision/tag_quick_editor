@@ -1,11 +1,11 @@
 #include "tereftaglistwidget.h"
 #include "teeditorcontrol.h"
 #include "func.h"
-bool teRefTagCmp(tereftag *a, tereftag *b){
+bool teRefTagCmp(teRefTagWidget *a, teRefTagWidget *b){
     return a->core<b->core;
 }
 
-void teRefTag::readCore(std::shared_ptr<tetagcore>in_core){
+void teRefTagWidget::readCore(std::shared_ptr<teTag>in_core){
     if(core)
         teDisconnect(core.get());
     core = in_core;
@@ -16,40 +16,40 @@ void teRefTag::readCore(std::shared_ptr<tetagcore>in_core){
     // word plumbing of teTagBase installs the words of *that* list). The editors
     // resolve their own tag widget through teTagListWidgetBase::widgetForCore(),
     // which finds this widget in their layout.
-    core->teConnect(teCallbackType::edit,qsl("teRefTag::readCore"),this,&teRefTag::load);
-    core->teConnect(teCallbackType::edit_with_layout,this,&teRefTag::load);
+    core->teConnect(teCallbackType::edit,qsl("teRefTag::readCore"),this,&teRefTagWidget::load);
+    core->teConnect(teCallbackType::edit_with_layout,this,&teRefTagWidget::load);
     load();
 }
 
-void teRefTag::load(){
+void teRefTagWidget::load(){
     clearWordWidgets();
     int wordscount = core->words.count();
     for(int i=0;i<wordscount;++i){
-        terefword* newword = widgetpool_ref.getWord(core->words[i]);
+        teRefWordWidget* newword = widgetpool_ref.getWord(core->words[i]);
         layout->insertWidget(i,newword);
         wordWidgets.insert(newword);
         connectWord(newword);
     }
 }
 
-void teRefTag::clearWordWidgets(){
-    for(terefword*w:wordWidgets){
+void teRefTagWidget::clearWordWidgets(){
+    for(teRefWordWidget*w:wordWidgets){
         widgetpool_ref.give_back(w);
     }
     wordWidgets.clear();
 }
 
-void teRefTag::self_giveback(){
+void teRefTagWidget::self_giveback(){
     clearWordWidgets();
     widgetpool_ref.give_back(this);
 }
 
-void teRefTag::worddroped(teWordBase *in_word, int xpos){
+void teRefTagWidget::worddroped(teWordWidgetBase *in_word, int xpos){
     int wordcount = core->words.count();
     int in_id=-1;
     int i=0;
     for(;i<wordcount;++i){
-        teWordBase*wordptr = dynamic_cast<teWordBase*>(layout->itemAt(i)->widget());
+        teWordWidgetBase*wordptr = dynamic_cast<teWordWidgetBase*>(layout->itemAt(i)->widget());
         if(wordptr->core!=in_word->core){
             if(xpos < wordptr->x()+wordptr->width()){
                 break;
@@ -57,7 +57,7 @@ void teRefTag::worddroped(teWordBase *in_word, int xpos){
         }else{
             in_id=i;
             for(i=wordcount-1;i>in_id;--i){
-                wordptr = dynamic_cast<teWordBase*>(layout->itemAt(i)->widget());
+                wordptr = dynamic_cast<teWordWidgetBase*>(layout->itemAt(i)->widget());
                 if(xpos > wordptr->x()){
                     ++i;
                     goto words_loop_end;
@@ -103,10 +103,10 @@ void teRefTagListWidget::keyPressEvent(QKeyEvent *event) {
     }
 }
 
-int teRefTagListWidget::setSelectRange(teTagBase *in, bool ifclear){
+int teRefTagListWidget::setSelectRange(teTagWidgetBase *in, bool ifclear){
     if(select_current==nullptr||in==nullptr||select_current==in) return -1;
     if(ifclear||!select.empty()){
-        for(teTagBase*tp:select){
+        for(teTagWidgetBase*tp:select){
             tp->setStyle(normal_style_enum);
         }
         select.clear();
@@ -119,7 +119,7 @@ int teRefTagListWidget::setSelectRange(teTagBase *in, bool ifclear){
     }
     int direction =(in_index<select_current_index?1:-1);
     for(int i = in_index;i!=select_current_index;i+=direction){
-        setSelect((teTagBase*)layout->itemAt(i)->widget());
+        setSelect((teTagWidgetBase*)layout->itemAt(i)->widget());
     }
     return 0;
 }
@@ -127,9 +127,9 @@ int teRefTagListWidget::setSelectRange(teTagBase *in, bool ifclear){
 void teRefTagListWidget::setSelectAll(){
     int tagcount=tags.size();
     if(tagcount==0)return;
-    setSelectCurrent((teTagBase*)layout->itemAt(0)->widget());
+    setSelectCurrent((teTagWidgetBase*)layout->itemAt(0)->widget());
     for(int i =1;i<tagcount;++i){
-        setSelect((teTagBase*)layout->itemAt(i)->widget());
+        setSelect((teTagWidgetBase*)layout->itemAt(i)->widget());
     }
     return;
 }
@@ -151,19 +151,19 @@ void teRefTagListWidget::clear(teTagList *in){
     }
 }
 
-int teRefTagListWidget::findindex(std::shared_ptr<tetagcore> in_tag){
+int teRefTagListWidget::findindex(std::shared_ptr<teTag> in_tag){
     int tagcount = tags.size();
     for(int i =0;i<tagcount;++i)
-        if(((tetagbase*)layout->itemAt(i)->widget())->core==in_tag)
+        if(((teTagWidgetBase*)layout->itemAt(i)->widget())->core==in_tag)
             return i;
     telog("couldn't find in_tag in tags");
     return -1;
 }
 
-int teRefTagListWidget::findindex(tetagbase *in_tag){
+int teRefTagListWidget::findindex(teTagWidgetBase *in_tag){
     int tagcount = tags.size();
     for(int i =0;i<tagcount;++i)
-        if((tetagbase*)layout->itemAt(i)->widget()==in_tag)
+        if((teTagWidgetBase*)layout->itemAt(i)->widget()==in_tag)
             return i;
     telog("couldn't find in_tag in tags");
     return -1;
@@ -171,22 +171,22 @@ int teRefTagListWidget::findindex(tetagbase *in_tag){
 
 void teRefTagListWidget::tagErase(int index){
     if(index>tags.size()-1)telog("erase out of range");
-    teRefTag* tag = (teRefTag*)layout->itemAt(index)->widget();
+    teRefTagWidget* tag = (teRefTagWidget*)layout->itemAt(index)->widget();
     if(isSelected(tag))
         setUnselect(tag);
     findAndErase(tag->core);
     widgetpool_ref.give_back(tag);
 }
 
-void teRefTagListWidget::tagErase(std::shared_ptr<tetagcore> tag){
+void teRefTagListWidget::tagErase(std::shared_ptr<teTag> tag){
     if(tag==nullptr&&select_current==nullptr)
         return;
     else if(tag==nullptr&&select_current!=nullptr&&!select.empty()){
-        select_current->setStyle(teTagBase::normal);
+        select_current->setStyle(teTagWidgetBase::normal);
         findAndErase(select_current->core);
         select_current=nullptr;
         for(auto t:select){
-            t->setStyle(teTagBase::normal);
+            t->setStyle(teTagWidgetBase::normal);
             findAndErase(t->core);
         }
         select.clear();
@@ -195,9 +195,9 @@ void teRefTagListWidget::tagErase(std::shared_ptr<tetagcore> tag){
         int pos = findindex(tag);
         if(select_current&&tag==select_current->core){
             if(pos<tags.size()-1)
-                setSelectCurrent((tetagbase*)layout->itemAt(pos+1)->widget());
+                setSelectCurrent((teTagWidgetBase*)layout->itemAt(pos+1)->widget());
             else if(pos>0)
-                setSelectCurrent((tetagbase*)layout->itemAt(pos-1)->widget());
+                setSelectCurrent((teTagWidgetBase*)layout->itemAt(pos-1)->widget());
             else
                 setUnselect(select_current);
         }
@@ -208,10 +208,10 @@ void teRefTagListWidget::tagErase(std::shared_ptr<tetagcore> tag){
     }
 }
 
-std::map<teRefTag*,teTagList*,bool(*)(tereftag*,tereftag*)>::iterator teRefTagListWidget::findIterator(std::shared_ptr<tetagcore> tag){
-    uint8_t tmpcmp[sizeof(teRefTag)];
-    teRefTag*tmpcmp_p = reinterpret_cast<teRefTag*>(tmpcmp);
-    memcpy(&tmpcmp_p->core,&tag,sizeof(std::shared_ptr<tetagcore>));
+std::map<teRefTagWidget*,teTagList*,bool(*)(teRefTagWidget*,teRefTagWidget*)>::iterator teRefTagListWidget::findIterator(std::shared_ptr<teTag> tag){
+    uint8_t tmpcmp[sizeof(teRefTagWidget)];
+    teRefTagWidget*tmpcmp_p = reinterpret_cast<teRefTagWidget*>(tmpcmp);
+    memcpy(&tmpcmp_p->core,&tag,sizeof(std::shared_ptr<teTag>));
     auto it = tags.lower_bound(tmpcmp_p);
     if(it==tags.end()||it->first->core!=tag){
         telog("[teRefTagListWidget::findAndErase]:Couldn't find tag in reftaglistwidget");
@@ -220,7 +220,7 @@ std::map<teRefTag*,teTagList*,bool(*)(tereftag*,tereftag*)>::iterator teRefTagLi
         return it;
 }
 
-void teRefTagListWidget::findAndErase(std::shared_ptr<teTagCore> in_core){
+void teRefTagListWidget::findAndErase(std::shared_ptr<teTag> in_core){
     auto it=findIterator(in_core);
     if(it!=tags.end()){
         widgetpool_ref.give_back(it->first);
@@ -230,7 +230,7 @@ void teRefTagListWidget::findAndErase(std::shared_ptr<teTagCore> in_core){
     }
 }
 
-void teRefTagListWidget::Destroy(teRefTag *tag){
+void teRefTagListWidget::Destroy(teRefTagWidget *tag){
     teTagList* parentlist = tags[tag];
     if(!parentTagListWidget||parentlist!=parentTagListWidget->showing_list){
         parentlist->erase(tag->core);
@@ -240,13 +240,13 @@ void teRefTagListWidget::Destroy(teRefTag *tag){
         parentTagListWidget->tagErase(tag->core);
 }
 
-void teRefTagListWidget::tagdroped(teTagBase *in_tag, int modifiers){
+void teRefTagListWidget::tagdroped(teTagWidgetBase *in_tag, int modifiers){
     if(!in_tag){layout->update();return;}
     int in_y=in_tag->y();
     int in_id=-1;
     int i=0;
     for(;i<tags.size();++i){
-        teRefTag*tagptr = (teRefTag*)layout->itemAt(i)->widget();
+        teRefTagWidget*tagptr = (teRefTagWidget*)layout->itemAt(i)->widget();
         if(tagptr!=in_tag){
             if(in_y < tagptr->y()){
                 if(in_id!=-1&&i==in_id+1){
@@ -261,7 +261,7 @@ void teRefTagListWidget::tagdroped(teTagBase *in_tag, int modifiers){
     }
     if(in_id==-1){
         in_id = i+1;
-        while(in_tag!=(teRefTag*)layout->itemAt(in_id)->widget()){
+        while(in_tag!=(teRefTagWidget*)layout->itemAt(in_id)->widget()){
             ++in_id;
         }
     }else --i;
@@ -272,38 +272,38 @@ void teRefTagListWidget::tagdroped(teTagBase *in_tag, int modifiers){
 
 void teRefTagListWidget::tagDestroy(int index){
     if(index>tags.size()-1)telog("[teRefTagListWidget::tagDestroy]erase index is out of range");
-    teRefTag* tag = (teRefTag*)layout->itemAt(index)->widget();
+    teRefTagWidget* tag = (teRefTagWidget*)layout->itemAt(index)->widget();
     Destroy(tag);
 }
 
-void teRefTagListWidget::tagDestroy(std::shared_ptr<tetagcore> tag){
-    teRefTag* tagwidget=nullptr;
-    if(std::map<teRefTag*,teTagList*,bool(*)(tereftag*,tereftag*)>::iterator it=findIterator(tag);it!=tags.end()){
+void teRefTagListWidget::tagDestroy(std::shared_ptr<teTag> tag){
+    teRefTagWidget* tagwidget=nullptr;
+    if(std::map<teRefTagWidget*,teTagList*,bool(*)(teRefTagWidget*,teRefTagWidget*)>::iterator it=findIterator(tag);it!=tags.end()){
         tagwidget = findIterator(tag)->first;
     }
     if(tag==nullptr&&select_current==nullptr)
         return;
     else if(tag==nullptr&&select_current!=nullptr&&!select.empty()){
-        Destroy((teRefTag*)(select_current));
+        Destroy((teRefTagWidget*)(select_current));
         for(auto t:select){
-            Destroy((teRefTag*)(t));
+            Destroy((teRefTagWidget*)(t));
         }
     }else{
         if(tag==nullptr){
             tag=select_current->core;
-            tagwidget=(teRefTag*)(select_current);
+            tagwidget=(teRefTagWidget*)(select_current);
         }
-        Destroy((teRefTag*)(tagwidget));
+        Destroy((teRefTagWidget*)(tagwidget));
     }
 }
 
 #include "mainwindow.h"
 extern QWidget*global_window;
-void teRefTagListWidget::tagInsertAbove(bool edit, std::shared_ptr<tetagcore>newtag,int removeDuplicate){
+void teRefTagListWidget::tagInsertAbove(bool edit, std::shared_ptr<teTag>newtag,int removeDuplicate){
     taginsert(edit,newtag,removeDuplicate);
 }
 
-void teRefTagListWidget::tagInsertBelow(bool edit, std::shared_ptr<tetagcore>newtag,int removeDuplicate){
+void teRefTagListWidget::tagInsertBelow(bool edit, std::shared_ptr<teTag>newtag,int removeDuplicate){
     MainWindow* mwptr = (MainWindow*)global_window;
     if(newtag==nullptr){
         telog("can't insert a reftag with nullptr tagcore");
@@ -318,7 +318,7 @@ void teRefTagListWidget::tagInsertBelow(bool edit, std::shared_ptr<tetagcore>new
         teTagListWidgetBase::tagEdit();
 }
 
-void teRefTagListWidget::tagInsertAbove(bool edit, std::shared_ptr<tetagcore>newtag, teTagList *list,int removeDuplicate){
+void teRefTagListWidget::tagInsertAbove(bool edit, std::shared_ptr<teTag>newtag, teTagList *list,int removeDuplicate){
     if(newtag==nullptr){
         telog("can't insert a reftag with nullptr tagcore");
         return;
@@ -332,7 +332,7 @@ void teRefTagListWidget::tagInsertAbove(bool edit, std::shared_ptr<tetagcore>new
         teTagListWidgetBase::tagEdit();
 }
 
-void teRefTagListWidget::tagEdit(std::shared_ptr<teTagCore> tag, QString text, int removeDuplicate, bool ifemit){
+void teRefTagListWidget::tagEdit(std::shared_ptr<teTag> tag, QString text, int removeDuplicate, bool ifemit){
     if(parentTagListWidget)
         parentTagListWidget->tagEdit(tag,text,removeDuplicate,ifemit);
     else{
@@ -340,7 +340,7 @@ void teRefTagListWidget::tagEdit(std::shared_ptr<teTagCore> tag, QString text, i
         tag->read(text,true);
     }
 }
-teTagBase* teRefTagListWidget::taginsert(int index,std::shared_ptr<tetagcore>in_tag,int removeDuplicate,bool select){
+teTagWidgetBase* teRefTagListWidget::taginsert(int index,std::shared_ptr<teTag>in_tag,int removeDuplicate,bool select){
     if(parentTagListWidget)
         return taginsert(index,in_tag,parentTagListWidget->showing_list,select);
     else{
@@ -358,25 +358,25 @@ void teRefTagListWidget::paste()
 
     if (parentTagListWidget) {
         for (const auto& piece : pieces)
-            parentTagListWidget->tagInsertAbove(false, std::make_shared<tetagcore>(piece.text, nullptr, piece.sentence), 2);
+            parentTagListWidget->tagInsertAbove(false, std::make_shared<teTag>(piece.text, nullptr, piece.sentence), 2);
     } else {
         telog("[teRefTagListWidget::taginsert]:No taglistwidget specified");
         MainWindow* mwptr = (MainWindow*)global_window;
         for (const auto& piece : pieces)
-            mwptr->ui->taglist->tagInsertAbove(false, std::make_shared<tetagcore>(piece.text, nullptr, piece.sentence), 2);
+            mwptr->ui->taglist->tagInsertAbove(false, std::make_shared<teTag>(piece.text, nullptr, piece.sentence), 2);
     }
 }
 
-teTagBase *teRefTagListWidget::taginsert(int index,std::shared_ptr<tetagcore>in_tag,teTagList*in_list,int removeDuplicate,bool select){
+teTagWidgetBase *teRefTagListWidget::taginsert(int index,std::shared_ptr<teTag>in_tag,teTagList*in_list,int removeDuplicate,bool select){
     while(index<0)
         index+=tags.size()+1;
-    tereftag*widget =(tereftag*)widgetpool_ref.getTag(in_tag);
+    teRefTagWidget*widget =(teRefTagWidget*)widgetpool_ref.getTag(in_tag);
     tags.insert({widget,in_list});
     layout->insertWidget(index,widget);
     connectTag(widget);
     // Same as the main tag list: the context object plus a QPointer, so a
     // recycled tag or a destroyed list cannot be touched from the callback.
-    const QPointer<tereftag> guard(widget);
+    const QPointer<teRefTagWidget> guard(widget);
     QTimer::singleShot(0,this,[this,guard]{
         if(!sc)
             return;
