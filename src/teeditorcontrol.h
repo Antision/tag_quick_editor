@@ -15,7 +15,7 @@ struct anytype{
 class teEditorControl:virtual public teObject{
 public:
     std::set<std::shared_ptr<tetagcore>>linked_tags;
-    teEditor* editor;
+    teEditor* editor=nullptr;
     teTagListWidget* taglistwidget=nullptr;
     std::set<QString>captureList;
     virtual bool filter(std::shared_ptr<tetagcore>tag)=0;
@@ -29,6 +29,15 @@ public:
     virtual void refreshState()=0;
     virtual bool linked(std::shared_ptr<tetagcore>tag);
     virtual void setTaglistwidget(teTagListWidget* in_taglistwidget);
+    /**
+     * @brief The widget that displays `core` in this editor's tag list.
+     *
+     * The editors used to reach a tag's widget with `core->widget`, which was
+     * the single image tag list's widget. That list draws its tags through a
+     * delegate now and owns no widget per tag, so the editor has to resolve the
+     * widget it made itself (returns nullptr when the tag is not shown here).
+     */
+    teTagBase* tagWidgetFor(std::shared_ptr<tetagcore> core) const;
     void edited();
     virtual ~teEditorControl(){};
 };

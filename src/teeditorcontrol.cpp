@@ -5,24 +5,28 @@
 bool teEditorControl::re_read(std::shared_ptr<tetagcore>tag){
     if(!filter(tag)){
         if(tag->type==teTagCore::deleteTag){
-            taglistwidget->tagErase(tag);
+            if(taglistwidget)
+                taglistwidget->tagErase(tag);
             return true;
         }
         unlink(tag);
     }
+    return false;       // this control does not handle the tag any more
 }
 
 bool teEditorControl::read(std::shared_ptr<tetagcore>tag){
-    bool iffilt = filter(tag);
+    const bool iffilt = filter(tag);
     if(tag->type==teTagCore::deleteTag){
-        taglistwidget->tagErase(tag);
+        if(taglistwidget)
+            taglistwidget->tagErase(tag);
         return true;
     }
     if(iffilt){
-        if(tag->widget==nullptr)tag->load();
+        tag->ensureWidget();
         link(tag);
         if(tag->type==teTagCore::deleteTag){
-            taglistwidget->tagErase(tag);
+            if(taglistwidget)
+                taglistwidget->tagErase(tag);
             return true;
         }
     }
@@ -52,10 +56,16 @@ void teEditorControl::setTaglistwidget(teTagListWidget *in_taglistwidget){
     taglistwidget=in_taglistwidget;
 }
 
+teTagBase* teEditorControl::tagWidgetFor(std::shared_ptr<tetagcore> core) const
+{
+    // Every editor control is also a tag list (it shows its linked tags as
+    // widgets), so the lookup of the tag list base class applies.
+    auto* list = dynamic_cast<teTagListWidgetBase*>(const_cast<teEditorControl*>(this));
+    return list?list->widgetForCore(core):nullptr;
+}
+
 void teEditorControl::edited(){
-    for(auto&[obj,func]:linked_callback_call)
-        if(func->type==teCallbackType::edit)
-            (*func)();
+    teemit(teCallbackType::edit,false);
 }
 teTagComboBox::teTagComboBox(QList<QPair<QString,QStringList>>&& string_datas,QString&&in_default_text, QWidget *parent, QString *styleSheet)
     :QComboBox(parent),default_text(std::move(in_default_text)){
@@ -217,7 +227,9 @@ void teTagButtonGroup::onClicked(int id){
             while(linked_tags.size()>1){
                 taglistwidget->tagErase(*linked_tags.begin());
             }
-            (*linked_tags.begin())->widget->setText(final_string);
+            // The editor's own tag widget shows that tag for this control.
+            if(teTagBase* editorTag = tagWidgetFor(*linked_tags.begin()))
+                editorTag->setText(final_string);
         }
     }else{
         while(!linked_tags.empty())
@@ -465,10 +477,10 @@ void teTagCheckBoxPlus::unlink2(std::shared_ptr<tetagcore>tag){
 
 bool teTagCheckBoxPlus::read(std::shared_ptr<tetagcore>tag){
     if(filter(tag)){
-        if(tag->widget==nullptr)tag->load();
+        tag->ensureWidget();
         link(tag);
     }else if(filter2(tag)){
-        if(tag->widget==nullptr)tag->load();
+        tag->ensureWidget();
         link2(tag);
         if(isChecked()){
             onStateChanged(true);
@@ -489,9 +501,11 @@ bool teTagCheckBoxPlus::re_read(std::shared_ptr<tetagcore>tag, int taggroup){
         unlink2(tag);
     }
     if(tag->type==teTagCore::deleteTag){
-        taglistwidget->tagErase(tag);
+        if(taglistwidget)
+            taglistwidget->tagErase(tag);
         return true;
     }
+    return false;
 }
 
 void teTagCheckBoxPlus::clear(){
@@ -510,6 +524,9 @@ void teTagCheckBoxPlus::clear(){
 
 teTagListControl::teTagListControl(colorsWidget *in_onEdit_widget, teTagListWidget *parentlist, QWidget *parent, QString *styleSheet,QString title)
     : teRefTagListWidget(parentlist,parent),onEdit_widget(in_onEdit_widget){
+    // link() needs the main tag list to reach the teTagList it mirrors; it is
+    // known here already, so it can never be left unset.
+    setTaglistwidget(parentlist);
     connect(onEdit_widget,&teSignalWidget::stringSignal,this,&teTagListControl::reciveWidgetSignal,Qt::DirectConnection);
     connect(onEdit_widget,&teSignalWidget::destroySignal,this,&teTagListControl::reciveDestroySignal,Qt::DirectConnection);
     connect(onEdit_widget,&teSignalWidget::cancelSignal,this,&teTagListControl::reciveCancelSignal,Qt::DirectConnection);
@@ -543,7 +560,11 @@ font:italic 14px;color:rgb(200,200,200);
 void teTagListControl::link(std::shared_ptr<tetagcore> in_tag){
     in_tag->teConnect(teCallbackType::destroy,this,&teEditorControl::unlink,in_tag);
     linked_tags.insert(in_tag);
-    taginsert(-1,in_tag,taglistwidget->showing_list);
+    // The main list is the one that owns the tag; the editor only mirrors it.
+    if(taglistwidget)
+        taginsert(-1,in_tag,taglistwidget->showing_list);
+    else
+        taginsert(-1,in_tag);
 }
 
 void teTagListControl::unlink(std::shared_ptr<tetagcore> in_tag){
@@ -584,33 +605,27 @@ void teTagListControl::tagEdit(teTagBase *tag, teWordBase *word){
     onEdit_widget->move(QCursor::pos().x()-onEdit_widget->width(),QCursor::pos().y()-onEdit_widget->height()/2);
 }
 
+// The three overrides below mirror the editor's selection into the main tag
+// list. They address the tag by its core now: the editor only knows cores, and
+// a core does not necessarily own a widget (which is what the old
+// `in->core->widget` assumed - and it dereferenced it unchecked).
 void teTagListControl::setSelectCurrent(teTagBase *in, bool ifclear){
     teRefTagListWidget::setSelectCurrent(in);
-    teTag* coreWidget = in->core->widget;
-    taglistwidget->setSelectCurrent(coreWidget);
-    QTimer::singleShot(0,[this]{
-        taglistwidget->sc->horizontalScrollBar()->setValue(0);
-    });
-    taglistwidget->sc->ensureWidgetVisible(coreWidget);
+    if(!taglistwidget)
+        return;
+    taglistwidget->setSelectCurrentCore(in?in->core:nullptr,ifclear);
 }
 
 void teTagListControl::setSelect(teTagBase *in){
     teRefTagListWidget::setSelect(in);
-    teTag* coreWidget = in->core->widget;
-    taglistwidget->setSelect(coreWidget);
-    QTimer::singleShot(0,[this]{
-        taglistwidget->sc->horizontalScrollBar()->setValue(0);
-    });
-    taglistwidget->sc->ensureWidgetVisible(coreWidget);
+    if(taglistwidget&&in)
+        taglistwidget->setSelectCore(in->core);
 }
 
 int teTagListControl::setUnselect(teTagBase *in){
     teRefTagListWidget::setUnselect(in);
-    if(in){
-        teTag* coreWidget = in->core->widget;
-        if(coreWidget)
-            taglistwidget->setUnselect(coreWidget);
-    }
+    if(taglistwidget&&in)
+        taglistwidget->setUnselectCore(in->core);
     return 1;
 }
 

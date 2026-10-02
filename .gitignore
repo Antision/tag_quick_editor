@@ -9,3 +9,5 @@ readmeres/
 .*/
 Makefile*
 sd_icon/
+/REFACTORING.md
+/tests/

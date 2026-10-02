@@ -1,19 +1,24 @@
 #include "temultitaglistview.h"
 
+namespace {
 
+/// Moves every link of `from` over to `to` and rewires the tag callbacks.
 void moveLinkedTags(teMultiTagCore*from,teMultiTagCore*to){
-    if(!from->linked_tags.empty()){
-        to->linked_tags.insert(from->linked_tags.begin(),from->linked_tags.end());
-        for(auto&[tc,list]:from->linked_tags){
-            tc->teConnect(teCallbackType::destroy,to,&teMultiTagCore::unlink,tc);
-            tc->teConnect(teCallbackType::edit,to,&teMultiTagCore::re_read,tc,list);
-            tc->teConnect(teCallbackType::edit_with_layout,to,&teMultiTagCore::re_read,tc,list);
-            tc->teDisconnect(from);
-        }
-        from->linked_tags.clear();
+    if(from->linked_tags.empty())
+        return;
+    const auto links = from->linked_tags;
+    for(const auto&[tc,list]:links){
+        tc->teDisconnect(from);
+        to->link(tc,list);
     }
+    from->linked_tags.clear();
 }
+
+}
+
 void teMultiTagListModel::linkTagList(teTagList *in_list){
+    if(linked_taglists.contains(in_list))
+        return;
     linked_taglists.push_back(in_list);
     connect(in_list,&teTagList::tagInserted,this,[this, in_list](std::shared_ptr<tetagcore>newcore){
         if(ifrecivenewtagcoreinsertsignal>0)
@@ -24,11 +29,14 @@ void teMultiTagListModel::linkTagList(teTagList *in_list){
 
 void teMultiTagListModel::unlinkTagList(teTagList *in_list){
     if(in_list){
-        linked_taglists.removeAt(linked_taglists.indexOf(in_list));
+        const int index = linked_taglists.indexOf(in_list);
+        if(index>=0)
+            linked_taglists.removeAt(index);
         in_list->teDisconnect(this);
         disconnect(in_list,0,this,0);
     }else{
-        for(teTagList*list:linked_taglists){
+        const auto lists = linked_taglists;
+        for(teTagList*list:lists){
             disconnect(list,0,this,0);
             list->teDisconnect(this);
         }
@@ -37,75 +45,81 @@ void teMultiTagListModel::unlinkTagList(teTagList *in_list){
 }
 
 bool teMultiTagListModel::setData(const QModelIndex &index, const QVariant &value, int role) {
-    if (!index.isValid() || role != Qt::EditRole) {
+    if (!index.isValid() || role != Qt::EditRole)
         return false;
-    }
-    if (!value.canConvert<QString>()) {
+    if (!value.canConvert<QString>())
         return false;
-    }
-    int row = index.row();
-    if (row < 0 || row >= tags.size()) {
+
+    const int row = index.row();
+    if (row < 0 || row >= tags.size())
         return false;
-    }
 
     teMultiTagCore* tag = tags[row];
-    if (!tag) {
+    if (!tag)
         return false;
-    }
+
     tag->setText(value.toString());
-    emit dataChanged(index, index, {role});
     return true;
 }
 
 QVariant teMultiTagListModel::data(const QModelIndex &index, int role) const {
-    if (!index.isValid() || index.row() >= tags.size()) return QVariant();
-    const auto tag = static_cast<teMultiTagCore*>(index.internalPointer());
-    return QVariant::fromValue(tag); // For simplicity, display first word.
+    if (!index.isValid() || index.row() < 0 || index.row() >= tags.size())
+        return QVariant();
+    // Only the roles the view and the delegate actually consume get the tag
+    // pointer; everything else stays empty. The row is looked up instead of
+    // trusting internalPointer(): a stale index (kept by a delegate or by the
+    // selection model across row removals) used to hand out a dangling pointer.
+    switch (role) {
+    case Qt::DisplayRole:
+    case Qt::EditRole:
+    case Qt::ToolTipRole:
+        return QVariant::fromValue(tags[index.row()]);
+    default:
+        return QVariant();
+    }
+}
+
+teMultiTagCore* teMultiTagListModel::findMultiTag(const QString& in_text, teMultiTagCore* exclude) const {
+    for (teMultiTagCore* mt : tags)
+        if (mt != exclude && mt->text == in_text)
+            return mt;
+    return nullptr;
 }
 
 teMultiTagCore *teMultiTagListModel::getMultiTag(const QString &in_text, bool &ifnew, int row, bool ifselect){
-    teMultiTagCore*find_mt=nullptr;
-    QList<teMultiTagCore*>::Iterator it;
-    it = std::lower_bound(tags.begin(), tags.end(), in_text, multitagTextCmp);
-    if (it != tags.end()&&(*it)->text==in_text) {
-        find_mt= *it;
-    }else
-        for (teMultiTagCore* mt : tags) {
-            if (mt->text == in_text) {
-                find_mt= mt;
-                break;
-            }
-        }
-    if(!find_mt){
-        ifnew=true;
-        find_mt=tagInsert((row>-1?row:(it-tags.begin())),in_text,ifselect);
-    }else
+    // The list is *not* kept sorted: the user may reorder rows freely, so a
+    // binary search would look at the wrong half of the list. It also used the
+    // lower_bound result as an insertion row, which scattered new rows.
+    if (teMultiTagCore* existing = findMultiTag(in_text)) {
         ifnew = false;
-    return find_mt;
+        return existing;
+    }
+    ifnew = true;
+    return tagInsert(row > -1 ? row : tags.size(), in_text, ifselect);
 }
 
-void teMultiTagListModel::linkNewTagcore(std::shared_ptr<tetagcore> in_core, teTagList *in_list, QItemSelectionModel *selectionModel){
-    QString in_text = *in_core;
-    bool ifnew;
-    teMultiTagCore*find_mt=getMultiTag(in_text,ifnew);
+void teMultiTagListModel::linkNewTagcore(std::shared_ptr<tetagcore> in_core, teTagList *in_list){
+    bool ifnew = false;
+    teMultiTagCore* find_mt = getMultiTag(*in_core, ifnew);
     find_mt->link(in_core,in_list);
 }
 
 teMultiTagCore *teMultiTagListModel::tagInsert(int row, std::shared_ptr<tetagcore> in_tag, bool select){
     if(row<0)row+=tags.size()+1;
+    row = std::clamp(row,0,int(tags.size()));
     teMultiTagCore*newmultitag =new teMultiTagCore(this);
     beginInsertRows(QModelIndex(), row, row);
     tags.insert(row,newmultitag);
     connectTag(newmultitag);
     endInsertRows();
-    listview->selectionModel()->reset();
-    if(select){
-        listview->selectionModel()->select(index(row,0), QItemSelectionModel::Select);
-    }
+    if(select&&listview)
+        listview->selectionModel()->select(index(row,0), QItemSelectionModel::ClearAndSelect);
     if(in_tag==nullptr){
-        listview->scrollTo(index(row,0));
-        newmultitag->teConnect(teCallbackType::edit,this,&teMultiTagListModel::newTagTypeFinished,newmultitag,row);
-        listview->edit(index(row,0));
+        if(listview)
+            listview->scrollTo(index(row,0));
+        newmultitag->teConnect(teCallbackType::edit,this,&teMultiTagListModel::newTagTypeFinished,newmultitag);
+        if(listview)
+            listview->edit(index(row,0));
     }else{
         newmultitag->setText(*in_tag);
     }
@@ -113,26 +127,34 @@ teMultiTagCore *teMultiTagListModel::tagInsert(int row, std::shared_ptr<tetagcor
 }
 
 teMultiTagCore *teMultiTagListModel::tagInsert(int row, const QString &text, bool select){
+    if(row<0)row+=tags.size()+1;
+    row = std::clamp(row,0,int(tags.size()));
     teMultiTagCore*newmultitag = new teMultiTagCore(text,this);
     beginInsertRows(QModelIndex(), row, row);
     tags.insert(row,newmultitag);
     endInsertRows();
     connectTag(newmultitag);
-    listview->scrollTo(index(row,0));
-    if(select)
-        listview->selectionModel()->select(index(row,0), QItemSelectionModel::Select);
+    if(select&&listview){
+        listview->selectionModel()->select(index(row,0), QItemSelectionModel::ClearAndSelect);
+        listview->scrollTo(index(row,0));
+    }
     return newmultitag;
 }
 
 void teMultiTagListModel::setPos(int index){
-    if(tags.empty())return;
+    if(index<0||index>=tags.size()||tags.size()<2)
+        return;
 
-    double pos = (double)index/(tags.size()-1);
-    for(auto[tag,taglist]:tags[index]->linked_tags){
-        int nowpos = taglist->find(tag);
-        int newpos = pos*taglist->size();
+    const double pos = double(index)/double(tags.size()-1);
+    const auto links = tags[index]->linked_tags;
+    for(const auto&[tag,taglist]:links){
+        const int nowpos = taglist->find(tag);
+        if(nowpos<0)
+            continue;
+        int newpos = int(taglist->size()*pos);
         if(nowpos<newpos)
             --newpos;
+        newpos = std::clamp(newpos,0,int(taglist->size())-1);
         taglist->move(nowpos,newpos);
     }
 }
@@ -143,22 +165,23 @@ QMimeData *teMultiTagListModel::mimeData(const QModelIndexList &indexes) const {
     QByteArray encodedData;
     QDataStream stream(&encodedData, QIODevice::WriteOnly);
     for (const QModelIndex &index : indexes) {
-        if (index.isValid()) {
+        if (index.isValid())
             stream << index.row();
-        }
     }
     mimeData->setData("application/x-qabstractitemmodeldatalist", encodedData);
-    QString finalStr;
-    for (const QModelIndex &index : indexes) {
-        finalStr.append(tags[index.row()]->text);
-        finalStr.append(qsl(", "));
-    }
-    finalStr.chop(2);
-    mimeData->setText(finalStr);
+
+    QStringList texts;
+    for (const QModelIndex &index : indexes)
+        if (index.row()>=0&&index.row()<tags.size())
+            texts.append(tags[index.row()]->text);
+    mimeData->setText(texts.join(qsl(", ")));
     return mimeData;
 }
 
-bool teMultiTagListModel::moveRows(const QModelIndex &sourceParent, int sourceRow, int count, const QModelIndex &destinationParent, int destinationRow) {
+bool teMultiTagListModel::moveRows(const QModelIndex &sourceParent, int sourceRow, int count,
+                                  const QModelIndex &destinationParent, int destinationRow) {
+    if (sourceParent.isValid() || destinationParent.isValid())
+        return false;
     if (sourceRow < 0 || destinationRow < 0 || sourceRow >= tags.size() ||
         destinationRow > tags.size() || count <= 0 || sourceRow + count > tags.size()) {
         return false;
@@ -167,7 +190,8 @@ bool teMultiTagListModel::moveRows(const QModelIndex &sourceParent, int sourceRo
         return false;
     }
 
-    beginMoveRows(sourceParent, sourceRow, sourceRow + count - 1, destinationParent, sourceRow<destinationRow?destinationRow+count:destinationRow);
+    beginMoveRows(sourceParent, sourceRow, sourceRow + count - 1, destinationParent,
+                  sourceRow<destinationRow?destinationRow+count:destinationRow);
     QList<teMultiTagCore*> tempTags;
     for (int i = 0; i < count; ++i) {
         tempTags.append(tags.takeAt(sourceRow));
@@ -179,12 +203,55 @@ bool teMultiTagListModel::moveRows(const QModelIndex &sourceParent, int sourceRo
     return true;
 }
 
-void teMultiTagListModel::newTagTypeFinished(teMultiTagCore *in_tag, int row){
-    in_tag->teDisconnect(this,teCallbackType::edit);
-    if(in_tag->text.isEmpty()||insertToTaglist(in_tag,tags.size()>1?(double)row/(tags.size()-1):0)){
-        tagErase(tags.indexOf(in_tag));
+bool teMultiTagListModel::moveTags(const QList<int>& rows, int destination){
+    if (rows.isEmpty() || tags.isEmpty())
+        return false;
+
+    QList<int> sorted = rows;
+    std::sort(sorted.begin(), sorted.end());
+    sorted.erase(std::unique(sorted.begin(), sorted.end()), sorted.end());
+
+    QList<teMultiTagCore*> moved;
+    moved.reserve(sorted.size());
+    // Take the rows out from the back so the remaining indices stay valid.
+    for (int i = sorted.size()-1; i >= 0; --i) {
+        const int row = sorted[i];
+        if (row < 0 || row >= tags.size())
+            continue;
+        beginRemoveRows(QModelIndex(), row, row);
+        moved.prepend(tags.takeAt(row));
+        endRemoveRows();
+    }
+    if (moved.isEmpty())
+        return false;
+
+    // `destination` is an index in the list *before* the removals; shift it by
+    // the number of removed rows that sat above it.
+    int insertAt = destination;
+    for (int row : sorted)
+        if (row < destination)
+            --insertAt;
+    insertAt = std::clamp(insertAt, 0, int(tags.size()));
+
+    beginInsertRows(QModelIndex(), insertAt, insertAt + moved.size() - 1);
+    for (int i = 0; i < moved.size(); ++i)
+        tags.insert(insertAt + i, moved[i]);
+    endInsertRows();
+    return true;
+}
+
+void teMultiTagListModel::newTagTypeFinished(teMultiTagCore *in_tag){
+    teDisconnect(in_tag,teCallbackType::edit);
+    const int row = tags.indexOf(in_tag);
+    if (in_tag->text.isEmpty() || insertToTaglist(in_tag, tags.size()>1&&row>=0?(double)row/(tags.size()-1):0)==nullptr){
+        // An empty or unusable entry is dropped again.
+        if (row >= 0 && tags.indexOf(in_tag) == row)
+            tagErase(row);
+        else
+            tagErase(in_tag);
         return;
-    }else
+    }
+    if (row >= 0)
         emit dataChanged(index(row,0),index(row,0),{Qt::EditRole});
 }
 
@@ -194,129 +261,134 @@ void teMultiTagListModel::loadFiles(QList<tePictureFile *> in_filelist, bool ifc
     for(tePictureFile*f:in_filelist){
         teTagList&taglist = f->taglist;
         linkTagList(&taglist);
-        for(std::shared_ptr<tetagcore>tc:taglist){
-            bool ifnew;
+        // Copy the tag list: linking may create multi tags, and a multi tag can
+        // (indirectly) touch the same tag list.
+        const QVector<std::shared_ptr<tetagcore>> tagcores = taglist.getTags();
+        for(std::shared_ptr<tetagcore>tc:tagcores){
+            bool ifnew = false;
             teMultiTagCore*findCore = getMultiTag(*tc,ifnew);
             findCore->link(tc,&taglist);
         }
     }
-    listview->scrollTo(index(0,0));
+    if(listview&&!tags.isEmpty())
+        listview->scrollTo(index(0,0));
 }
 
 void teMultiTagListModel::eraseFiles(QList<tePictureFile *> in_filelist){
-    std::map<QString,teMultiTagCore*>multitags;
-    for(teMultiTagCore*mt:tags){
-        multitags.insert({*mt,mt});
-    }
     for(tePictureFile*f:in_filelist){
-        teTagList&tl = f->taglist;
-        for(std::shared_ptr<tetagcore>tc:tl){
-            auto it = multitags.find(*tc);
-            if(it!=multitags.end()){
-                it->second->unlink(tc);
-            }
+        teTagList& tl = f->taglist;
+        // unlink_tags_in_list() may destroy multi tags, which mutates `tags`;
+        // iterate over a snapshot and re-check membership.
+        const QList<teMultiTagCore*> snapshot = tags;
+        for(teMultiTagCore* mt : snapshot){
+            if(tags.contains(mt))
+                mt->unlink_tags_in_list(&tl);
         }
-        unlinkTagList(&f->taglist);
+        unlinkTagList(&tl);
     }
 }
 
 teMultiTagCore* teMultiTagListModel::insertToTaglist(teMultiTagCore *in_tag, double pos){
-    --ifrecivenewtagcoreinsertsignal;
-    int taglist_count_minus_one=linked_taglists.size()-1;
-    if(taglist_count_minus_one==-1)return (teMultiTagCore *)(-1);
-    int i=0;
-    QString in_tag_text = in_tag->text;
-    std::shared_ptr<tetagcore>origin=std::make_shared<tetagcore>(in_tag_text);
-    teMultiTagCore* repeattag=nullptr;
-    for(;i<taglist_count_minus_one;++i){
-        std::shared_ptr<tetagcore>tmpcpy = std::make_shared<tetagcore>(*origin);
-        if(repeattag){
-            if(linked_taglists[i]->insert(linked_taglists[i]->size()*pos,tmpcpy,1)==0){
-                repeattag->link(tmpcpy,linked_taglists[i]);
-            }
-        }
-        else if(linked_taglists[i]->insert(linked_taglists[i]->size()*pos,tmpcpy,1)<0){
-            for(teMultiTagCore*mt:tags){
-                if((QString)*mt==in_tag_text&&mt!=in_tag){
-                    repeattag=mt;break;
-                }
-            }
-            if(!repeattag)
-                telog("[teMultitagListWidget::insert_to_taglist]this tag is repeated but can't find the tag in multitaglist");
-            else
-                moveLinkedTags(in_tag,repeattag);
-        }
-        else
-            in_tag->link(tmpcpy,linked_taglists[i]);
+    if(linked_taglists.isEmpty())
+        return nullptr;
+
+    // 1) Merging: if another multi tag already carries this text, the edit must
+    //    end up as a single row (and a single tag per image), not as a duplicate.
+    teMultiTagCore* target = in_tag;
+    if (teMultiTagCore* other = findMultiTag(in_tag->text, in_tag)) {
+        moveLinkedTags(other, in_tag);
+        tagErase(other);
+        target = in_tag;
     }
-    if(linked_taglists[i]->insert(linked_taglists[i]->size()*pos,origin,1)<0&&!repeattag){
-        for(teMultiTagCore*mt:tags){
-            if((QString)*mt==in_tag_text&&mt!=in_tag){
-                repeattag=mt;
+
+    // 2) Make sure every linked list holds exactly one tag with this text. The
+    //    flag keeps tagInserted from re-entering this function for the tags we
+    //    create here (they are linked explicitly below).
+    --ifrecivenewtagcoreinsertsignal;
+    const QList<teTagList*> lists = linked_taglists;
+    for(teTagList* list : lists){
+        std::shared_ptr<tetagcore> existing;
+        for(const std::shared_ptr<tetagcore>& tc : *list){
+            if(QString(*tc)==target->text){
+                existing = tc;
                 break;
             }
         }
-        if(!repeattag)telog("[teMultitagListWidget::insert_to_taglist]this tag is repeating but can't find the tag in multitaglist");
-        else moveLinkedTags(in_tag,repeattag);
-    }else{
-        (repeattag?repeattag:in_tag)->link(origin,linked_taglists[i]);
+        if(!existing){
+            existing = std::make_shared<tetagcore>(target->text);
+            const int index = std::clamp(int(list->size()*pos),0,int(list->size()));
+            if(list->insert(index,existing,1)!=0)
+                existing.reset();
+        }
+        if(existing)
+            target->link(existing,list);
     }
     ++ifrecivenewtagcoreinsertsignal;
 
     emit listModified();
-    if(repeattag)return repeattag;
-    else return nullptr;
+    return target;
+}
+
+void teMultiTagListModel::tagDestroy(int index){
+    if(index<0||index>=tags.size())
+        return;
+    tags[index]->self_destroy();
+    removeRows(index,1);
 }
 
 void teMultiTagListModel::tagDestroy(){
-    QList<QModelIndex> indexes = listview->selectionModel()->selectedIndexes();
+    const QModelIndexList indexes = listview?listview->selectionModel()->selectedRows():QModelIndexList{};
     if (indexes.isEmpty())
         return;
     QList<int> rows;
-    for (const QModelIndex& index : indexes) {
+    rows.reserve(indexes.size());
+    for (const QModelIndex& index : indexes)
         if (index.isValid())
             rows.append(index.row());
-    }
     std::sort(rows.begin(), rows.end(), std::greater<int>());
-
-    listview->selectionModel()->clear();
-    for (int row : rows) {
-        beginRemoveRows(QModelIndex(), row, row);
+    rows.erase(std::unique(rows.begin(), rows.end()), rows.end());
+    for (int row : rows)
         tagDestroy(row);
-        endRemoveRows();
-    }
 }
 
 void teMultiTagListModel::clear(){
-    if(tags.empty())return;
-    beginRemoveRows(QModelIndex(),0,tags.size()-1);
-    for(teMultiTagCore*mt:tags){
+    if(tags.isEmpty()){
+        unlinkTagList();
+        return;
+    }
+    beginResetModel();
+    const QList<teMultiTagCore*> old = tags;
+    tags.clear();
+    endResetModel();
+    for(teMultiTagCore* mt : old){
         mt->clear();
         delete mt;
     }
-    tags.clear();
     unlinkTagList();
-    endRemoveRows();
 }
 
 bool teMultiTagListModel::removeRows(int row, int count, const QModelIndex &parent) {
-    int d=row+count;
-    if (row < 0 || d > tags.size())
+    if(row<0||count<=0||row+count>tags.size())
         return false;
-    QVector<teMultiTagCore*>deleteMultiTags;
-    beginRemoveRows(parent, row, d - 1);
-    for (int i = row; i < d; ++i){
-        deleteMultiTags.append(tags.takeAt(i));
-    }
-    QTimer::singleShot(0,[deleteMultiTags]{
-        for(teMultiTagCore*mtc:deleteMultiTags)
+    QList<teMultiTagCore*> victims;
+    beginRemoveRows(parent, row, row+count-1);
+    for(int i=0;i<count;++i)
+        victims.append(tags.takeAt(row));
+    endRemoveRows();
+    // Deleting a multi tag runs its `ready_destroy`/Qt signals, which may call
+    // back into this model, so the deletion is deferred by one event loop pass.
+    QTimer::singleShot(0,[victims]{
+        for(teMultiTagCore*mtc:victims)
             delete mtc;
     });
-    endRemoveRows();
     return true;
 }
 
 void teMultiTagCore::link(std::shared_ptr<tetagcore> in_core, teTagList *in_list){
+    const auto range = linked_tags.equal_range(in_core);
+    for(auto it = range.first;it!=range.second;++it)
+        if(it->second==in_list)
+            return;                         // already linked
     linked_tags.insert({in_core,in_list});
     in_core->teConnect(teCallbackType::destroy,this,&teMultiTagCore::unlink,in_core);
     in_core->teConnect(teCallbackType::edit,this,&teMultiTagCore::re_read,in_core,in_list);
@@ -331,13 +403,24 @@ void teMultiTagCore::unlink(std::shared_ptr<tetagcore> in_core){
 }
 
 void teMultiTagCore::setText(const QString &in_text){
-    text=in_text;
-    if(!linked_tags.empty())
-        setCoreText();
-    teemit(teCallbackType::edit);
+    setText(QString(in_text));
 }
 
 void teMultiTagCore::setText(QString &&in_text){
+    if(text==in_text){
+        teemit(teCallbackType::edit);
+        return;
+    }
+
+    // The edited row stays where it is; an existing row with the same text is
+    // merged into it so the multi tag list never shows the same tag twice.
+    if(model){
+        if(teMultiTagCore* other = model->findMultiTag(in_text, this)){
+            moveLinkedTags(other,this);
+            model->tagErase(other);
+        }
+    }
+
     text=std::move(in_text);
     if(!linked_tags.empty())
         setCoreText();
@@ -346,32 +429,30 @@ void teMultiTagCore::setText(QString &&in_text){
 
 void teMultiTagCore::setCoreText(){
     re_read_switch=false;
-    auto tmp_linked_tags = linked_tags;
-    for(auto&[tc,tl]:tmp_linked_tags)
+    const auto tmp_linked_tags = linked_tags;
+    for(const auto&[tc,tl]:tmp_linked_tags){
+        // A previous iteration may have merged this core into another tag (a
+        // rename erases duplicates), so re-check that it is still there before
+        // renaming it again.
+        if(tl->find(tc)<0)
+            continue;
         tl->edit(tc,text,true);
+    }
     re_read_switch=true;
 }
 
 void teMultiTagCore::unlink_tags_in_list(teTagList *in_list){
-    auto it = linked_tags.begin();
-    for(;it!=linked_tags.end();){
-        if(it->second!=in_list)
-            ++it;
-        else{
-            unlink(it->first);
-            it=linked_tags.erase(it);
-        }
-    }
-}
-
-void teMultiTagCore::link_tags_in_list(teTagList *in_list){
-    for(std::shared_ptr<tetagcore>tc:*in_list)
-        if((QString)*tc==text)
-            link(tc,in_list);
+    QList<std::shared_ptr<tetagcore>> victims;
+    for(const auto&[tc,tl]:linked_tags)
+        if(tl==in_list)
+            victims.append(tc);
+    for(const std::shared_ptr<tetagcore>& tc : victims)
+        unlink(tc);
 }
 
 void teMultiTagCore::clear(){
-    for(auto&[tc,tl]:linked_tags)
+    const auto links = linked_tags;
+    for(const auto&[tc,tl]:links)
         tc->teDisconnect(this);
     linked_tags.clear();
     text.clear();
@@ -386,9 +467,11 @@ void teMultiTagCore::self_destroy(){
 }
 
 void teMultiTagCore::re_read(std::shared_ptr<tetagcore>in,teTagList*in_list){
-    if(!re_read_switch)return;
+    if(!re_read_switch)
+        return;
     if((QString)*in!=text){
-        model->linkNewTagcore(in,in_list);
+        if(model)
+            model->linkNewTagcore(in,in_list);
         unlink(in);
     }
 }
@@ -400,7 +483,7 @@ teTagListDelegate::teTagListDelegate(QWidget *parent):parent(parent){
         emit commitData(lineedit);
         lineedit->stop();
     });
-    lineedit->installEventFilter(const_cast<teTagListDelegate*>(this));
+    lineedit->installEventFilter(this);
 }
 
 bool teTagListDelegate::eventFilter(QObject *watched, QEvent *e) {
@@ -417,9 +500,8 @@ bool teTagListDelegate::eventFilter(QObject *watched, QEvent *e) {
     } else if (e->type() == QEvent::KeyPress) {
         auto keyEvent = static_cast<QKeyEvent*>(e);
         if (keyEvent->key() == Qt::Key_Tab) {
-            if (suggestionBox && suggestionBox->currentItem()) {
+            if (suggestionBox && suggestionBox->currentItem())
                 lineeditp->setText(suggestionBox->currentItem()->data(Qt::UserRole).toString());
-            }
             suggestionBox->hide();
             return true;
         }
@@ -428,26 +510,29 @@ bool teTagListDelegate::eventFilter(QObject *watched, QEvent *e) {
 }
 
 QWidget *teTagListDelegate::createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const {
-    editing_row = index.row();
+    Q_UNUSED(option);
     showEditor=true;
-    teMultiTagCore*tagcore = qvariant_cast<teMultiTagCore*>(index.data(Qt::EditRole));
-    lineedit->start(*tagcore);
+    auto* tagcore = index.data(Qt::DisplayRole).value<teMultiTagCore*>();
+    if(tagcore)
+        lineedit->start(*tagcore);
     return lineedit;
 }
 
 void teTagListDelegate::setModelData(QWidget *editor, QAbstractItemModel *model, const QModelIndex &index) const {
-    suggestionLineEdit *lineEdit = qobject_cast<suggestionLineEdit *>(editor);
+    auto *lineEdit = qobject_cast<suggestionLineEdit *>(editor);
     if (lineEdit) {
-        editing_row = -1;
         showEditor=false;
-        model->setData(index, ((suggestionLineEdit*)editor)->text(), Qt::EditRole);
+        model->setData(index, lineEdit->text(), Qt::EditRole);
         emit const_cast<teTagListDelegate *>(this)->closeEditor(editor, QAbstractItemDelegate::NoHint);
     }
 }
 
 void teTagListDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const {
+    auto* tag = index.data(Qt::DisplayRole).value<teMultiTagCore*>();
+    if(!tag)
+        return;
+
     painter->save();
-    const auto tag = static_cast<teMultiTagCore*>(index.internalPointer());
     QColor borderColor;
     QColor bgColor;
     if (option.state & QStyle::State_Selected) {
@@ -466,7 +551,7 @@ void teTagListDelegate::paint(QPainter *painter, const QStyleOptionViewItem &opt
             borderColor = QColor(41, 122, 122);
         }
     }
-    QRect rect = option.rect;
+    const QRect rect = option.rect;
     painter->setPen(Qt::NoPen);
     painter->setBrush(bgColor);
     painter->drawRect(rect);
@@ -476,7 +561,10 @@ void teTagListDelegate::paint(QPainter *painter, const QStyleOptionViewItem &opt
 
     painter->setPen(option.state & QStyle::State_Selected
                         ? QColor(0, 217, 109) : QColor(178, 136, 255));
-    if(!tag->text.isEmpty()&& index.row()!=editing_row){
+    if(!tag->text.isEmpty()){
+        // The inline editor is a child widget drawn on top of this cell, so the
+        // text is painted unconditionally. Skipping it while editing made the
+        // row look empty whenever the editor was closed without committing.
         painter->setPen(Qt::white);
         painter->setFont(QFont("Segoe UI", 15));
         painter->drawText(rect.adjusted(3, 0, 0, 0), Qt::AlignVCenter | Qt::AlignLeft, tag->text);
@@ -487,7 +575,7 @@ void teTagListDelegate::paint(QPainter *painter, const QStyleOptionViewItem &opt
     painter->restore();
 }
 
-teMultitagListView::teMultitagListView(QWidget *parent) {
+teMultitagListView::teMultitagListView(QWidget *parent) : QListView(parent) {
     model = new teMultiTagListModel(this);
     model->listview=this;
     setModel(model);
@@ -500,7 +588,6 @@ teMultitagListView::teMultitagListView(QWidget *parent) {
     setDragEnabled(true);
     setAcceptDrops(true);
     setDropIndicatorShown(true);
-    // Context menu for edit, delete, and more
     initializeMenu();
     setContextMenuPolicy(Qt::CustomContextMenu);
     setStyleSheet(liststyle.arg(0));
@@ -543,79 +630,78 @@ void teMultitagListView::dropEvent(QDropEvent *event) {
         QAbstractItemView::dropEvent(event);
         return;
     }
-    QPoint Pos{event->position().toPoint().x(),event->position().toPoint().y()+delegate.tagheight/2};
-    QModelIndex targetIndex = indexAt(Pos);
-    int dropRow = targetIndex.isValid() ? targetIndex.row() : model->rowCount();
-    QModelIndexList selectedIndexes = selectionModel()->selectedIndexes();
+    QPoint pos{event->position().toPoint().x(),event->position().toPoint().y()+delegate.tagheight/2};
+    const QModelIndex targetIndex = indexAt(pos);
+    const int dropRow = targetIndex.isValid() ? targetIndex.row() : model->rowCount();
+    const QModelIndexList selectedIndexes = selectionModel()->selectedRows();
     if (selectedIndexes.isEmpty()) {
         event->ignore();
         return;
     }
-    static auto cmpfunc = [](const QModelIndex&a,const QModelIndex&b)->bool{
-        return a.row()<b.row();
-    };
-    std::sort(selectedIndexes.begin(), selectedIndexes.end(),cmpfunc);
-    int offset = 0;
-    for (const QModelIndex &index : selectedIndexes) {
-        int sourceRow = index.row()<dropRow?index.row() + offset:index.row();
-        model->moveRow(QModelIndex(), sourceRow, QModelIndex(),sourceRow < dropRow?dropRow-1: dropRow);
-        if (sourceRow < dropRow) {
-            --offset;
-        }
+
+    QList<int> rows;
+    rows.reserve(selectedIndexes.size());
+    for (const QModelIndex &index : selectedIndexes)
+        rows.append(index.row());
+    // Let the model do the row bookkeeping; doing it here with an accumulated
+    // offset used to move the wrong rows when several rows were dragged.
+    if (model->moveTags(rows, dropRow)) {
+        std::sort(rows.begin(), rows.end());
+        int first = dropRow;
+        for (int row : rows)
+            if (row < dropRow)
+                --first;
+        first = std::clamp(first, 0, model->rowCount()-1);
+        selectionModel()->clearSelection();
+        for (int i = 0; i < rows.size() && first + i < model->rowCount(); ++i)
+            selectionModel()->select(model->index(first + i, 0), QItemSelectionModel::Select);
+        event->accept();
+    } else {
+        event->ignore();
     }
-    event->accept();
 }
 
 void teMultitagListView::startDrag(Qt::DropActions supportedActions) {
-    QModelIndexList indexes = selectedIndexes();
+    const QModelIndexList indexes = selectedIndexes();
     if (indexes.isEmpty())
         return;
     QList<teMultiTagCore*>& tags = model->tags;
     QFont font("Segoe UI", 10);
     QFontMetrics fontMetrics(font);
-    QString tagString;
-    int maxWidth = 0;
-    int totalHeight = 0;
-
-    QModelIndex index = *indexes.begin();
-    tagString = *(tags.at(index.row()));
-    int width = fontMetrics.horizontalAdvance(tagString) + 4;
-    maxWidth = qMax(maxWidth, width);
-    totalHeight += fontMetrics.height() + 4;
-    int pixmapWidth = maxWidth + 8;
-    int pixmapHeight = fontMetrics.height() + 4;
+    const QModelIndex index = *indexes.begin();
+    if (index.row() < 0 || index.row() >= tags.size())
+        return;
+    const QString tagString = *tags.at(index.row());
+    const int width = fontMetrics.horizontalAdvance(tagString) + 4;
+    const int pixmapWidth = width + 8;
+    const int pixmapHeight = fontMetrics.height() + 4;
     const int overlap = 4;
-    int totalHeightWithOverlap = totalHeight + (indexes.size() - 1) * overlap;
+    const int totalHeightWithOverlap = pixmapHeight + (indexes.size() - 1) * overlap;
     QPixmap pixmap(pixmapWidth, totalHeightWithOverlap);
     pixmap.fill(Qt::transparent);
 
     QPainter painter(&pixmap);
     painter.setRenderHint(QPainter::Antialiasing);
 
-    QColor backgroundColor(21, 63, 34);
-    QColor borderColor(76, 230, 56);
+    const QColor backgroundColor(21, 63, 34);
+    const QColor borderColor(76, 230, 56);
 
     int currentYOffset = (indexes.size() - 1) * overlap;
     for (int i = indexes.size() - 1; i >= 0; --i) {
-        QRect rect(0, currentYOffset, pixmapWidth, pixmapHeight);
+        const QRect rect(0, currentYOffset, pixmapWidth, pixmapHeight);
         painter.setBrush(backgroundColor);
         painter.setPen(Qt::NoPen);
         painter.drawRect(rect);
-
         painter.setPen(borderColor);
         painter.drawRect(rect.adjusted(1, 1, -1, -1));
-
         if (i == 0) break;
         currentYOffset -= overlap;
     }
 
-    currentYOffset = (indexes.size() - 1) * overlap;
     painter.setFont(font);
     painter.setPen(Qt::white);
-    QRect rect(4, 2, pixmapWidth - 8, pixmapHeight - 4);
-    painter.drawText(rect, Qt::AlignLeft | Qt::AlignVCenter, tagString);
-    currentYOffset += pixmapHeight;
-
+    const QRect textRect(4, (indexes.size() - 1) * overlap + 2, pixmapWidth - 8, pixmapHeight - 4);
+    painter.drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter, tagString);
     painter.end();
 
     QMimeData *mimeData = model->mimeData(indexes);
@@ -625,51 +711,52 @@ void teMultitagListView::startDrag(Qt::DropActions supportedActions) {
     QDrag *drag = new QDrag(this);
     drag->setMimeData(mimeData);
     drag->setPixmap(pixmap);
-    drag->setHotSpot(rect.center());
-    Qt::DropAction action = drag->exec(supportedActions, defaultDropAction());
-    if (action == Qt::MoveAction) {
-        return;
-    }
+    drag->setHotSpot(textRect.center());
+    drag->exec(supportedActions, defaultDropAction());
 }
 
 void teMultitagListView::copyToClipBoard(bool ifcut){
-    QString clipBoardText;
-    QModelIndexList selectedIndexes = selectionModel()->selectedIndexes();
+    const QModelIndexList selectedIndexes = selectionModel()->selectedRows();
+    if(selectedIndexes.isEmpty())
+        return;
 
+    QStringList texts;
     for(const QModelIndex&index:selectedIndexes){
-        auto* tagcore = qvariant_cast<teMultiTagCore*>(model->data(index,Qt::DisplayRole));
-        clipBoardText.append(tagcore->text);
-        clipBoardText.append(", ");
-        selectionModel()->reset();
+        // data() no longer depends on the selection, so the selection must not
+        // be reset while gathering the texts (it used to be cleared in the loop).
+        if(auto* tagcore = index.data(Qt::DisplayRole).value<teMultiTagCore*>())
+            texts.append(tagcore->text);
     }
-    if(clipBoardText.isEmpty()) return;
-    clipBoardText.chop(2);
-    QApplication::clipboard()->setText(clipBoardText);
+    if(texts.isEmpty())
+        return;
+    QApplication::clipboard()->setText(texts.join(qsl(", ")));
 
     if(ifcut){
-        static auto cmpfunc = [](const QModelIndex&a,const QModelIndex&b)->bool{
-            return a.row()>b.row();
-        };
-        std::sort(selectedIndexes.begin(), selectedIndexes.end(),cmpfunc);
-        for(QModelIndex& index:selectedIndexes)
-            model->tagDestroy(index.row());
+        QList<int> rows;
+        rows.reserve(selectedIndexes.size());
+        for(const QModelIndex&index:selectedIndexes)
+            rows.append(index.row());
+        std::sort(rows.begin(),rows.end(),std::greater<int>());
+        selectionModel()->clearSelection();
+        for(int row:rows)
+            model->tagDestroy(row);
     }
 }
 
 void teMultitagListView::paste(const QModelIndex &index){
-    selectionModel()->clear();
-    int row = index.row();
-    int modelTagCount = model->tags.size();
-    bool ifnew;
+    int row = index.isValid()?index.row():model->rowCount();
+    const int modelTagCount = model->tags.size();
 
-    QString clipboardText = QApplication::clipboard()->text();
-    QStringList strlst = clipboardText.split(",");
+    const QString clipboardText = QApplication::clipboard()->text();
+    const QStringList strlst = clipboardText.split(QLatin1Char(','),Qt::SkipEmptyParts);
 
-    for(int i =strlst.count()-1;i>-1;--i){
-        QString& str = strlst[i];
-        teMultiTagCore* themultitag = model->getMultiTag(str.trimmed(),ifnew,row,true);
-        if(ifnew)
-            model->insertToTaglist(themultitag,modelTagCount>1?(double)row/(modelTagCount-1):0);
+    for(int i = strlst.count()-1;i>-1;--i){
+        const QString text = strlst[i].trimmed();
+        if(text.isEmpty())
+            continue;
+        bool ifnew = false;
+        teMultiTagCore* themultitag = model->getMultiTag(text,ifnew,row,true);
+        model->insertToTaglist(themultitag,modelTagCount>1?(double)row/(modelTagCount-1):0);
     }
 }
 
@@ -702,20 +789,24 @@ void teMultitagListView::keyPressEvent(QKeyEvent *event) {
 }
 
 void teMultitagListView::showContextMenu(const QPoint &pos) {
+    const QModelIndex index = indexAt(pos);
+    if(index.isValid()&&!selectionModel()->isSelected(index))
+        selectionModel()->select(index,QItemSelectionModel::ClearAndSelect);
+
     QAction*selectedAction = menu->exec(mapToGlobal(pos));
-    QModelIndex index = indexAt(pos);
 
     if (selectedAction == deleteAction) {
         model->tagDestroy();
     } else if (selectedAction == insertAction) {
-        model->tagInsert(index.row());
+        model->tagInsert(index.isValid()?index.row():0);
     } else if (selectedAction == insertBelowAction) {
-        model->tagInsert(index.row()+1);
+        model->tagInsert(index.isValid()?index.row()+1:model->rowCount());
     } else if (selectedAction == setposAction) {
         auto indexes = selectionModel()->selectedIndexes();
         std::reverse(indexes.begin(),indexes.end());
         for(QModelIndex& idx:indexes)
-            model->setPos(idx.row());
+            if(idx.isValid())
+                model->setPos(idx.row());
     } else if (selectedAction == copyAction) {
         copyToClipBoard(false);
     } else if (selectedAction == cutAction) {
@@ -723,6 +814,7 @@ void teMultitagListView::showContextMenu(const QPoint &pos) {
     } else if (selectedAction == pasteAction) {
         paste(index);
     } else if (selectedAction == editAction){
-        edit(index);
+        if(index.isValid())
+            edit(index);
     }
 }

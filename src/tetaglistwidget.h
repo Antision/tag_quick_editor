@@ -2,12 +2,14 @@
 #define TETAGLISTWIDGET_H
 #include "suggestionlineedit.h"
 #include "tesignalwidget.h"
+#include "tetaglistmodel.h"
 extern QStringList ClipBoard;
 
 extern QString liststyle;
 extern QString lineeditstyle;
 class teEditorList;
 class tePictureFile;
+class teTagDisplayWidget;
 typedef struct teTag tetag;typedef class teTagCore tetagcore;
 class teTagList;
 class teInputWidget;
@@ -33,11 +35,32 @@ public:
     teInputWidget* plaintextedit;///< Plain text editor for long-form tags
     QListWidget* suggestionBox = new QListWidget;///< Auto-completion suggestion box
     teTagBase*editingTag=nullptr;///< Tag currently being edited
+    std::shared_ptr<teTagCore> editingCore=nullptr;///< Tag being edited when it has no widget
     teTagBase* select_current=nullptr;///< Currently selected tag (current)
     int tmpSelectIndex=-1;///< Temporary index for maintaining selection position
     std::set<teTagBase*> select;///< Set of selected tags (excluding current)
 
     QMenu* menu = new QMenu(this);///< Context menu for right-click operations
+
+    // -- magnified hover view -------------------------------------------------
+    teTagDisplayWidget* tagDisplay=nullptr;///< floating magnified tag
+    QTimer* tagDisplayTimer=nullptr;///< delay before the popup appears
+    QTimer* tagDisplayHideTimer=nullptr;///< grace period while moving into the popup
+    QPointer<teTagBase> pendingDisplayTag;
+    std::shared_ptr<teTagCore> pendingDisplayCore;///< ditto, for the model/view list
+    void scheduleTagDisplay(teTagBase* tag);
+    /// Same, for a tag that is drawn by a delegate and has no widget.
+    void scheduleTagDisplayCore(std::shared_ptr<teTagCore> core);
+    void scheduleTagDisplayHide();
+    void showTagDisplay(teTagBase* tag);
+    /// Same, for a tag that is drawn by a delegate and has no widget.
+    void showTagDisplayCore(std::shared_ptr<teTagCore> core);
+    void hideTagDisplay();
+    void tagDisplayHideTick();
+    /// Installs the hover filter on a tag and on the words it already owns.
+    void installTagDisplayFilters(teTagBase* tag);
+    /// Hides the popup when the cursor really left it (buttons, editors, ...).
+    bool eventFilter(QObject* watched,QEvent* event) override;
 
     // Style enums for different tag states
     teTagBase::tetagStyle normal_style_enum = teTagBase::tetagStyle::normal;///< Normal state style
@@ -79,7 +102,28 @@ public slots:
      * @param in Tag to check
      * @return True if selected
      */
-    bool isSelected(teTagBase*in);
+    virtual bool isSelected(teTagBase*in);
+
+    /* -- selection addressed by tag core ------------------------------------
+     * The editors know only the tag *core* they are linked to, so they used to
+     * reach into it with `core->widget` and pass the widget they found. That
+     * assumption breaks as soon as a tag has no widget of its own (a tag that
+     * is scrolled out of view, or any model/view based list), and it also
+     * dereferenced the pointer without checking it.
+     *
+     * These helpers are the single place where a core is turned into a widget
+     * for the widget based implementation; a model/view based implementation
+     * only has to override them to work on rows instead.
+     */
+    /// The widget currently representing `core` in this list, or nullptr.
+    teTagBase* widgetForCore(const std::shared_ptr<teTagCore>& core) const;
+    virtual void setSelectCurrentCore(std::shared_ptr<teTagCore> core,bool ifclear=true);
+    virtual void setSelectCore(std::shared_ptr<teTagCore> core);
+    virtual int setUnselectCore(std::shared_ptr<teTagCore> core=nullptr);
+    virtual int setSelectRangeCore(std::shared_ptr<teTagCore> core,bool ifclear=true);
+    virtual bool isCoreSelected(std::shared_ptr<teTagCore> core) const;
+    /// Scrolls the list so `core` is visible. Safe when it has no widget.
+    virtual void ensureCoreVisible(std::shared_ptr<teTagCore> core);
 
     /**
      * @brief Loads a new teTagList
@@ -93,6 +137,14 @@ public slots:
      * @param inw Specific word in tag to edit (if provided)
      */
     virtual void tagEdit(teTagBase*tag,teWordBase *inw=nullptr);
+
+    /**
+     * @brief Edits a tag that has no widget of its own (model/view list).
+     *
+     * The widget based implementation simply looks the widget up; a model/view
+     * list overrides this to open the delegate editor on the tag's row.
+     */
+    virtual void tagEditCore(std::shared_ptr<teTagCore> core);
 
     /**
      * @brief Handles text completion from plain text editor
@@ -183,7 +235,7 @@ public:
      * @brief Converts selected tags to comma-separated string
      * @return Formatted string of selected tags
      */
-    QString getSelectText();
+    virtual QString getSelectText();
 
     virtual void cut(){
         QApplication::clipboard()->setText(getSelectText());
@@ -218,18 +270,58 @@ public:
     void onTagLeftButtonClicked(teTagBase*tag,QPoint point,int modifiers);
 };
 
+/**
+ * @brief QListView that reorders rows when one is dropped on another.
+ *
+ * Qt's InternalMove would need mime data and a model that accepts drops; the
+ * row move is expressed directly through teTagListModel::moveRows() instead,
+ * which is also what the undo records expect.
+ */
+class teTagListView : public QListView
+{
+    Q_OBJECT
+public:
+    explicit teTagListView(QWidget* parent=nullptr):QListView(parent){}
+protected:
+    void dropEvent(QDropEvent* event) override;
+};
+
+/**
+ * @brief The tag list of one picture.
+ *
+ * The tags are drawn by teTagListView + teTagListModel + teTagDelegate: one row
+ * per tag and no widget per tag, which is what makes switching from one image
+ * to the next cheap. Everything the rest of the program uses (loading a file,
+ * inserting/erasing/editing a tag, the selection addressed by tag core) keeps
+ * the same signature; only the internals changed.
+ */
 class teTagListWidget : public teTagListWidgetBase
 {
     Q_OBJECT
 public:
     teTagList* showing_list=nullptr;///< the teTagList which is displaying
     teEditorList* editorlist=nullptr;///< the EditorList connected with
-    tePictureFile* file;
+    /// The file whose caption is shown. Must be initialized: clear() reads it
+    /// (and calls into it) before loadFile() ever ran, and an uninitialized
+    /// pointer there made the first clear()/destruction crash at random.
+    tePictureFile* file=nullptr;
     teTagListWidget(QWidget *parent = nullptr);
     ~teTagListWidget(){
         clear();
     }
     size_t size()const;
+
+    /// The view that draws the tags (one row per tag).
+    teTagListView* view() const { return m_view; }
+    /// The model behind the view.
+    teTagListModel* model() const { return m_model; }
+    /// Tag of the current row, or nullptr.
+    std::shared_ptr<teTagCore> currentCore() const;
+    /// Scrolls back to the top of the list.
+    void scrollToTop();
+    /// Selects every row (Ctrl+A).
+    void selectAllRows();
+
     virtual void clear(teTagList* in=nullptr)override;
     virtual void load(teTagList* newlist=nullptr)override;
     virtual void tagdroped(teTagBase*in_tag,int modifiers)override;
@@ -241,6 +333,7 @@ public:
     void tagErase(int index)override;
     virtual void tagErase(std::shared_ptr<teTagCore> tag=nullptr)override;
     virtual void tagEdit(std::shared_ptr<teTagCore>tag, QString text,int removeDuplicate=1,bool ifemit=true)override;
+    virtual void tagEditCore(std::shared_ptr<teTagCore> core)override;
     virtual void tagInsertAbove(bool edit=true,std::shared_ptr<teTagCore>newtag=nullptr,int removeDuplicate=1)override;
     virtual void tagInsertBelow(bool edit=true,std::shared_ptr<teTagCore>newtag=nullptr,int removeDuplicate=1)override;
     void keyPressEvent(QKeyEvent *event) override;
@@ -250,11 +343,41 @@ public:
         }
     }
     void onFileDeleted(tePictureFile*obj);
-public slots:
+
+    // -- selection, addressed by tag core (the view owns the selection) --------
+    virtual void setSelectCurrentCore(std::shared_ptr<teTagCore> core,bool ifclear=true)override;
+    virtual void setSelectCore(std::shared_ptr<teTagCore> core)override;
+    virtual int setUnselectCore(std::shared_ptr<teTagCore> core=nullptr)override;
+    virtual int setSelectRangeCore(std::shared_ptr<teTagCore> core,bool ifclear=true)override;
+    virtual bool isCoreSelected(std::shared_ptr<teTagCore> core) const override;
+    virtual void ensureCoreVisible(std::shared_ptr<teTagCore> core)override;
     virtual int setSelectRange(teTagBase*in,bool ifclear=true)override;
+    /// The text of the selected rows, one tag per line.
+    QString getSelectText()override;
+    /// Hides the magnified popup when the pointer really left it.
+    bool eventFilter(QObject* watched,QEvent* event)override;
+public slots:
+    void onViewDoubleClicked(const QModelIndex& index);
+    void onViewContextMenu(const QPoint& pos);
+    void onViewCurrentChanged(const QModelIndex& current,const QModelIndex& previous);
+    void onModelReset();
 signals:
     void newlistloaded(teTagList*);
     void showinglistDestroyed();
+private:
+    /// Starts editing `row` (or opens the sentence window).
+    void startEditingRow(int row);
+    /// Erases every selected row.
+    void eraseSelectedRows();
+    /// Drops a row that was left empty by the inline editor.
+    void finishRowEdit(int row);
+
+    teTagListView* m_view=nullptr;
+    teTagListModel* m_model=nullptr;
+    teTagDelegate* m_delegate=nullptr;
+    /// Core that was current before a model reset (external changes rebuild the
+    /// model, so the selection has to be restored by core).
+    std::shared_ptr<teTagCore> m_currentCoreBeforeReset;
 };
 
 #endif // TETAGLISTWIDGET_H

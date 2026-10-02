@@ -1,117 +1,164 @@
 #include "teobject.h"
-template<typename T,typename U>
-void erase_specified_keyvalue(std::multimap<T,U>&mmap,const T key,const U value){
-    auto range = mmap.equal_range(key);
-    for (auto it = range.first; it != range.second; ) {
-        if (it->second == value) {
-            it = mmap.erase(it);
-            break;
-        } else {
+
+std::recursive_mutex& teCallbackMutex()
+{
+    static std::recursive_mutex mtx;
+    return mtx;
+}
+
+void teObject::teDisconnectExceptLocked(int keepType)
+{
+    // Callbacks *this emits.
+    for (auto it = linked_callback_call.begin(); it != linked_callback_call.end(); ) {
+        if (it->second && it->second->type == keepType) {
             ++it;
-        }
-    }
-}
-void teObject::teDisconnect(teObject* obj,int type){
-    if(obj==nullptr){
-        for(auto&[obj,func]:linked_callback_call){
-            delete func;
-            if(obj){
-                obj->linked_callback_recive.erase(this);
-            }
-        }
-        linked_callback_call.clear();
-        for(auto&[obj,func]:linked_callback_recive){
-            delete func;
-            if(obj){
-                obj->linked_callback_call.erase(this);
-            }
-        }
-        linked_callback_recive.clear();
-    }else{
-        {
-            if(type<0){
-                auto[rg_begin,rg_end] = linked_callback_call.equal_range(obj);
-                for(;rg_begin!=rg_end;++rg_begin){
-                    delete rg_begin->second;
-                }
-                linked_callback_call.erase(obj);
-                obj->linked_callback_recive.erase(this);
-            }else{
-                auto it =linked_callback_call.lower_bound(obj);
-                auto upper = linked_callback_call.upper_bound(obj);
-                while(it!=upper&&upper!=linked_callback_call.end()){
-                    if(it->second->type==type){
-                        delete it->second;
-                        erase_specified_keyvalue<teObject*,obj_callback_function_base*>(it->first->linked_callback_recive,this,it->second);
-                        it=linked_callback_call.erase(it);
-                        upper=linked_callback_call.upper_bound(obj);
-                    }else{
-                        ++it;
-                    }
-                }
-            }
-        }{
-            if(type<0){
-                auto[rg_begin,rg_end] = linked_callback_recive.equal_range(obj);
-                for(;rg_begin!=rg_end;++rg_begin){
-                    delete rg_begin->second;
-                }
-                linked_callback_recive.erase(obj);
-                obj->linked_callback_call.erase(this);
-            }
-        }
-    }
-}
-void teObject::teemit(teCallbackType calltype,bool autodelete){
-    std::vector<std::pair<teObject*,obj_callback_function_base*>> snapshot(linked_callback_call.begin(), linked_callback_call.end());
-    for(auto[obj,func]:snapshot){
-        if(func->type!=calltype||(linked_callback_call.find(obj)==linked_callback_call.end())){
             continue;
         }
-        (*func)();
+        teCallbackPtr cb = it->second;
+        if (cb)
+            cb->connected = false;
+        if (it->first) {
+            auto& peer = it->first->linked_callback_recive;
+            for (auto p = peer.begin(); p != peer.end(); ) {
+                if (p->first == this && p->second == cb)
+                    p = peer.erase(p);
+                else
+                    ++p;
+            }
+        }
+        it = linked_callback_call.erase(it);
     }
-    if(autodelete&&calltype!=ready_destroy&&calltype!=destroy)
+
+    // Callbacks *this receives.
+    for (auto it = linked_callback_recive.begin(); it != linked_callback_recive.end(); ) {
+        if (it->second && it->second->type == keepType) {
+            ++it;
+            continue;
+        }
+        teCallbackPtr cb = it->second;
+        if (cb)
+            cb->connected = false;
+        if (it->first) {
+            auto& peer = it->first->linked_callback_call;
+            for (auto p = peer.begin(); p != peer.end(); ) {
+                if (p->first == this && p->second == cb)
+                    p = peer.erase(p);
+                else
+                    ++p;
+            }
+        }
+        it = linked_callback_recive.erase(it);
+    }
+}
+
+void teObject::teDisconnect(teObject* obj, int type)
+{
+    std::lock_guard<std::recursive_mutex> lg(teCallbackMutex());
+
+    auto matches = [&](const CallbackMap::value_type& entry) {
+        if (obj != nullptr && entry.first != obj)
+            return false;
+        if (type >= 0 && (!entry.second || entry.second->type != type))
+            return false;
+        return true;
+    };
+
+    for (auto it = linked_callback_call.begin(); it != linked_callback_call.end(); ) {
+        if (!matches(*it)) {
+            ++it;
+            continue;
+        }
+        teCallbackPtr cb = it->second;
+        if (cb)
+            cb->connected = false;
+        if (it->first) {
+            auto& peer = it->first->linked_callback_recive;
+            for (auto p = peer.begin(); p != peer.end(); ) {
+                if (p->first == this && p->second == cb)
+                    p = peer.erase(p);
+                else
+                    ++p;
+            }
+        }
+        it = linked_callback_call.erase(it);
+    }
+
+    for (auto it = linked_callback_recive.begin(); it != linked_callback_recive.end(); ) {
+        if (!matches(*it)) {
+            ++it;
+            continue;
+        }
+        teCallbackPtr cb = it->second;
+        if (cb)
+            cb->connected = false;
+        if (it->first) {
+            auto& peer = it->first->linked_callback_call;
+            for (auto p = peer.begin(); p != peer.end(); ) {
+                if (p->first == this && p->second == cb)
+                    p = peer.erase(p);
+                else
+                    ++p;
+            }
+        }
+        it = linked_callback_recive.erase(it);
+    }
+}
+
+void teObject::teemit(teCallbackType calltype, bool autodelete)
+{
+    std::vector<teCallbackPtr> snapshot;
+    {
+        std::lock_guard<std::recursive_mutex> lg(teCallbackMutex());
+        for (const auto& [receiver, cb] : linked_callback_call) {
+            if (cb && cb->type == calltype && cb->connected)
+                snapshot.push_back(cb);
+        }
+    }
+
+    // `cb` keeps the callback alive even if a slot disconnects it (or the whole
+    // sender) in the middle of this loop.
+    for (const teCallbackPtr& cb : snapshot) {
+        if (cb->connected)
+            (*cb)();
+    }
+
+    if (autodelete && calltype != ready_destroy && calltype != destroy)
         checkDeleteLater();
 }
-teObject::teObject(){
+
+void teObject::onDestroy()
+{
+    if (onDestroyCalled.exchange(true))
+        return;
+
+    std::vector<teCallbackPtr> destroyCallbacks;
+    {
+        std::lock_guard<std::recursive_mutex> lg(teCallbackMutex());
+        for (const auto& [receiver, cb] : linked_callback_call) {
+            if (cb && cb->type == teCallbackType::destroy && cb->connected)
+                destroyCallbacks.push_back(cb);
+        }
+        // Drop every other connection first so the destroy slots see an object
+        // that no longer emits or receives anything else.
+        teDisconnectExceptLocked(teCallbackType::destroy);
+    }
+
+    for (const teCallbackPtr& cb : destroyCallbacks) {
+        if (cb->connected)
+            (*cb)();
+    }
+
+    // The destroy slots usually disconnect themselves; remove whatever is left.
+    teDisconnect(nullptr);
 }
 
-void teObject::onDestroy(){
-    if(onDestroyCalled)return;
-    onDestroyCalled=true;
-    obj_callback_function_base* last_call;
-    while(!linked_callback_call.empty()){
-        auto[obj,func] = *linked_callback_call.begin();
-        if(obj&&last_call!=func){
-            obj->linked_callback_recive.erase(this);
-        }
-        if(last_call==func||func->type!=teCallbackType::destroy){
-            delete func;
-            linked_callback_call.erase(linked_callback_call.begin());
-        }else if(func->type==teCallbackType::destroy){
-            last_call=func;
-            (*func)();
-        }
-    }
-    for(auto&[obj,func]:linked_callback_recive){
-        if(obj){
-            obj->linked_callback_call.erase(this);
-        }
-        delete func;
-    }
-    linked_callback_recive.clear();
+void teObject::checkDeleteLater()
+{
+    if (deleteLaterFlag)
+        delete this;
 }
-int totalcount=0;
-std::set<int> funcList;
-teObject::~teObject(){
+
+teObject::~teObject()
+{
     onDestroy();
 }
-
-void teObject::checkDeleteLater(){
-    if(deleteLaterFlag){
-        delete this;
-    }
-}
-
-
-

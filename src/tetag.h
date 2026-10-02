@@ -2,7 +2,6 @@
 #define TETAG_H
 #include"pch.h"
 #include"suggestionlineedit.h"
-#define telog(x) qDebug()<<x
 
 class teWord;
 class teTagBase;
@@ -24,6 +23,12 @@ public:
     }
     teWord* load();
     void unload();
+    /// Makes sure the word is displayed, i.e. that it owns a widget.
+    /// See teTagCore::ensureWidget().
+    void ensureWidget(){
+        if(!widget)
+            load();
+    }
     bool operator==(const teWordCore& in) const{
         return text == in.text;
     }
@@ -64,9 +69,13 @@ public:
     void mouseMoveEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
     void mouseDoubleClickEvent(QMouseEvent *event)override;
-    bool isDragging;
-    int start_x;
-    int mousePosInWidget;
+    bool isDragging=false;
+    int start_x=0;
+    int mousePosInWidget=0;
+    /// Set by the widget pool while this widget waits to be reused. It is the
+    /// guard against registering the same widget twice (which would hand it out
+    /// to two owners at once).
+    bool inWidgetPool=false;
     bool operator==(const teWordBase& in) const{
         return core->text == in.core->text;
     }
@@ -164,7 +173,17 @@ public:
     };
 
     QList<tewordcore*> words;
-    teTag* widget=nullptr;
+    /**
+     * @brief The widget that shows this tag, if any.
+     *
+     * The type used to be teTag (the widget of the single image tag list). That
+     * list draws its tags through a delegate now and owns no widget per tag, so
+     * the only widget a tag has is the one an editor created for it - hence the
+     * common base class. Everything the editors call through this pointer
+     * (setText, insertWord, destroyWord, disconnectWord, layout) is a teTagBase
+     * member.
+     */
+    teTagBase* widget=nullptr;
     int weight=99;
     teTagType type = tag;
     teTagCore(){
@@ -173,10 +192,10 @@ public:
     teTagCore(bool iftmp){
         if(iftmp)info=QStringLiteral("tmp tagcore");
     }
-    teTagCore(const QList<teWordCore*>in,teTag*child=nullptr);
-    teTagCore(QList<teWordCore*>&&in,teTag*child=nullptr):words(std::move(in)),widget(child){}
-    teTagCore(const QString &str,teTag*child=nullptr, bool forceSentence=false);
-    teTagCore(const char* str,teTag*child=nullptr, bool forceSentence=false);
+    teTagCore(const QList<teWordCore*>in,teTagBase*child=nullptr);
+    teTagCore(QList<teWordCore*>&&in,teTagBase*child=nullptr):words(std::move(in)),widget(child){}
+    teTagCore(const QString &str,teTagBase*child=nullptr, bool forceSentence=false);
+    teTagCore(const char* str,teTagBase*child=nullptr, bool forceSentence=false);
     teTagCore(const teTagCore&in):weight(in.weight),type(in.type){
         info=in.info;
         for(tewordcore*wc:in.words)
@@ -185,6 +204,27 @@ public:
     teTagCore(teTagCore&&in);
     void load();
     void unload();
+    /**
+     * @brief True while a model/view based tag list shows this tag.
+     *
+     * Such a list draws its rows through a delegate and owns no widget per tag,
+     * so ensureWidget() must not build the widgets the model replaced. A core
+     * belongs to exactly one tag list, so a single flag is enough.
+     */
+    bool ifViewOwned=false;
+    /**
+     * @brief Makes sure the tag is displayed, i.e. that it owns a widget.
+     *
+     * This is the single place that has to change when a tag list stops owning
+     * a widget per tag (a model/view based list shows tags through a delegate
+     * instead), which is why the callers no longer test `widget` themselves.
+     */
+    void ensureWidget(){
+        if(ifViewOwned)
+            return;
+        if(!widget)
+            load();
+    }
     void read(const QString &str,bool ifclear=true, bool forceSentence=false);
     teWordCore* takeWordAt(int index,bool ifSendSignal=true);
     QList<tewordcore*>::iterator begin(){
@@ -245,26 +285,18 @@ public:
         for(auto&[e,w]:extra_widgets)
             delete w;
         extra_widgets.clear();
-        for(auto&[obj,func]:linked_callback_call){
-            if(ifnotify&&func->type==teCallbackType::extraWidget_removed)
-                (*func)();
-            teDisconnect(obj,teCallbackType::extraWidget_removed);
-        }
-    }
-    void clearExtraWidgets(teEditorControl*e,bool ifnotify=true){
-        auto[begin,end] = extra_widgets.equal_range(e);
-        auto it = begin;
-        for(;it!=end;++it)
-            delete it->second;
-        extra_widgets.erase(e);
+        std::vector<teCallbackPtr> notify;
         if(ifnotify){
-            auto[begin,end] = linked_callback_call.equal_range((teObject*)e);
-            for(auto it = begin;it!=end;++it){
-                if(it->second->type==teCallbackType::extraWidget_removed)
-                    (*it->second)();
-                teDisconnect(it->first,teCallbackType::extraWidget_removed);
-            }
+            std::lock_guard<std::recursive_mutex> lg(teCallbackMutex());
+            for(auto&[obj,func]:linked_callback_call)
+                if(func&&func->type==teCallbackType::extraWidget_removed&&func->connected)
+                    notify.push_back(func);
         }
+        // Invoke before disconnecting: disconnecting first would mark the
+        // callbacks as dead and they would never run.
+        for(teCallbackPtr&f:notify)
+            if(f->connected)(*f)();
+        teDisconnect(nullptr,teCallbackType::extraWidget_removed);
     }
     void insertExtraWidgets(teEditorControl*e,QWidget*w){
         extra_widgets.insert({e,w});
@@ -315,26 +347,54 @@ public:
         while(index<0)index += core->words.size()+1;
         tewordcore*wordcore = new tewordcore{std::move(string)};
         core->words.insert(index,wordcore);
-        wordcore->load();
-        layout->insertWidget(index,wordcore->widget);
-        connectWord(wordcore->widget);
+        // Only a list that owns a widget per word (the widget based tag list)
+        // needs the word widget here. The model/view based list and the editors'
+        // tag lists rebuild their words from the core, which is what
+        // edited_with_layout() below makes them do.
+        if(ownsWordWidgets()){
+            wordcore->load();
+            layout->insertWidget(index,wordcore->widget);
+            connectWord(wordcore->widget);
+        }
         if(ifSendSignal)core->edited_with_layout();
     }
     void insertWord(int index,teWordCore* inwc, bool ifconnect,bool ifSendSignal=true){
         while(index<0)index += core->words.size()+1;
         core->words.insert(index,inwc);
-        if(!inwc->widget)
-            inwc->load();
-        layout->insertWidget(index,inwc->widget);
-        if(ifconnect)
-            connectWord(inwc->widget);
+        if(ownsWordWidgets()){
+            if(!inwc->widget)
+                inwc->load();
+            layout->insertWidget(index,inwc->widget);
+            if(ifconnect)
+                connectWord(inwc->widget);
+        }
         if(ifSendSignal)core->edited_with_layout();
     }
+    /**
+     * @brief True when this tag's list owns a widget per word.
+     *
+     * The widget based tag list does; a model/view based list draws the words
+     * itself, and the editors' tag lists build their words from the tag core.
+     */
+    virtual bool ownsWordWidgets() const { return true; }
     void connectWord(teWordBase*inw){
         connect(inw,&teWordBase::droped,this,&teTagBase::worddroped);
         connect(inw,&teWordBase::mouseDoubleClicked,this,[this](teWordBase*inw){
             emit mouseDoubleClicked(this,inw);},Qt::DirectConnection
                 );
+    }
+    /**
+     * @brief Moves the widget of the word at `from` to layout position `to`.
+     *
+     * Kept as a named operation so the widget layout stays an implementation
+     * detail of this class instead of being reached into from the editors.
+     */
+    void moveWordWidget(int from,int to){
+        if(!layout)
+            return;
+        if(from<0||to<0||from>=layout->count()||to>=layout->count())
+            return;
+        layout->insertItem(to,layout->takeAt(from));
     }
     void disconnectWord(teWordBase*inw=nullptr){
         if(!inw){
@@ -371,9 +431,13 @@ public:
     QList<teWordCore*>::iterator end(){return core->words.end();}
     QList<teWordCore*>::const_iterator begin() const{return core->words.begin();}
     QList<teWordCore*>::const_iterator end() const {return core->words.end();}
-    bool isDragging;
-    int start_y;
-    int mousePosInWidget;
+    bool isDragging=false;
+    int start_y=0;
+    int mousePosInWidget=0;
+    /// Set by the widget pool while this widget waits to be reused.
+    bool inWidgetPool=false;
+    /// The sheet currently applied by setStyle(); -1 means "none yet".
+    int currentStyle=-1;
 signals:
     void rightButtonPress(teTagBase*,QPoint,int);
     void leftButtonPress(teTagBase*,QPoint,int);
@@ -424,11 +488,6 @@ public:
         end=rwp;
         newoperation.type=teTagOperation::tagedit;
         newoperation.tag_ptr=in_ptr;
-        for(int i = operations.size()-1;i>-1;--i)
-            if(operations[i].tag_ptr.lock()==in_ptr&&operations[i].type==teTagOperation::tagedit_type){
-                newoperation.prevCore=operations[i].nowCore;
-                break;
-            }
         newoperation.nowCore=in_now;
     }
     void addInsertOperation(std::shared_ptr<tetagcore> in_ptr,int id,teTagCore in_now){
@@ -501,7 +560,6 @@ class teTagList:public QObject,public teObject{
     friend class tePictureFile;
 public:
     teTagList(){};
-    bool receiveTagSignals=true;
     bool isTagsLoaded=false;
     bool isWidgetLoaded=false;
     bool isSaved=true;
@@ -510,26 +568,27 @@ public:
     teTagList(teTagList&&in):
         tags(std::move(in.tags)){}
 
-    /* When invoking member functions for addition, deletion, or modification,
-     * nested calls to these addition/deletion/modification member functions may be triggered.
-     * Each time these functions are called, the member mutex tagsMt is locked. Therefore,
-     * the locked_for_edit member variable is used for counting.
-     * When it is detected that the lock is being invoked by an addition/deletion/modification member function,
-     * redundant locking is avoided to prevent deadlock issues caused by
-     * nested calls to member functions within a single thread.
+    /* Adding, deleting or modifying a tag triggers nested modifications (a
+     * rename can erase a duplicate, which erases the tag's widget, ...).
+     * A recursive mutex makes that re-entrancy safe without the old
+     * `locked_for_edit` counting hack, which was neither re-entrant nor
+     * thread safe.
      */
-    std::mutex tagsMt;
-    bool inner_lock(){
-        if(!locked_for_edit){
-            tagsMt.lock();
-            ++locked_for_edit;
-            return true;
-        }else return false;
-    }
-    void inner_unlock(){
-        --locked_for_edit;
-        tagsMt.unlock();
-    }
+    std::recursive_mutex tagsMt;
+
+    /// While this is > 0 modifications are not pushed onto the undo stack.
+    /// Prefer ChangeSuppressor over touching it directly.
+    int signalSuppression=0;
+
+    /// RAII guard suppressing undo recording for its lifetime.
+    struct ChangeSuppressor{
+        teTagList* list;
+        explicit ChangeSuppressor(teTagList* l):list(l){ if(list) ++list->signalSuppression; }
+        ~ChangeSuppressor(){ if(list) --list->signalSuppression; }
+        ChangeSuppressor(const ChangeSuppressor&)=delete;
+        ChangeSuppressor& operator=(const ChangeSuppressor&)=delete;
+    };
+
     int initialize_push_back(std::shared_ptr<tetagcore>);
     int initialize_push_back(const QString&, bool forceSentence);
     int initialize_push_back(const std::string&in, bool forceSentence);
@@ -539,22 +598,19 @@ public:
     void disconnectTag(std::shared_ptr<tetagcore>tag){
         tag->teDisconnect(this);
     }
+    bool recordingChanges() const { return signalSuppression<=0; }
+
     void onTagEdited(std::shared_ptr<tetagcore> tag,bool ifemit=true){
         isSaved=false;
-        if(receiveTagSignals){
+        if(recordingChanges())
             operationlist.addEditOperation(tag,*tag);
-        }
-        else receiveTagSignals =true;
-        if(ifemit){
+        if(ifemit)
             emit tagEdited(tag);
-        }
     }
     void onTagErased(std::shared_ptr<tetagcore> tag,int id,bool ifemit=true){
         isSaved=false;
-        if(receiveTagSignals){
+        if(recordingChanges())
             operationlist.addEraseOperation(tag,id,*tag);
-        }
-        else receiveTagSignals = true;
         if(ifemit){
             emit tagErased(tag);
             teemit(teCallbackType::edit);
@@ -562,17 +618,14 @@ public:
     }
     void onTagMoved(std::shared_ptr<tetagcore> tag,int prev,int now){
         isSaved=false;
-        if(receiveTagSignals){
+        if(recordingChanges())
             operationlist.addMoveOperation(tag,prev,now);
-        }
-        else receiveTagSignals =true;
+        emit tagMoved(tag);
     }
     void onTagInserted(std::shared_ptr<tetagcore> tag,int pos,bool ifemit=true){
         isSaved=false;
-        if(receiveTagSignals){
+        if(recordingChanges())
             operationlist.addInsertOperation(tag,pos,*tag);
-        }
-        else receiveTagSignals =true;
         if(ifemit){
             emit tagInserted(tag);
             teemit(teCallbackType::edit);
@@ -593,118 +646,66 @@ public:
         isWidgetLoaded=false;
     }
     void clear(){
+        std::lock_guard<std::recursive_mutex> lg(tagsMt);
         tags.clear();
         operationlist.clear();
     }
+    /// Unchecked access; `at()` is the bounds-checked variant.
     tetagcore& operator[](int index){
         return *tags[index];
     }
-    bool remove_duplicate(std::shared_ptr<tetagcore> tag=nullptr,bool keepself=false){
-        if(tag==nullptr&&keepself==true)
-            telog("[teTagList::removeduplicate]:tag==nullptr&&keepself==true");
-        int tagcount = tags.size();
-        bool ret=false;
-        if(tag!=nullptr){
-            for(int i =0; i<tagcount;++i){
-                if(*tags[i]==*tag&&tags[i]!=tag)
-                {
-                    if(keepself){
-                        erase(i);
-                        --i;
-                        --tagcount;
-                        ret=true;
-                    }
-                    else{
-                        return true;
-                    }
-                }
-            }
-            return ret;
-        }
-        else{
-            for(int i =0;i<tagcount;++i){
-                for(int j = i+1 ;j<tagcount;++j){
-                    if(*tags[i]==*tags[j]){
-                        erase(j);
-                        --j;
-                        --tagcount;
-                        ret = true;
-                    }
-                }
-            }
-            return ret;
-        }
+    /// Bounds-checked access. Returns nullptr when `index` is out of range.
+    tetagcore* at(int index){
+        if(index<0||index>=tags.size())
+            return nullptr;
+        return tags[index].get();
     }
+    /// Bounds-checked access that keeps the owning shared_ptr alive.
+    std::shared_ptr<tetagcore> shareAt(int index) const{
+        if(index<0||index>=tags.size())
+            return nullptr;
+        return tags[index];
+    }
+
+    /// Removes duplicates.
+    ///  - `tag == nullptr`: removes every duplicate pair in the list.
+    ///  - `keepself == false`: returns true if an identical *other* tag exists
+    ///    (nothing is removed).
+    ///  - `keepself == true`: erases every *other* tag identical to `tag` and
+    ///    returns true when something was erased.
+    bool remove_duplicate(std::shared_ptr<tetagcore> tag=nullptr,bool keepself=false);
+
     int insert(int pos,std::shared_ptr<tetagcore>tag,int removeDuplicate=1,bool ifSendSignal=true);
 
-    void erase(int id){
-        bool iflocked=inner_lock();
-        std::shared_ptr<tetagcore>core = tags.takeAt(id);
-        if(iflocked)inner_unlock();
-        onTagErased(core,id,isTagsLoaded);
-        core->unload();
-        core->teDisconnect(this);
-        core->teemit(teCallbackType::destroy,false);
-    }
+    /// Removes and destroys the tag at `id`. Out-of-range ids are ignored.
+    void erase(int id);
     void erase(std::shared_ptr<tetagcore>core){
-        int index = tags.indexOf(core);
+        const int index = tags.indexOf(core);
         if(index<0){
             telog("Can't find the pointer in taglist");
             return;
         }
-        erase(tags.indexOf(core));
+        erase(index);
     }
 
-    int edit(std::shared_ptr<tetagcore>core,QString text,int removeDuplicate=1,bool ifemit=true){
-        bool iflocked=inner_lock();
-        core->read(text);
-        if(iflocked)inner_unlock();
-        int ret=0;
-        if(removeDuplicate==1&&remove_duplicate(core,false)){
-            return -1;
-        }else if(removeDuplicate==2&&remove_duplicate(core,true)){
-            ret=-1;
-        }
-        onTagEdited(core,ifemit);
-        if(core->type==teTagCore::deleteTag)
-            ret=-1;
-        return ret;
-    }
-    int edit(int index,QString text,int removeDuplicate=1,bool ifemit=true){
-        bool iflocked=inner_lock();
-        std::shared_ptr<tetagcore> core = tags.at(index);
-        core->read(text);
-        if(iflocked)inner_unlock();
-        int ret=0;
-        if(removeDuplicate==1&&remove_duplicate(core,false)){
-            return -1;
-        }else if(removeDuplicate==2&&remove_duplicate(core,true)){
-            ret=-1;
-        }
-        onTagEdited(core,ifemit);
-        return ret;
-    }
+    /// Renames `core` (or the tag at `index`).
+    /// `removeDuplicate == 1` merges: an existing tag with the same text is
+    /// erased so the list never ends up with two identical tags.
+    /// Returns -1 when the tag turned into a deleteTag marker, 0 otherwise.
+    int edit(std::shared_ptr<tetagcore>core,QString text,int removeDuplicate=1,bool ifemit=true);
+    int edit(int index,QString text,int removeDuplicate=1,bool ifemit=true);
 
-    void move(int originPos,int newPos){
-        bool iflocked=inner_lock();
-        std::shared_ptr<tetagcore>taketag = tags.takeAt(originPos);
-        // if(originPos<newPos)
-        //     --newPos;
-        tags.insert(newPos,taketag);
-        if(iflocked)inner_unlock();
-        onTagMoved(taketag,originPos,newPos);
-    }
-    void move(std::shared_ptr<tetagcore>tag,int newPos){
-        int o = tags.indexOf(tag);
-        if(o>-1){
-            bool iflocked=inner_lock();
-            tags.insert(newPos,tags.takeAt(o));
-            if(iflocked)inner_unlock();
-            onTagMoved(tag,o,newPos);
-        }
-        else
-            telog("[teTagList::move]:could not find input tag in taglist");
-    }
+    void move(int originPos,int newPos);
+    void move(std::shared_ptr<tetagcore>tag,int newPos);
+    /**
+     * @brief Moves `count` tags starting at `from` to `insertAt`.
+     *
+     * `insertAt` is an index in the list *after* the block was taken out, which
+     * is what a model needs for QAbstractItemModel::moveRows(). Records the move
+     * for undo/redo and emits tagMoved(), but does not announce anything to a
+     * view - the caller owns the begin/endMoveRows() pair.
+     */
+    void reorderBlock(int from,int count,int insertAt);
     QString toText();
     int find(std::shared_ptr<tetagcore>in){
         return tags.indexOf(in);
@@ -740,13 +741,13 @@ public:
 protected:
     QVector<std::shared_ptr<tetagcore>> tags;
     teOperationList operationlist;
-    int firstoperations=0;
-private:
-    int locked_for_edit=0;
 signals:
     void tagInserted(std::shared_ptr<tetagcore>);
     void tagEdited(std::shared_ptr<tetagcore>);
     void tagErased(std::shared_ptr<tetagcore>);
+    /// Emitted whenever the order changed (used by the model based tag list,
+    /// which cannot see the reorder any other way).
+    void tagMoved(std::shared_ptr<tetagcore>);
 };
 
 

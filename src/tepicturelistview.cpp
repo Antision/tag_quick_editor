@@ -1,31 +1,119 @@
 #include "tepicturelistview.h"
+#include "func.h"
+#include <QContextMenuEvent>
+#include <QMenu>
+#include <QProcess>
+#include <QDir>
+#include <QMessageBox>
+#include <shellapi.h>
 
+namespace {
+
+/// Moves `paths` to the recycle bin. Returns false when nothing was removed.
+bool moveToRecycleBin(const QStringList& paths, QString* errorOut)
+{
+    if (paths.isEmpty()) {
+        if (errorOut)
+            *errorOut = QStringLiteral("nothing to delete");
+        return false;
+    }
+
+    // SHFileOperation wants a double-null-terminated list of absolute,
+    // backslash-separated paths.
+    std::wstring from;
+    for (const QString& path : paths) {
+        const QString native = QDir::toNativeSeparators(QFileInfo(path).absoluteFilePath());
+        from.append(native.toStdWString());
+        from.push_back(L'\0');
+    }
+    from.push_back(L'\0');
+
+    SHFILEOPSTRUCTW op{};
+    op.wFunc = FO_DELETE;
+    op.pFrom = from.c_str();
+    op.fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_NOERRORUI | FOF_SILENT;
+    const int result = SHFileOperationW(&op);
+
+    if (result != 0 || op.fAnyOperationsAborted) {
+        if (errorOut) {
+            if (result != 0)
+                *errorOut = QStringLiteral("SHFileOperation failed with code %1").arg(result);
+            else
+                *errorOut = QStringLiteral("the operation was aborted");
+        }
+        return false;
+    }
+    return true;
+}
+
+}
 
 void tePictureFileModel::clear() {
-    std::lock_guard<std::mutex> ul{pictureListMutex};
-    emit clearAllFiles();
+    // Stop every in-flight thumbnail decode before the files disappear.
+    for (tePictureFile* file : picturefiles)
+        file->cancelLoading();
+
     beginResetModel();
-    qDeleteAll(picturefiles);
+    const QList<tePictureFile*> removed = picturefiles;
     picturefiles.clear();
-    for(tePictureFile*fp:picturefiles)
-        fp->taglist.teDisconnect(this);
     endResetModel();
+
+    for (tePictureFile* file : removed)
+        delete file;
+
+    emit clearAllFiles();
 }
 
 void tePictureFileModel::append(const QList<tePictureFile *> &files) {
-    std::lock_guard<std::mutex> ul{pictureListMutex};
     if (files.isEmpty())
         return;
     beginInsertRows(QModelIndex(), picturefiles.size(), picturefiles.size() + files.size() - 1);
     picturefiles.append(files);
-    for(tePictureFile*fp:files)
-        fp->taglist.teConnect(teCallbackType::edit,this,&tePictureFileModel::updatePicturefile,fp);
+    for (tePictureFile* file : files) {
+        // Refresh the row when the caption changes ...
+        file->taglist.teConnect(teCallbackType::edit, this, &tePictureFileModel::updatePicturefile, file);
+        // ... and once when the thumbnail has been decoded. The connection is
+        // made here (once per file) instead of from the delegate's sizeHint,
+        // which used to connect thousands of times while the view was laid out.
+        file->teConnect(teCallbackType::loading_finished, this, &tePictureFileModel::updatePicturefile, file);
+    }
     endInsertRows();
     emit newFileLoaded(files,false);
 }
 
+void tePictureFileModel::removeFiles(const QList<tePictureFile *> &files)
+{
+    if (files.isEmpty())
+        return;
+
+    QList<int> rows;
+    rows.reserve(files.size());
+    for (tePictureFile* file : files) {
+        const int row = picturefiles.indexOf(file);
+        if (row >= 0)
+            rows.append(row);
+    }
+    if (rows.isEmpty())
+        return;
+
+    std::sort(rows.begin(), rows.end(), std::greater<int>());
+
+    QList<tePictureFile*> removed;
+    for (int row : rows) {
+        // Taking rows from the back keeps the remaining indices valid.
+        beginRemoveRows(QModelIndex(), row, row);
+        removed.append(picturefiles.takeAt(row));
+        endRemoveRows();
+    }
+
+    for (tePictureFile* file : removed) {
+        file->cancelLoading();
+        delete file;
+    }
+}
+
 QVariant tePictureFileModel::data(const QModelIndex &index, int role) const {
-    if (!index.isValid() || index.row() >= picturefiles.size())
+    if (!index.isValid() || index.row() < 0 || index.row() >= picturefiles.size())
         return QVariant();
     if (role == Qt::DisplayRole) {
         return QVariant::fromValue(picturefiles[index.row()]);
@@ -34,25 +122,27 @@ QVariant tePictureFileModel::data(const QModelIndex &index, int role) const {
 }
 
 void tePictureFileModel::updatePicturefile(tePictureFile *in_file){
-    int row = picturefiles.indexOf(in_file);
-    if (row != -1) {
-        QModelIndex index = createIndex(row, 0);
-        emit dataChanged(index, index,{Qt::SizeHintRole});
-    }
+    const int row = picturefiles.indexOf(in_file);
+    if (row < 0)
+        return;
+    const QModelIndex idx = index(row, 0);
+    emit dataChanged(idx, idx, {Qt::DisplayRole, Qt::SizeHintRole});
+    // A freshly decoded thumbnail changes the row height, so the layout has to
+    // be redone. This is called on the GUI thread now (see tePictureFile).
+    if (parentView)
+        parentView->scheduleDelayedItemsLayout();
 }
 
-void tePictureFileModel::emitdataChanged(tePictureFile *caller, QModelIndex index){
-    if(loading_count==0){
-        parentView->scheduleDelayedItemsLayout();
+void tePictureFileModel::save(){
+    for(tePictureFile*file:picturefiles){
+        file->save();
     }
-    if(caller)
-        teDisconnect(caller);
 }
 
 QVector<QModelIndex> tePictureFileModel::filt(const teFiltRule &rule)
 {
     QVector<QModelIndex> result;
-    int pictureCount = picturefiles.size();
+    const int pictureCount = picturefiles.size();
     result.reserve(pictureCount/3);
 
     for (int i=0;i<pictureCount;++i) {
@@ -94,7 +184,7 @@ void tePictureFileDelegate::paint(QPainter *painter, const QStyleOptionViewItem 
 
     painter->save();
 
-    QRect rect = option.rect;
+    const QRect rect = option.rect;
     QColor borderColor;
     QColor bgColor;
 
@@ -119,17 +209,22 @@ void tePictureFileDelegate::paint(QPainter *painter, const QStyleOptionViewItem 
     painter->setPen(QPen(borderColor, 1));
     painter->drawRect(rect.adjusted(1, 1, -1, -1));
 
+    // thumbnail() returns a refcounted copy taken under the loader's mutex.
+    const QImage image = file->thumbnail();
     QRect imageRect{0,0,0,0};
-    if (!file->image.isNull()) {
-        imageRect = {rect.topLeft() + QPoint(1, 1), file->image.size()};
-        painter->drawImage(imageRect, file->image);
+    if (!image.isNull()) {
+        imageRect = {rect.topLeft() + QPoint(1, 1), image.size()};
+        painter->drawImage(imageRect, image);
     }
 
-    painter->setFont(QFont("Segoe UI", 14));
-    painter->setPen(Qt::white);
-    painter->drawText(imageRect.right() + 1, rect.top()+(rect.height()-painter->fontMetrics().height())/2+ 20, QString(file->filepath.stdpath.filename().c_str()));
+    static const QFont nameFont("Segoe UI", 14);
+    static const QFont tagCountFont("Segoe UI", 12, QFont::StyleItalic);
 
-    painter->setFont(QFont("Segoe UI", 12, QFont::StyleItalic));
+    painter->setFont(nameFont);
+    painter->setPen(Qt::white);
+    painter->drawText(imageRect.right() + 1, rect.top()+(rect.height()-painter->fontMetrics().height())/2+ 20, file->name());
+
+    painter->setFont(tagCountFont);
     painter->setPen(QColor(200, 200, 200));
     painter->drawText(imageRect.right() + 1, rect.bottom()- painter->fontMetrics().height()+15,
                       QString("%1 tags").arg(file->taglist.size()));
@@ -141,18 +236,16 @@ QSize tePictureFileDelegate::sizeHint(const QStyleOptionViewItem &option, const 
     Q_UNUSED(option);
     auto *file = index.data(Qt::DisplayRole).value<tePictureFile *>();
     if (!file) return QSize(200, 100);
-    bool tryLockRst = file->image_mt.try_lock();
-    if(!tryLockRst||file->image.isNull()){
-        if(index.model())
-            file->teConnect(teCallbackType::loading_finished,(tePictureFileModel*)((tePictureFileModel*)index.model()),&tePictureFileModel::emitdataChanged,file,index);
-        else{
-        }
-        if(tryLockRst)
-            file->image_mt.unlock();
+
+    const QImage image = file->thumbnail();
+    if (image.isNull())
         return QSize(200, 100);
-    }else if(tryLockRst)
-        file->image_mt.unlock();
-    return {file->image.width()+2+QFontMetrics(QFont("Segoe UI", 14)).horizontalAdvance(file->filepath.qstring),file->image.height()+2};
+
+    // Fixed metric objects: this function runs for every visible row on every
+    // layout pass and used to construct a QFont/QFontMetrics each time.
+    static const QFont nameFont("Segoe UI", 14);
+    static const QFontMetrics nameMetrics(nameFont);
+    return {image.width() + 2 + nameMetrics.horizontalAdvance(file->name()), image.height() + 2};
 }
 
 tePictureListView::tePictureListView(QWidget *parent):QListView(parent){
@@ -161,4 +254,84 @@ tePictureListView::tePictureListView(QWidget *parent):QListView(parent){
     setItemDelegate(&picturefileDelegate);
     setSelectionMode(QAbstractItemView::ExtendedSelection);
     setSelectionBehavior(QAbstractItemView::SelectItems);
+    setContextMenuPolicy(Qt::DefaultContextMenu);
+}
+
+void tePictureListView::selectNext(){
+    if(auto selections = selectionModel()->selectedRows();!selections.empty()&&selections[0].row()<model()->rowCount())
+        selectionModel()->select(model()->index(selections[0].row()+1,0),QItemSelectionModel::ClearAndSelect);
+}
+
+void tePictureListView::selectPrevious(){
+    if(auto selections = selectionModel()->selectedRows();!selections.empty()&&selections[0].row()>0)
+        selectionModel()->select(model()->index(selections[0].row()-1,0),QItemSelectionModel::ClearAndSelect);
+}
+
+void tePictureListView::selectIndexList(QVector<QModelIndex> indexes){
+    if (indexes.isEmpty())
+        return;
+    selectionModel()->clearSelection();
+    for(QModelIndex&idx:indexes)
+        selectionModel()->select(idx,QItemSelectionModel::Select);
+    // Keep "current" in sync with the selection, otherwise keyboard navigation
+    // and auto-scrolling start from a stale row.
+    selectionModel()->setCurrentIndex(indexes.first(), QItemSelectionModel::NoUpdate);
+    scrollTo(indexes.first(), QAbstractItemView::EnsureVisible);
+}
+
+QList<tePictureFile*> tePictureListView::selectedFiles() const
+{
+    QList<tePictureFile*> files;
+    const QModelIndexList rows = selectionModel()->selectedRows();
+    files.reserve(rows.size());
+    for (const QModelIndex& idx : rows) {
+        if (auto* file = idx.data(Qt::DisplayRole).value<tePictureFile*>())
+            files.append(file);
+    }
+    return files;
+}
+
+void tePictureListView::contextMenuEvent(QContextMenuEvent* event)
+{
+    const QModelIndex clicked = indexAt(event->pos());
+    if (clicked.isValid() && !selectionModel()->isSelected(clicked))
+        selectionModel()->select(clicked, QItemSelectionModel::ClearAndSelect);
+
+    const QList<tePictureFile*> files = selectedFiles();
+    if (files.isEmpty()) {
+        QListView::contextMenuEvent(event);
+        return;
+    }
+
+    QMenu menu(this);
+    QAction* openAction = menu.addAction(tr("Open in File Explorer"));
+    QAction* recycleAction = menu.addAction(tr("Move to Recycle Bin"));
+    if (files.size() > 1)
+        recycleAction->setText(tr("Move %1 items to Recycle Bin").arg(files.size()));
+
+    QAction* chosen = menu.exec(event->globalPos());
+    if (chosen == openAction) {
+        const QString native = QDir::toNativeSeparators(files.first()->filepath.qstring);
+        if (!QProcess::startDetached(QStringLiteral("explorer.exe"),
+                                     QStringList{QStringLiteral("/select,") + native})) {
+            QDesktopServices::openUrl(QUrl::fromLocalFile(QFileInfo(native).absolutePath()));
+        }
+    } else if (chosen == recycleAction) {
+        QStringList paths;
+        for (tePictureFile* file : files) {
+            paths.append(file->filepath.qstring);
+            // Take the caption file along with its image when it exists.
+            const QString tagPath = file->tagFilePath();
+            if (QFileInfo::exists(tagPath))
+                paths.append(tagPath);
+        }
+
+        QString error;
+        if (!moveToRecycleBin(paths, &error)) {
+            QMessageBox::warning(this, tr("Move to Recycle Bin"),
+                                 tr("Could not move the selected files to the recycle bin:\n%1").arg(error));
+            return;
+        }
+        emit filesRemoved(files);
+    }
 }

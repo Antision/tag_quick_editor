@@ -5,7 +5,6 @@ class QWidget;
 inline const int MainWindowWidgetCount=3;
 extern int mainWindowSplitterLength[MainWindowWidgetCount];
 int findWidgetIndexInLayout(QBoxLayout* layout, QWidget* widget);
-extern std::atomic<int> loading_count;
 extern QRect mainwindowGeometry;
 
 int load_config();
@@ -13,6 +12,13 @@ int load_config();
 int save_config();
 class teTagCore;
 std::string joinTag(const teTagCore& tag);
+
+class teEditorControl;
+/// The custom-tag controls of the "custom" editor, in *insertion* order.
+/// A QMap would sort them alphabetically and lose the user's arrangement.
+using teCustomControlList = QVector<QPair<QString,teEditorControl*>>;
+/// Points at the custom editor's control list; owned by teEditor_custom.
+extern teCustomControlList* custom_controls;
 
 bool isOpenBracket(const std::string &s);
 bool isCloseBracket(const std::string &s);
@@ -34,8 +40,16 @@ int sharedIndexInWeakContainer(const Container& container, const std::shared_ptr
     return -1;
 }
 class MainWindow;
-void CreateAutoSaveThread(MainWindow*w);
-#define telog(a) qDebug()<<a
+
+/// Registers the receiver of application log lines. The target is always
+/// invoked on the GUI thread, so it may touch widgets. Pass an empty
+/// std::function to detach it (e.g. when the log window is destroyed).
+void teSetLogTarget(std::function<void(const QString&)> target);
+/// Appends a line to the application log. Safe to call from any thread.
+void teLog(const QString& message);
+
+/// Convenience wrappers kept so existing call sites stay readable.
+#define telog(a) teLog(QString(a))
 #define qsl(x) QStringLiteral(x)
 double getWindowScale(HWND hwnd);
 

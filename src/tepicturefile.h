@@ -3,7 +3,13 @@
 #include"tetag.h"
 
 extern BS::thread_pool<> thread_pool;
-extern QThreadPool* qthreadpool;
+
+/**
+ * @brief A path that keeps both the QString and the std::filesystem::path form.
+ *
+ * Note: the two representations are only kept in sync by set(); constructing
+ * from one and reading the other is fine, but do not mutate qstring directly.
+ */
 typedef class tePath{
 public:
     QString qstring;
@@ -19,7 +25,7 @@ public:
         qstring=QString::fromStdWString(filepath);
     }
     tePath(const QString& path){set(path);}
-    tePath (const std::filesystem::path& filepath){set(filepath);}
+    tePath(const std::filesystem::path& filepath){set(filepath);}
     operator QString() const{
         return qstring;
     }
@@ -39,34 +45,50 @@ public:
     }
 } tepath;
 
+/**
+ * @brief One image of the opened dataset together with its caption (tag file).
+ *
+ * Threading contract
+ * ------------------
+ * The thumbnail is decoded on a worker thread. That worker never dereferences
+ * the tePictureFile: it writes into a shared ImageSlot and asks the GUI thread
+ * to deliver `loading_finished` through a load token. The object therefore may
+ * be destroyed while its thumbnail is still being decoded.
+ */
 class tePictureFile:public teObject
 {
 public:
-    tePath filepath;
-    std::ifstream txtfile_read;
-    std::ofstream txtfile_write;
-    int refered_pixels;
-    QImage image;
-    std::mutex image_mt;
-    teTagList taglist;
-    ~tePictureFile(){
-        txtfile_write.close();
-        onDestroy();
-    }
-    tePictureFile(const tepath& input_filepath,QWidget* parent=nullptr,int r=80):
-        filepath(input_filepath),refered_pixels(r*r){
-        if(int ret = openpath();ret==-1) {
+    /// Owned jointly by the tePictureFile and its loader task.
+    struct ImageSlot{
+        std::mutex mtx;
+        QImage image;
+        std::atomic<bool> cancelled{false};
+    };
 
-        }else if(ret==-2){
-            telog("Could not open picture file");
-        }
-    }
+    tePath filepath;
+    int refered_pixels;
+    teTagList taglist;
+
+    explicit tePictureFile(const tepath& input_filepath,int r=80);
+    ~tePictureFile();
+
+    /// Reads the caption file and kicks off the asynchronous thumbnail decode.
     int openpath(std::string tagfile_extension=std::string(".txt"));
-    int loadPicture();
-    int loadtags(){
-        taglist.load();
-        return 0;
-    }
+
+    /// Starts (or restarts) the asynchronous thumbnail decode.
+    void startLoadPicture();
+
+    /// Thread-safe copy of the current thumbnail (null until decoded).
+    QImage thumbnail() const;
+    bool hasThumbnail() const;
+
+    /// GUI thread only. Emits loading_finished.
+    void notifyPictureLoaded();
+
+    /// Cancels a pending/in-flight decode and detaches the completion
+    /// notification. Must be called before the file is deleted.
+    void cancelLoading();
+
     QString name() const {
         return QString::fromStdWString(filepath.stdpath.filename());
     }
@@ -74,7 +96,18 @@ public:
         return QString::fromStdWString(filepath.stdpath.extension());
     }
 
+    /// Path of the caption file belonging to this image.
+    QString tagFilePath() const;
+
     void save();
+
+private:
+    struct LoadToken{
+        std::atomic<bool> alive{true};
+        std::shared_ptr<ImageSlot> slot;
+    };
+    std::shared_ptr<ImageSlot> image_slot;
+    std::shared_ptr<LoadToken> load_token;
 };
 
 #endif // TEPICTUREFILE_H

@@ -21,7 +21,7 @@ bool teEditor::read(std::shared_ptr<tetagcore>tag){
 bool teEditor::re_read(std::shared_ptr<tetagcore>tag){
     if(tag->type==teTagCore::deleteTag)
         return true;
-    if(!tag->widget)tag->load();
+    tag->ensureWidget();
     for(teEditorControl*ctrl_ptr:controls){
         if(!ctrl_ptr->linked(tag)){
             if(ctrl_ptr->read(tag)){

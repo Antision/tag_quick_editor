@@ -67,7 +67,9 @@ class colorsWidget:public teSignalWidget{
 public:
     QVBoxLayout*layout = new QVBoxLayout(content);
     QHBoxLayout* signal_button_layout = new QHBoxLayout;
-    QHBoxLayout*content_layout = new QHBoxLayout;
+    /// Sections are layed out horizontally by default; pass
+    /// `verticalSections = true` to stack them instead.
+    QBoxLayout* content_layout = nullptr;
     QVBoxLayout shade_layout;
     QButtonGroup*shade_buttongroup = new QButtonGroup(content);
 
@@ -79,7 +81,27 @@ public:
     QVector<std::pair<QLayout*,QButtonGroup*>>objectLayoutList;
     QString otherWords;
     void uncheckAllButtons();
-    colorsWidget(QVector<QPair<QStringList,bool>>&&objects,QWidget*parent=nullptr,int colorListPos=0,std::optional<QStringList>extraButtons ={});
+    /// Adds one section (with an optional caption above it) to content_layout.
+    void addSectionToContent(QLayout* sectionLayout,const QString& heading);
+    /**
+     * @param objects one entry per button section. A single-element list with
+     *        `ifExclusive == true` renders as a fixed word (a label that becomes
+     *        part of every composed tag) instead of a button.
+     * @param colorListPos where to insert the shade/colour rows (-1 = no colour row).
+     * @param extraButtons an extra row of exclusive buttons.
+     * @param headings optional caption drawn *above* the matching section. It is
+     *        purely visual and never becomes part of a tag.
+     * @param sharedExclusiveGroup when given, every section with
+     *        `ifExclusive == true` puts its buttons into this group, so only one
+     *        button of the whole widget can be checked at a time.
+     * @param verticalSections stack the sections instead of placing them side
+     *        by side.
+     */
+    colorsWidget(QVector<QPair<QStringList,bool>>&&objects,QWidget*parent=nullptr,int colorListPos=0,
+                 std::optional<QStringList>extraButtons={},
+                 QVector<QString> headings={},
+                 QButtonGroup* sharedExclusiveGroup=nullptr,
+                 bool verticalSections=false);
     void closeEvent(QCloseEvent *event) override {
         emit cancelSignal();
         uncheckAllButtons();
@@ -112,13 +134,18 @@ signals:
     void clearAllFiles();
 };
 
+/**
+ * @brief A row of removable "tag chips" layed out by a QFlowLayout.
+ *
+ * Clicking a chip removes it and sends its text back through tagEdit(); the
+ * user may also drag a chip to another position, which only reorders. A drag
+ * never removes the chip: QFlowLayoutReorderer swallows the mouse release of a
+ * drag, so QPushButton::clicked() is not emitted for it.
+ */
 class FilterTagWidget : public QWidget {
     Q_OBJECT
 public:
-    explicit FilterTagWidget(QWidget* parent = nullptr) : QWidget(parent) {
-        m_layout = new QFlowLayout(this);
-        m_layout->setContentsMargins(2, 2, 2, 2);
-    }
+    explicit FilterTagWidget(QWidget* parent = nullptr);
     QVector<QPushButton*> tagItems;
     void addTag(const QString& text);
     void clear(){
@@ -128,14 +155,22 @@ public:
     }
     void setLineEdit(QLineEdit*le){
         lineedit=le;
-        if(le)
+        if(le){
             m_layout->insertWidget(0,le);
+            if(m_reorderer)
+                m_reorderer->setFirstMovableIndex(1);
+        }
     }
+    /// The chip texts in *visual* order, i.e. including any drag reordering.
+    QStringList tagTexts() const;
 signals:
     void tagRemoved(QPushButton*);
     void tagEdit(QString);
+    /// The user dragged a chip to another position.
+    void orderChanged();
 private:
     QFlowLayout* m_layout;
+    QFlowLayoutReorderer* m_reorderer=nullptr;
     QLineEdit* lineedit = nullptr;
 };
 class filterWidget : public teWidget {

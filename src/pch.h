@@ -17,6 +17,9 @@
 #include <filesystem>
 #include <set>
 #include <map>
+#include <algorithm>
+#include <atomic>
+#include <cmath>
 #include <thread>
 #include <mutex>
 #include <Windows.h>
@@ -24,6 +27,7 @@
 #include <winuser.h>
 #include <wingdi.h>
 #include <dwmapi.h>
+#include <shellapi.h>
 #include <queue>
 #include <iterator>
 #include <condition_variable>
@@ -33,7 +37,13 @@
 #include <coroutine>
 #include <cstddef>
 #include <chrono>
+#include <limits>
 #include <regex>
+#include <memory>
+#include <optional>
+#include <tuple>
+#include <unordered_set>
+#include <utility>
 
 
 #include <QApplication>

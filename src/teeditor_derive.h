@@ -3,15 +3,24 @@
 
 #include "teeditor.h"
 #include "tesignalwidget.h"
+
+class teEditorControl;
+
 class teEditor_custom:public teEditor{
 public:
     QVBoxLayout*mainLayout=new QVBoxLayout(this);
     QFlowLayout*flowLayout=new QFlowLayout;
+    QFlowLayoutReorderer*controlReorderer=nullptr;
     teEditor_custom(teTagListWidget*in_taglistwidget,QString&& name=QStringLiteral("custom"),QString*styleSheet=nullptr,QWidget*parent=nullptr);
-    QMap<QString,teEditorControl*> string_controls;
+    teCustomControlList string_controls;
     customControlWidget controlWidget;
+    teEditorControl* findControl(const QString& str) const;
     void removeControl(const QString& str);
     void addControl(const QString & str);
+    /// Replaces the whole control set so that the visual order matches `order`.
+    void setControls(const QStringList& order);
+    /// Rewrites string_controls from the current layout order (after a drag).
+    void syncOrderFromLayout();
     ~teEditor_custom(){}
 };
 

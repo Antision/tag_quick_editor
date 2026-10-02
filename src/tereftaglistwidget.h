@@ -14,6 +14,9 @@ public:
     }
     virtual void readCore(std::shared_ptr<tetagcore>in_core)override;
 
+    /// The editor's tag list builds its words from the tag core.
+    bool ownsWordWidgets() const override { return false; }
+
     virtual void load()override;
     void clearWordWidgets()override;
     void self_giveback();

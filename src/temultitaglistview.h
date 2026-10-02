@@ -7,14 +7,25 @@
 #include "teeditorlist.h"
 #include "tepicturefile.h"
 #include "tetag.h"
+
 struct teMultiTagListModel;
+
+/**
+ * @brief One row of the global multi-selection tag list.
+ *
+ * A multi tag is the union of one identical tag over every selected image.
+ * `linked_tags` maps the per-image tag cores to the list they live in.
+ */
 typedef struct teMultiTagCore:public teObject{
     QString text;
     std::multimap<std::shared_ptr<tetagcore>,teTagList*>linked_tags;
     teMultiTagListModel*model=nullptr;
+    bool ifexecute=true;
+    bool re_read_switch=true;
+
     teMultiTagCore(teMultiTagListModel*parent=nullptr):model(parent){}
     teMultiTagCore(QString in_text,teMultiTagListModel*parent=nullptr):model(parent){
-        text=in_text;
+        text=std::move(in_text);
     }
     teMultiTagCore(std::shared_ptr<tetagcore>in_core,teTagList*in_list,teMultiTagListModel*parent=nullptr):model(parent){
         text=*in_core;
@@ -24,17 +35,15 @@ typedef struct teMultiTagCore:public teObject{
         linked_tags=std::move(in_tags);
     }
     void link(std::shared_ptr<tetagcore>in_core,teTagList*in_list);
-    bool ifexecute=true;
     void unlink(std::shared_ptr<tetagcore>in_core);
     void setText(const QString& in_text);
     void setText(QString&& in_text);
     void setCoreText();
+    /// Drops every link pointing into `in_list`.
     void unlink_tags_in_list(teTagList*in_list);
-    void link_tags_in_list(teTagList*in_list);
     void clear();
 
     void self_destroy();
-    bool re_read_switch=true;
     void re_read(std::shared_ptr<tetagcore>in,teTagList*);
     operator QString() const{
         return text;
@@ -42,6 +51,7 @@ typedef struct teMultiTagCore:public teObject{
 }temultitagcore;
 
 class teMultitagListView;
+
 class teMultiTagListModel : public QAbstractItemModel,public teObject {
     Q_OBJECT
 public:
@@ -51,63 +61,85 @@ public:
     QList<teTagList*>linked_taglists;
     QList<teMultiTagCore*> tags;
     teEditorList* editorlist=nullptr;
-    QListView*listview;
+    QListView*listview=nullptr;
+    /// Nested `insert` notifications are suppressed while this is 0. Always
+    /// decremented again - a leaked decrement used to silently stop the multi
+    /// tag list from picking up newly typed tags.
     int ifrecivenewtagcoreinsertsignal=1;
+
     void linkTagList(teTagList*in_list);
     void unlinkTagList(teTagList*in_list=nullptr);
+
     QModelIndex index(int row, int column, const QModelIndex &parent = QModelIndex()) const override {
         if (!parent.isValid() && row >= 0 && row < tags.size())
             return createIndex(row, column, tags[row]);
         return QModelIndex();
     }
-    QModelIndex parent(const QModelIndex &child) const override { return QModelIndex(); }
+    QModelIndex parent(const QModelIndex &child) const override {
+        Q_UNUSED(child);
+        return QModelIndex();
+    }
     int rowCount(const QModelIndex &parent = QModelIndex()) const override {
         if (!parent.isValid()) return tags.size();
         return 0;
     }
+    int columnCount(const QModelIndex &parent = QModelIndex()) const override {
+        Q_UNUSED(parent);
+        return 1;
+    }
     bool setData(const QModelIndex &index, const QVariant &value, int role)override;
-    int columnCount(const QModelIndex &parent = QModelIndex()) const override { return 1; }
-
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
 
-    static bool multitagTextCmp(teMultiTagCore* tag, const QString& text){
-        return tag->text < text;
-    }
+    /// Finds (or, when `row` is given, creates) the multi tag for `in_text`.
     teMultiTagCore* getMultiTag(const QString& in_text,bool& ifnew,int row=-1,bool ifselect=false);
-    void linkNewTagcore(std::shared_ptr<tetagcore>in_core,teTagList*in_list,QItemSelectionModel *selectionModel = nullptr);
+    /// Multi tag whose text equals `in_text`, or nullptr. `exclude` is skipped.
+    teMultiTagCore* findMultiTag(const QString& in_text,teMultiTagCore* exclude=nullptr) const;
+    void linkNewTagcore(std::shared_ptr<tetagcore>in_core,teTagList*in_list);
 
+    /// Inserts a placeholder row and starts editing it (used by "insert above").
     teMultiTagCore* tagInsert(int row, std::shared_ptr<tetagcore>in_tag=nullptr,bool select=true);
-
     teMultiTagCore* tagInsert(int row,const QString&text,bool select);
+    /// Moves the multi tag to the relative position it represents in every list.
     void setPos(int index);
     Qt::ItemFlags flags(const QModelIndex &index) const override {
+        Q_UNUSED(index);
         return Qt::ItemIsSelectable | Qt::ItemIsEnabled | Qt::ItemIsDragEnabled | Qt::ItemIsDropEnabled | Qt::ItemIsEditable;
     }
     Qt::DropActions supportedDropActions() const override {
         return Qt::MoveAction;
     }
     QMimeData *mimeData(const QModelIndexList &indexes) const override;
-    bool dropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column, const QModelIndex &parent) override {return false;}
+    bool dropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column, const QModelIndex &parent) override {
+        Q_UNUSED(data); Q_UNUSED(action); Q_UNUSED(row); Q_UNUSED(column); Q_UNUSED(parent);
+        return false;
+    }
     bool moveRows(const QModelIndex &sourceParent, int sourceRow, int count,
                   const QModelIndex &destinationParent, int destinationRow) override;
+    /// Moves an arbitrary set of rows to `destination` (insertion index in the
+    /// current index space). Used by the view's drag & drop.
+    bool moveTags(const QList<int>& rows, int destination);
 
-    void newTagTypeFinished(teMultiTagCore *in_tag, int row);
+    void newTagTypeFinished(teMultiTagCore *in_tag);
+
     void loadFiles(QList<tePictureFile *> in_filelist,bool ifclear);
     void eraseFiles(QList<tePictureFile *> in_filelist);
-    teMultiTagCore * insertToTaglist(teMultiTagCore *in_tag, double pos);
-    virtual void connectTag(teMultiTagCore*in_tag){
+
+    /// Makes sure every linked list holds exactly one tag with `in_tag->text`
+    /// and that `in_tag` links to it. Returns the multi tag that owns it.
+    teMultiTagCore* insertToTaglist(teMultiTagCore *in_tag, double pos);
+
+    void connectTag(teMultiTagCore*in_tag){
         in_tag->teConnect(ready_destroy,this,(void(teMultiTagListModel::*)(teMultiTagCore *))&teMultiTagListModel::tagErase,in_tag);
     }
-    void tagErase(int in){
-        removeRows(in,1);
-    }
     void tagErase(teMultiTagCore *in_tag){
-        removeRows(tags.indexOf(in_tag),1);
+        tagErase(tags.indexOf(in_tag));
     }
-    void tagDestroy(int index){
-        tags[index]->self_destroy();
-        tagErase(index);
+    void tagErase(int index){
+        if(index>=0&&index<tags.size())
+            removeRows(index,1);
     }
+    /// Destroys the tag (removing it from all images) and its row.
+    void tagDestroy(int index);
     void tagDestroy();
     void clear();
     bool removeRows(int row, int count=1, const QModelIndex &parent = QModelIndex()) override;
@@ -115,6 +147,7 @@ public:
 signals:
     void listModified();
 };
+
 class teTagListDelegate : public QStyledItemDelegate {
     Q_OBJECT
 public:
@@ -122,26 +155,30 @@ public:
     QListWidget* suggestionBox = new QListWidget;
     QWidget*parent;
     int tagheight=30;
-    teTagListDelegate(QWidget*parent=nullptr);
-    bool eventFilter(QObject* watched, QEvent* e) override;
+    explicit teTagListDelegate(QWidget*parent=nullptr);
+    bool eventFilter(QObject *watched, QEvent* e) override;
 
-    explicit teTagListDelegate(QObject *parent = nullptr) : QStyledItemDelegate(parent) {}
-    mutable int editing_row=-1;
     QWidget *createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
-    void setEditorData(QWidget *editor, const QModelIndex &index) const override {}
+    void setEditorData(QWidget *editor, const QModelIndex &index) const override {
+        Q_UNUSED(editor); Q_UNUSED(index);
+    }
     void setModelData(QWidget *editor, QAbstractItemModel *model, const QModelIndex &index) const override;
     ~teTagListDelegate(){
         delete lineedit;
     }
-    void destroyEditor(QWidget* editor, const QModelIndex& index) const override {}
+    void destroyEditor(QWidget* editor, const QModelIndex& index) const override {
+        Q_UNUSED(editor); Q_UNUSED(index);
+    }
     mutable bool showEditor=false;
     void updateEditorGeometry(QWidget *editor, const QStyleOptionViewItem &option, const QModelIndex &index) const override {
+        Q_UNUSED(index);
         if(!showEditor)return;
         editor->setGeometry(option.rect.adjusted(4,2,-1,-2));
-        ((suggestionLineEdit*)editor)->moveSuggestionBox();
+        static_cast<suggestionLineEdit*>(editor)->moveSuggestionBox();
     }
     void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
     QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override {
+        Q_UNUSED(option); Q_UNUSED(index);
         return QSize(200, tagheight); // Fixed height for each tag
     }
 };
@@ -163,7 +200,6 @@ public:
     void startDrag(Qt::DropActions supportedActions)override;
 
     void copyToClipBoard(bool ifcut);
-
     void paste(const QModelIndex& index);
 
     void keyPressEvent(QKeyEvent *event);

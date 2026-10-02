@@ -36,6 +36,25 @@ void addButtonsToGridLayout(QGridLayout *gridLayout, QButtonGroup *buttonGroup, 
     }
 }
 
+void colorsWidget::addSectionToContent(QLayout* sectionLayout,const QString& heading)
+{
+    if(heading.isEmpty()){
+        content_layout->addLayout(sectionLayout);
+        return;
+    }
+    // A caption is purely visual: it is wrapped together with its section so it
+    // is never part of a composed tag.
+    QVBoxLayout* wrapper = new QVBoxLayout;
+    wrapper->setContentsMargins(0,2,0,0);
+    wrapper->setSpacing(0);
+    QLabel* label = new QLabel(heading,this);
+    label->setProperty("type","sectionHeading");
+    label->setStyleSheet(qsl("QLabel{color:#c8c8c8;font:italic 12px \"Segoe UI\";border:none;background:transparent;}"));
+    wrapper->addWidget(label);
+    wrapper->addLayout(sectionLayout);
+    content_layout->addLayout(wrapper);
+}
+
 void colorsWidget::uncheckAllButtons(){
     for(auto&[layout,buttongroup]:objectLayoutList){
         if(buttongroup){
@@ -50,35 +69,47 @@ void colorsWidget::uncheckAllButtons(){
     otherWords.clear();
 }
 
-colorsWidget::colorsWidget(QVector<QPair<QStringList, bool> > &&objects, QWidget *parent, int colorListPos, std::optional<QStringList> extraButtons):teSignalWidget(parent){
+colorsWidget::colorsWidget(QVector<QPair<QStringList, bool> > &&objects, QWidget *parent, int colorListPos, std::optional<QStringList> extraButtons, QVector<QString> headings, QButtonGroup* sharedExclusiveGroup, bool verticalSections):teSignalWidget(parent){
+    content_layout = verticalSections ? static_cast<QBoxLayout*>(new QVBoxLayout)
+                                      : static_cast<QBoxLayout*>(new QHBoxLayout);
+    content_layout->setContentsMargins(0,0,0,0);
+    content_layout->setSpacing(1);
     objectLayoutList.reserve(objects.size()+3);
     if(extraButtons){
         extra_buttongroup= new QButtonGroup(this);
         extra_layout=new QHBoxLayout(this);
     }
 
-    for(auto&[stringlist,ifExclusive]:objects){
+    const bool sharedGroup = (sharedExclusiveGroup != nullptr);
+
+    for(int sectionIndex=0;sectionIndex<objects.size();++sectionIndex){
+        auto&[stringlist,ifExclusive]=objects[sectionIndex];
         QLayout* object_layout;
         if(stringlist.size()==1&&ifExclusive){
             QLabel* label = new QLabel(stringlist.first());
             object_layout=new QVBoxLayout(this);
             object_layout->addWidget(label);
             objectLayoutList.push_back({object_layout,nullptr});
-            content_layout->addLayout(object_layout);
+            addSectionToContent(object_layout,sectionIndex<headings.size()?headings[sectionIndex]:QString());
             extern QString labelItemStyle;
             label->setStyleSheet(labelItemStyle);
             continue;
         }
-        QButtonGroup*object_buttongroup = new QButtonGroup(this);
-        object_buttongroup->setExclusive(false);
-        if(ifExclusive)
-            connect(object_buttongroup,&QButtonGroup::buttonToggled,this,[object_buttongroup](QAbstractButton*btn,bool checked){if(checked)buttons_mutual_exclusion(btn,checked,object_buttongroup);},Qt::DirectConnection);
-        if(extraButtons)
-            connect(object_buttongroup,&QButtonGroup::buttonToggled,this,[this](QAbstractButton*btn,bool checked){
-                if(checked)
-                {foreach (QAbstractButton *button, extra_buttongroup->buttons()) {
-                        button->setChecked(false);}
-                }},Qt::DirectConnection);
+        // Sections that must be mutually exclusive across the whole dialog share
+        // one QButtonGroup; the rest get their own.
+        const bool reuseShared = sharedGroup && ifExclusive;
+        QButtonGroup*object_buttongroup = reuseShared ? sharedExclusiveGroup : new QButtonGroup(this);
+        if(!reuseShared){
+            object_buttongroup->setExclusive(false);
+            if(ifExclusive)
+                connect(object_buttongroup,&QButtonGroup::buttonToggled,this,[object_buttongroup](QAbstractButton*btn,bool checked){if(checked)buttons_mutual_exclusion(btn,checked,object_buttongroup);},Qt::DirectConnection);
+            if(extraButtons)
+                connect(object_buttongroup,&QButtonGroup::buttonToggled,this,[this](QAbstractButton*btn,bool checked){
+                    if(checked)
+                    {foreach (QAbstractButton *button, extra_buttongroup->buttons()) {
+                            button->setChecked(false);}
+                    }},Qt::DirectConnection);
+        }
 
         if(stringlist.size()>4){
             object_layout=new QGridLayout;
@@ -94,7 +125,15 @@ colorsWidget::colorsWidget(QVector<QPair<QStringList, bool> > &&objects, QWidget
             }
         }
         objectLayoutList.push_back({object_layout,object_buttongroup});
-        content_layout->addLayout(object_layout);
+        addSectionToContent(object_layout,sectionIndex<headings.size()?headings[sectionIndex]:QString());
+    }
+
+    if(sharedGroup){
+        // One connection for the whole shared group: any newly checked button
+        // unchecks all the others, across every section.
+        sharedExclusiveGroup->setParent(this);      // the dialog owns the group
+        sharedExclusiveGroup->setExclusive(false);
+        connect(sharedExclusiveGroup,&QButtonGroup::buttonToggled,this,[sharedExclusiveGroup](QAbstractButton*btn,bool checked){if(checked)buttons_mutual_exclusion(btn,checked,sharedExclusiveGroup);},Qt::DirectConnection);
     }
 
     if(colorListPos>-1){
@@ -213,6 +252,9 @@ void colorsWidget::sendString(bool ifadd){
         }
     }
     int objectLayoutListSize = objectLayoutList.count();
+    // Several sections may share one QButtonGroup (categories of the clothes
+    // dialog), so a button must only contribute its text once.
+    QSet<QAbstractButton*> emitted;
     for(int i=0;i<objectLayoutListSize;++i){
         if(i==objectLayoutListSize-1&&!otherWords.isEmpty()){
             sendData+=otherWords;
@@ -220,7 +262,10 @@ void colorsWidget::sendString(bool ifadd){
         auto&[layout,group] = objectLayoutList[i];
         if(group)
             for(QAbstractButton* b:group->buttons()){
-                if(b->isChecked())sendData+=b->text()+' ';
+                if(b->isChecked()&&!emitted.contains(b)){
+                    emitted.insert(b);
+                    sendData+=b->text()+' ';
+                }
             }
         else
             sendData+=dynamic_cast<QLabel*>(layout->itemAt(0)->widget())->text()+' ';
@@ -660,18 +705,44 @@ QVariant tePictureFileModel_filted::data(const QModelIndex &index, int role) con
     return QVariant();
 }
 
+FilterTagWidget::FilterTagWidget(QWidget* parent) : QWidget(parent) {
+    m_layout = new QFlowLayout(this);
+    m_layout->setContentsMargins(2, 2, 2, 2);
+    m_reorderer = new QFlowLayoutReorderer(m_layout, this, this);
+    connect(m_reorderer,&QFlowLayoutReorderer::reordered,this,&FilterTagWidget::orderChanged);
+}
+
+QStringList FilterTagWidget::tagTexts() const {
+    QStringList texts;
+    for (int i = 0; i < m_layout->count(); ++i) {
+        if (auto* button = qobject_cast<QPushButton*>(m_layout->itemAt(i)->widget()))
+            texts << button->text();
+    }
+    return texts;
+}
+
 void FilterTagWidget::addTag(const QString &text) {
-    QPushButton* tagItem = new QPushButton(text, this);
+    const QString trimmed = text.trimmed();
+    if (trimmed.isEmpty())
+        return;
+    QPushButton* tagItem = new QPushButton(trimmed, this);
     extern QString tagItemStyle;
     tagItem->setStyleSheet(tagItemStyle);
+    // A plain click removes the chip; a drag reorders it. The reorderer eats the
+    // release event of a drag, so `clicked` is only emitted for real clicks.
     connect(tagItem, &QPushButton::clicked, this, [this, tagItem]{
         emit tagEdit(tagItem->text());
-        tagItems.removeAt(tagItems.indexOf(tagItem));
+        tagItems.removeAll(tagItem);
         m_layout->removeWidget(tagItem);
-        delete tagItem;
+        tagItem->deleteLater();
+        emit orderChanged();
     },Qt::DirectConnection);
     tagItems.push_back(tagItem);
-    lineedit?m_layout->insertWidget(-1,tagItem):m_layout->addWidget(tagItem);
+    if(lineedit)
+        m_layout->insertWidget(-1,tagItem);
+    else
+        m_layout->addWidget(tagItem);
+    m_reorderer->attach(tagItem);
 }
 
 void filterWidget::initializeUI() {
@@ -767,23 +838,39 @@ QStringList filterWidget::fetchSuggestions(const QString &input, int maxSuggesti
 }
 
 void filterWidget::sendSelection(){
-    if (lastSelected.indexes().empty()&&lastDeselected.indexes().empty()) return;
+    if(lastSelected.indexes().empty()&&lastDeselected.indexes().empty())
+        return;
 
-    if(!lastSelected.indexes().empty())
-        listview->scrollTo(qvariant_cast<QModelIndex>(lastSelected.indexes().first().data()));
+    auto* filteredModel = static_cast<tePictureFileModel_filted*>(myview->model());
+    const QModelIndexList selected = myview->selectionModel()->selectedIndexes();
 
     QItemSelection newSelection;
-
-    for(const QModelIndex& idx : myview->selectionModel()->selectedIndexes()) {
-        QModelIndex targetIndex = qvariant_cast<QModelIndex>(
-            dynamic_cast<tePictureFileModel_filted*>(myview->model())->picturefiles[idx.row()]
-            );
-        newSelection.select(targetIndex, targetIndex);
+    QModelIndex firstSource;
+    for(const QModelIndex& idx : selected){
+        if(idx.row()<0||idx.row()>=filteredModel->picturefiles.size())
+            continue;
+        // picturefiles already holds the index of the *main* model. Asking the
+        // proxy for its data() returns the tePictureFile pointer instead, so the
+        // old qvariant_cast<QModelIndex> produced an invalid index and the main
+        // view was selected but never scrolled to.
+        const QModelIndex sourceIndex = filteredModel->picturefiles[idx.row()];
+        if(!sourceIndex.isValid())
+            continue;
+        if(!firstSource.isValid())
+            firstSource = sourceIndex;
+        newSelection.select(sourceIndex,sourceIndex);
     }
+
+    if(newSelection.isEmpty())
+        return;
+
     listview->selectionModel()->select(newSelection, QItemSelectionModel::ClearAndSelect);
+    listview->selectionModel()->setCurrentIndex(firstSource, QItemSelectionModel::NoUpdate);
+    listview->scrollTo(firstSource, QAbstractItemView::PositionAtCenter);
 }
 
 bool filterWidget::eventFilter(QObject *watched, QEvent *event){
+    Q_UNUSED(watched);
     if(event->type()==QEvent::Type::MouseButtonRelease){
         sendSelection();
     }
@@ -823,14 +910,14 @@ void filterWidget::addTagToRule(RuleType type, const QString &tag) {
 
 void filterWidget::performFilter() {
     teFiltRule rule;
-    for(QPushButton*tagitem:tagWidgets[AllOf]->tagItems)
-        rule.a.push_back(tagitem->text());
-    for(QPushButton*tagitem:tagWidgets[AnyOf]->tagItems)
-        rule.r.push_back(tagitem->text());
-    for(QPushButton*tagitem:tagWidgets[NoneOf]->tagItems)
-        rule.n.push_back(tagitem->text());
-    for(QPushButton*tagitem:tagWidgets[ExactOne]->tagItems)
-        rule.x.push_back(tagitem->text());
+    const QStringList all = tagWidgets[AllOf]->tagTexts();
+    const QStringList any = tagWidgets[AnyOf]->tagTexts();
+    const QStringList none = tagWidgets[NoneOf]->tagTexts();
+    const QStringList exact = tagWidgets[ExactOne]->tagTexts();
+    for(const QString& text:all) rule.a.push_back(text);
+    for(const QString& text:any) rule.r.push_back(text);
+    for(const QString& text:none) rule.n.push_back(text);
+    for(const QString& text:exact) rule.x.push_back(text);
     mymodel.setdata(listview->filt(rule));
 }
 
@@ -863,11 +950,9 @@ void customControlWidget::connectSignals() {
     },Qt::DirectConnection);
 
     connect(OK_Btn,&QPushButton::clicked,this,[this]{
-        QStringList sendList;
-        for(QPushButton*btn:tagWidget->tagItems){
-            sendList.push_back(btn->text());
-        }
-        emit tagsUpdated(sendList);
+        // tagTexts() reflects the visual (dragged) order, which is the order the
+        // custom tags are stored and rebuilt in.
+        emit tagsUpdated(tagWidget->tagTexts());
         this->hide();
     });
     connect(Bin_Btn,&QPushButton::clicked,this,[this]{

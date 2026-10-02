@@ -2,46 +2,55 @@
 #define TEPICTURELISTVIEW_H
 #include "qstyleditemdelegate.h"
 #include "tepicturefile.h"
+
+/// One rule of the filter window: all / any / none / exactly one of.
 struct teFiltRule{
     QVector<tetagcore> a;
     QVector<tetagcore> r;
     QVector<tetagcore> n;
     QVector<tetagcore> x;
 };
+
 class tePictureListView;
 
-class tePictureFileModel : public QAbstractListModel,public teObject {
+class tePictureFileModel : public QAbstractListModel, public teObject {
     Q_OBJECT
 
 public:
     QList<tePictureFile*> picturefiles;
-    std::mutex pictureListMutex;
-    tePictureListView*parentView;
+    tePictureListView*parentView = nullptr;
+
     explicit tePictureFileModel(QObject *parent = nullptr) : QAbstractListModel(parent) {}
 
+    /// Deletes every file. Emits clearAllFiles().
     void clear();
-
+    /// Appends files, wires their signals and starts their thumbnail decode.
     void append(const QList<tePictureFile *> &files);
+    /// Removes and deletes the given files (used by "move to recycle bin").
+    void removeFiles(const QList<tePictureFile *> &files);
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override {
-        if (parent.isValid()) return 0;
+        if (parent.isValid())
+            return 0;
         return picturefiles.size();
     }
-    void save(){
-        std::lock_guard<std::mutex> ul{pictureListMutex};
-        for(tePictureFile*file:picturefiles){
-            file->save();
-        }
-    }
+
+    void save();
+
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
-    void updatePicturefile(tePictureFile*in_file);
-    void emitdataChanged(tePictureFile*caller,QModelIndex index);
+    /// Refreshes one row (tag count changed, thumbnail arrived, ...).
+    void updatePicturefile(tePictureFile* in_file);
 
     QVector<QModelIndex> filt(const teFiltRule& rule);
+
+    /// Index of `file`, or -1.
+    int indexOf(tePictureFile* file) const { return picturefiles.indexOf(file); }
+
 signals:
-    void newFileLoaded(QList<tePictureFile *> files,bool ifclear);
+    void newFileLoaded(QList<tePictureFile *> files, bool ifclear);
     void clearAllFiles();
 };
+
 class tePictureFileDelegate : public QStyledItemDelegate {
     Q_OBJECT
 
@@ -52,32 +61,37 @@ public:
 
     QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override;
 };
+
 class tePictureListView:public QListView{
     Q_OBJECT
     friend class tePictureFileModel;
 public:
     tePictureFileDelegate picturefileDelegate;
     tePictureFileModel picturefileModel;
-    tePictureListView(QWidget*parent=nullptr);
+    explicit tePictureListView(QWidget*parent=nullptr);
+
+    tePictureFileModel* fileModel(){ return &picturefileModel; }
+
     void enterEvent(QEnterEvent *event)override{
         setFocus();
         QListView::enterEvent(event);
     }
-    void selectNext(){
-        if(auto selections = selectionModel()->selectedRows();!selections.empty()&&selections[0].row()<model()->rowCount())
-            selectionModel()->select(model()->index(selections[0].row()+1,0),QItemSelectionModel::ClearAndSelect);
-    }
-    void selectPrevious(){
-        if(auto selections = selectionModel()->selectedRows();!selections.empty()&&selections[0].row()>0)
-            selectionModel()->select(model()->index(selections[0].row()-1,0),QItemSelectionModel::ClearAndSelect);
-    }
-    void selectIndexList(QVector<QModelIndex>indexes){
-        selectionModel()->clearSelection();
-        for(QModelIndex&idx:indexes)
-            selectionModel()->select(idx,QItemSelectionModel::Select);
-    }
+
+    void selectNext();
+    void selectPrevious();
+    void selectIndexList(QVector<QModelIndex> indexes);
+
     QVector<QModelIndex> filt(const teFiltRule&rule){
-        return dynamic_cast<tePictureFileModel*>(model())->filt(rule);
+        return picturefileModel.filt(rule);
     }
+
+    /// Data of the rows currently selected, in view order.
+    QList<tePictureFile*> selectedFiles() const;
+
+    void contextMenuEvent(QContextMenuEvent* event) override;
+
+signals:
+    /// Emitted after files were successfully moved to the recycle bin.
+    void filesRemoved(QList<tePictureFile*> files);
 };
 #endif

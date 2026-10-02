@@ -62,6 +62,12 @@ extern QString tetagMulti_selectCurrentStyle;
 extern QString tetagMulti_selectStyle;
 extern QString tetagMulti_normalStyle;
 void teTagBase::setStyle(tetagStyle in){
+    // Qt re-parses a sheet on every setStyleSheet() call (about 3 ms for these
+    // small widgets), and the tag list sets the style of every tag on every
+    // load, so re-applying the sheet that is already in place is skipped.
+    if(currentStyle==int(in))
+        return;
+    currentStyle=int(in);
     switch(in){
     case normal:setStyleSheet(tetag_normalStyle);break;
     case select:setStyleSheet(tetag_selectStyle);break;
@@ -187,6 +193,13 @@ void teTagBase::mousePressEvent(QMouseEvent *event) {
 }
 void teTagBase::mouseReleaseEvent(QMouseEvent *event) {
     if (event->button() == Qt::LeftButton) {
+        // Only a real drag reorders the list. Emitting this for a plain click
+        // made tagdroped() re-apply the selection, so ctrl+clicking a tag that
+        // was already selected deselected it on press and selected it again on
+        // release - the tag could never be removed from a multi selection.
+        if(!isDragging)
+            return;
+        isDragging = false;
         emit droped(this,event->modifiers());
     }
 }
@@ -245,45 +258,171 @@ int teTagList::initialize_push_back(std::shared_ptr<tetagcore> tag)
         ++operationlist.inip;
         return tags.size() - 1;
     }
-    return -1;
 }
-int teTagList::insert(int pos, std::shared_ptr<tetagcore> tag, int removeDuplicate, bool ifSendSignal){
-    if(removeDuplicate==1&&remove_duplicate(tag,false)){
-        return -1;
-    }
-    connectTag(tag);
-    onTagInserted(tag,pos,ifSendSignal);
-    if(tag->type==teTagCore::deleteTag){
-        disconnectTag(tag);
-        return -1;
-    }
-    if(removeDuplicate==2){
-        bool iflocked=inner_lock();
-        tags.insert(pos,tag);
-        if(iflocked)inner_unlock();
-        return remove_duplicate(tag,true);
-    }else if(removeDuplicate==1){
-        if(remove_duplicate(tag,false)){
-            disconnectTag(tag);
-            return -1;
-        }else{
-            bool iflocked=false;
-            if(!locked_for_edit){
-                tagsMt.lock();
-                iflocked=true;
-                ++locked_for_edit;
+
+bool teTagList::remove_duplicate(std::shared_ptr<tetagcore> tag, bool keepself)
+{
+    std::lock_guard<std::recursive_mutex> lg(tagsMt);
+
+    if (tag == nullptr && keepself == true)
+        telog("[teTagList::remove_duplicate]:tag==nullptr&&keepself==true");
+
+    bool ret = false;
+    if (tag != nullptr) {
+        for (int i = 0; i < tags.size(); ) {
+            if (*tags[i] == *tag && tags[i] != tag) {
+                if (keepself) {
+                    erase(i);           // erase() already shrinks the list
+                    ret = true;
+                    continue;
+                }
+                return true;
             }
-            tags.insert(pos,tag);
-            if(iflocked){
-                --locked_for_edit;
-                tagsMt.unlock();
-            }
+            ++i;
         }
-    }else if(removeDuplicate==0){
-        std::lock_guard<std::mutex>lg(tagsMt);
-        tags.insert(pos,tag);
+        return ret;
     }
+
+    for (int i = 0; i < tags.size(); ++i) {
+        for (int j = i + 1; j < tags.size(); ) {
+            if (*tags[i] == *tags[j]) {
+                erase(j);
+                ret = true;
+                continue;
+            }
+            ++j;
+        }
+    }
+    return ret;
+}
+
+void teTagList::erase(int id)
+{
+    std::lock_guard<std::recursive_mutex> lg(tagsMt);
+    if (id < 0 || id >= tags.size()) {
+        telog(QString("[teTagList::erase] index %1 out of range (size %2)").arg(id).arg(tags.size()));
+        return;
+    }
+    std::shared_ptr<tetagcore> core = tags.takeAt(id);
+    onTagErased(core, id, isTagsLoaded);
+    core->unload();
+    core->teDisconnect(this);
+    core->teemit(teCallbackType::destroy, false);
+}
+
+int teTagList::edit(std::shared_ptr<tetagcore> core, QString text, int removeDuplicate, bool ifemit)
+{
+    if (!core)
+        return -1;
+
+    {
+        std::lock_guard<std::recursive_mutex> lg(tagsMt);
+        core->read(text);
+    }
+
+    if (removeDuplicate == 1 || removeDuplicate == 2) {
+        // Merging: the tag the user just renamed wins, every identical tag is
+        // erased. Returning early here (as the old code did) is exactly what
+        // left two identical tags in the list.
+        remove_duplicate(core, true);
+    }
+
+    onTagEdited(core, ifemit);
+    return core->type == teTagCore::deleteTag ? -1 : 0;
+}
+
+int teTagList::edit(int index, QString text, int removeDuplicate, bool ifemit)
+{
+    std::shared_ptr<tetagcore> core;
+    {
+        std::lock_guard<std::recursive_mutex> lg(tagsMt);
+        if (index < 0 || index >= tags.size()) {
+            telog(QString("[teTagList::edit] index %1 out of range (size %2)").arg(index).arg(tags.size()));
+            return -1;
+        }
+        core = tags.at(index);
+    }
+    return edit(core, text, removeDuplicate, ifemit);
+}
+
+int teTagList::insert(int pos, std::shared_ptr<tetagcore> tag, int removeDuplicate, bool ifSendSignal)
+{
+    if (!tag)
+        return -1;
+    if (removeDuplicate == 1 && remove_duplicate(tag, false))
+        return -1;
+    if (tag->type == teTagCore::deleteTag)
+        return -1;
+
+    connectTag(tag);
+    {
+        std::lock_guard<std::recursive_mutex> lg(tagsMt);
+        pos = std::clamp(pos, 0, int(tags.size()));
+        tags.insert(pos, tag);
+    }
+    if (removeDuplicate == 2)
+        remove_duplicate(tag, true);
+
+    // Announce the insertion *after* the list is consistent; the old code
+    // emitted before inserting, so a slot that inspected the list saw the tag
+    // missing (and a rejected deleteTag was announced as well).
+    onTagInserted(tag, pos, ifSendSignal);
     return 0;
+}
+
+void teTagList::move(int originPos, int newPos)
+{
+    std::shared_ptr<tetagcore> taketag;
+    {
+        std::lock_guard<std::recursive_mutex> lg(tagsMt);
+        if (originPos < 0 || originPos >= tags.size()) {
+            telog(QString("[teTagList::move] origin %1 out of range (size %2)").arg(originPos).arg(tags.size()));
+            return;
+        }
+        taketag = tags.takeAt(originPos);
+        newPos = std::clamp(newPos, 0, int(tags.size()));
+        tags.insert(newPos, taketag);
+    }
+    onTagMoved(taketag, originPos, newPos);
+}
+
+void teTagList::move(std::shared_ptr<tetagcore> tag, int newPos)
+{
+    const int o = tags.indexOf(tag);
+    if (o < 0) {
+        telog("[teTagList::move]:could not find input tag in taglist");
+        return;
+    }
+    move(o, newPos);
+}
+
+void teTagList::reorderBlock(int from, int count, int insertAt)
+{
+    if (count <= 0)
+        return;
+
+    QVector<std::shared_ptr<tetagcore>> block;
+    {
+        std::lock_guard<std::recursive_mutex> lg(tagsMt);
+        if (from < 0 || from + count > int(tags.size())) {
+            telog(QString("[teTagList::reorderBlock] block %1+%2 out of range (size %3)")
+                      .arg(from).arg(count).arg(tags.size()));
+            return;
+        }
+        block.reserve(count);
+        for (int i = 0; i < count; ++i)
+            block.append(tags.takeAt(from));
+        insertAt = std::clamp(insertAt, 0, int(tags.size()));
+        for (int i = 0; i < count; ++i)
+            tags.insert(insertAt + i, block[i]);
+    }
+
+    isSaved = false;
+    for (int i = 0; i < count; ++i) {
+        if (recordingChanges())
+            operationlist.addMoveOperation(block[i], from + i, insertAt + i);
+    }
+    emit tagMoved(block.first());
 }
 
 QString teTagList::toText()
@@ -364,16 +503,16 @@ void teWordBase::mouseDoubleClickEvent(QMouseEvent *event){
     emit mouseDoubleClicked(this);
 }
 
-teTagCore::teTagCore(const QList<teWordCore *> in, teTag *child):widget(child){
+teTagCore::teTagCore(const QList<teWordCore *> in, teTagBase *child):widget(child){
     for(tewordcore*w:in)
         words.push_back(new teWordCore(w->text));
 }
 
-teTagCore::teTagCore(const QString &str, teTag *child, bool forceSentence):widget(child){
+teTagCore::teTagCore(const QString &str, teTagBase *child, bool forceSentence):widget(child){
     read(str);
 }
 
-teTagCore::teTagCore(const char *str, teTag *child, bool forceSentence):widget(child){
+teTagCore::teTagCore(const char *str, teTagBase *child, bool forceSentence):widget(child){
     read(QString(str));
 }
 

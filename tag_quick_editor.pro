@@ -41,6 +41,8 @@ SOURCES += \
     src/tereftaglistwidget.cpp \
     src/tesignalwidget.cpp \
     src/tetag.cpp \
+    src/tetagdisplaywidget.cpp \
+    src/tetaglistmodel.cpp \
     src/tetaglistwidget.cpp \
     src/widget_pool.cpp
 
@@ -67,6 +69,8 @@ HEADERS += \
     src/tereftaglistwidget.h \
     src/tesignalwidget.h \
     src/tetag.h \
+    src/tetagdisplaywidget.h \
+    src/tetaglistmodel.h \
     src/tetaglistwidget.h \
     src/widget_pool.h
 

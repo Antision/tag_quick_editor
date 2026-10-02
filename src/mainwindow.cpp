@@ -4,17 +4,16 @@
 #include "ui_mainwindow.h"
 #include"tepicturefile.h"
 #include"teeditor_derive.h"
+#include"logwindow.h"
 
 QWidget* global_window;
 bool autoMerge=true;
 bool MergeSwitch=true;
 int nsfwMode=0;
 int autoSaveSec=20;
-std::atomic<bool> programRunning=true;
 QString defaultPath;
 QStringList custom_tags;
-std::atomic<int> loading_count=0;
-QMap<QString,teEditorControl*>* custom_controls;
+teCustomControlList* custom_controls = nullptr;
 editorListLayout editorlistlayout;
 int mainWindowSplitterLength[MainWindowWidgetCount];
 QRect mainwindowGeometry;
@@ -61,6 +60,13 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+
+    // The log window is created first so that everything logged from here on
+    // (including the tag list loading) is visible to the user.
+    logWindow = new LogWindow(nullptr);
+    teSetLogTarget([this](const QString& line){ if(logWindow) logWindow->append(line); });
+    connect(ui->action_log_window,&QAction::triggered,this,&MainWindow::showLogWindow,Qt::DirectConnection);
+
     thread_pool.detach_task(load_tags);
 
     setWindowFlags(Qt::WindowMinimizeButtonHint|Qt::FramelessWindowHint);
@@ -71,7 +77,26 @@ MainWindow::MainWindow(QWidget *parent)
     SetWindowLongPtr(hwnd, GWL_STYLE, style | WS_MAXIMIZEBOX | WS_THICKFRAME | WS_CAPTION);
 
     connect(ui->actionAuto_Merge_Tags,&QAction::toggled,this,[](bool state){autoMerge=state;});
-    connect(ui->actionAuto_Save_State,&QAction::toggled,this,[](bool state){extern int autoSaveSec;autoSaveSec=state?20:0;});
+
+    // Auto save runs on a GUI timer instead of a std::thread. The old worker
+    // read the tag lists while the GUI thread was editing them, which is what
+    // made "close the list while a state save is running" crash.
+    autoSaveTimer = new QTimer(this);
+    autoSaveTimer->setInterval(std::max(1,autoSaveSec)*1000);
+    connect(autoSaveTimer,&QTimer::timeout,this,&MainWindow::autoSaveTick);
+    connect(ui->actionAuto_Save_State,&QAction::toggled,this,[this](bool state){
+        autoSaveSec = state ? 20 : 0;
+        if(state){
+            autoSaveTimer->setInterval(autoSaveSec*1000);
+            autoSaveTimer->start();
+        }else{
+            autoSaveTimer->stop();
+        }
+    });
+    if(autoSaveSec>0){
+        autoSaveTimer->setInterval(autoSaveSec*1000);
+        autoSaveTimer->start();
+    }
 
     setWindowIcon(QIcon(":/res/icon.ico"));
     if(mainwindowGeometry.width()>0)
@@ -148,16 +173,14 @@ MainWindow::MainWindow(QWidget *parent)
     });
     connect(editorlistlayoutwidget,&EditorListLayoutWidget::cancelSignal,ui->editorlist,&teEditorList::setEditorsToPages);
 
-    static bool called=false;
-    static QList<tePictureFile*> lastfiles;
     picturefileListView=ui->picturelist;
-    picturefileModel = dynamic_cast<tePictureFileModel*>(picturefileListView->model());
+    picturefileModel = picturefileListView->fileModel();
     imageWidget = new teImageWidget{nullptr};
     imageWidget->hide();
     connect(picturefileListView, &QListView::doubleClicked, this, [this](const QModelIndex &index) {
         imageWidget->show();
 
-        tePictureFile *file = qvariant_cast<tePictureFile*>(picturefileModel->data(index));
+        tePictureFile *file = picturefileModel->data(index, Qt::DisplayRole).value<tePictureFile*>();
         if (!file) return;
 
         imageWidget->setImage(file->filepath.qstring);
@@ -188,27 +211,44 @@ MainWindow::MainWindow(QWidget *parent)
             this, &MainWindow::save, Qt::DirectConnection);
 
     connect(picturefileListView->selectionModel(), &QItemSelectionModel::selectionChanged,
-            this, [this](const QItemSelection &selected) {
-                if (imageWidget->isVisible() && selected.size() == 1) {
-                    auto *file = qvariant_cast<tePictureFile*>(
-                        picturefileListView->model()->data(selected[0].indexes()[0])
-                        );
-                    if (file) {
-                        imageWidget->setImage(file->filepath.qstring);
-                    }
-                }
+            this, [this] {
+                if (!imageWidget->isVisible())
+                    return;
+                const QModelIndexList rows = picturefileListView->selectionModel()->selectedRows();
+                if (rows.size() != 1)
+                    return;
+                if (auto *file = rows.first().data(Qt::DisplayRole).value<tePictureFile*>())
+                    imageWidget->setImage(file->filepath.qstring);
             }, Qt::DirectConnection);
-    void newFileLoaded(QList<tePictureFile *> files);
-    void clearAllFiles();
+
     connect(picturefileModel,&tePictureFileModel::newFileLoaded,ui->GlobalMultiTaglistView->model,&teMultiTagListModel::loadFiles,Qt::DirectConnection);
     connect(picturefileModel,&tePictureFileModel::clearAllFiles,ui->GlobalMultiTaglistView->model,&teMultiTagListModel::clear,Qt::DirectConnection);
+
+    // Removing files (recycle bin) has to go through the model so the rows
+    // disappear and the objects are deleted exactly once.
+    connect(picturefileListView,&tePictureListView::filesRemoved,
+            picturefileModel,&tePictureFileModel::removeFiles,Qt::DirectConnection);
 
     filterWindow = new filterWidget(picturefileListView);
     connect(ui->action_filt,&QAction::triggered,this,[this]{
         filterWindow->show();
     },Qt::DirectConnection);
 
-    connect(picturefileListView->selectionModel(), &QItemSelectionModel::selectionChanged, this,&MainWindow::emitloadlists,Qt::DirectConnection);
+    // Selection changes are coalesced: clicking through the list quickly used to
+    // start a tag list reload per click, and the reloads re-entered the widget
+    // (processEvents) so that the file that finally got displayed was not the
+    // file that was selected. Now exactly one reload runs per event loop pass
+    // and it reads the *current* selection.
+    selectionTimer = new QTimer(this);
+    selectionTimer->setSingleShot(true);
+    selectionTimer->setInterval(0);
+    connect(selectionTimer,&QTimer::timeout,this,&MainWindow::applyPendingSelection);
+    connect(picturefileListView->selectionModel(), &QItemSelectionModel::selectionChanged,
+            this,[this]{
+                selectionTimer->start();
+                ui->TaglistTabWidget->setCurrentIndex(0);
+            },Qt::DirectConnection);
+
     ui->taglist->editorlist = ui->editorlist;
     ui->editorlist->tagListWidget = ui->taglist;
     global_window=this;
@@ -275,56 +315,113 @@ QPushButton:hover{background-color:rgba(100,100,100,100);})"));
     ui->actionAuto_Merge_Tags->setChecked(autoMerge);
 
 }
+
+QList<tePictureFile*> MainWindow::selectedPictureFiles() const
+{
+    QList<tePictureFile*> files;
+    const QModelIndexList rows = picturefileListView->selectionModel()->selectedRows();
+    files.reserve(rows.size());
+    for (const QModelIndex& index : rows) {
+        if (auto* file = index.data(Qt::DisplayRole).value<tePictureFile*>())
+            files.append(file);
+    }
+    return files;
+}
+
+void MainWindow::applyPendingSelection()
+{
+    emitloadlists(QItemSelection(), QItemSelection());
+}
+
+void MainWindow::autoSaveTick()
+{
+    if (autoSaveSec <= 0)
+        return;
+    saveState(true);
+}
+
+void MainWindow::showLogWindow()
+{
+    if (!logWindow)
+        return;
+    logWindow->show();
+    logWindow->raise();
+    logWindow->activateWindow();
+}
+
 void MainWindow::emitloadlists(const QItemSelection &selected, const QItemSelection &deselected){
-    ui->TaglistTabWidget->setCurrentIndex(0);
-    QList<tePictureFile *> selectedFiles;
-    for (const auto &index : selected.indexes()) {
-        auto *file = picturefileModel->data(index, Qt::DisplayRole).value<tePictureFile *>();
-        if (file) selectedFiles.append(file);
-    }
-    QList<tePictureFile *> deSelectedFiles;
-    for (const auto &index : deselected.indexes()) {
-        auto *file = picturefileModel->data(index, Qt::DisplayRole).value<tePictureFile *>();
-        if (file) deSelectedFiles.append(file);
-    }
-    int selectcount = picturefileListView->selectionModel()->selectedRows().size();
-    if (selectcount==1) {
+    Q_UNUSED(selected);
+    Q_UNUSED(deselected);
+
+    const QList<tePictureFile*> selectedFiles = selectedPictureFiles();
+    const int selectcount = selectedFiles.size();
+
+    if (selectcount == 1) {
         ui->editorlist->unloadList();
         if(multitaglist->isVisible()){
             ui->taglist->show();
             multitaglistmodel->clear();
             multitaglist->hide();
         }
+        shownMultiTagFiles.clear();
         ui->taglist->sc->verticalScrollBar()->setValue(0);
-        ui->taglist->loadFile(picturefileListView->selectionModel()->selectedIndexes().first().data().value<tePictureFile *>());
-    } else if(selectcount>1){
-        if(ui->taglist->isVisible()){
-            multitaglist->show();
-            ui->taglist->hide();
-            ui->editorlist->unloadList();
-        }
-        if((selected.size()+deselected.size())<std::min(multitaglistmodel->linked_taglists.size()/2,selectedFiles.size()/2)){
-            if(!deselected.empty())
-                multitaglistmodel->eraseFiles(deSelectedFiles);
-            if(!selected.empty())
-                multitaglistmodel->loadFiles(selectedFiles,false);
-        }else{
-            multitaglistmodel->clear();
-            QList<tePictureFile *> allSelectedFiles;
-            QModelIndexList indexlist = picturefileListView->selectionModel()->selectedIndexes();
-            for(QModelIndex index:indexlist){
-                allSelectedFiles.push_back(index.data().value<tePictureFile *>());
-            }
-            multitaglistmodel->loadFiles(allSelectedFiles,false);
-        }
+        ui->taglist->loadFile(selectedFiles.first());
+        return;
     }
 
+    if (selectcount == 0) {
+        multitaglistmodel->clear();
+        shownMultiTagFiles.clear();
+        ui->taglist->clear();
+        ui->editorlist->unloadList();
+        return;
+    }
+
+    if(ui->taglist->isVisible()){
+        multitaglist->show();
+        ui->taglist->hide();
+        ui->editorlist->unloadList();
+    }
+
+    // Incremental update when only a few files entered/left the selection,
+    // full reload otherwise.
+    const QSet<tePictureFile*> oldSet(shownMultiTagFiles.begin(),shownMultiTagFiles.end());
+    const QSet<tePictureFile*> newSet(selectedFiles.begin(),selectedFiles.end());
+    QList<tePictureFile*> removed,added;
+    for(tePictureFile* f:shownMultiTagFiles)
+        if(!newSet.contains(f))
+            removed.append(f);
+    for(tePictureFile* f:selectedFiles)
+        if(!oldSet.contains(f))
+            added.append(f);
+
+    if(!shownMultiTagFiles.isEmpty()
+        && (removed.size()+added.size())*2 <= shownMultiTagFiles.size()+selectedFiles.size()){
+        if(!removed.isEmpty())
+            multitaglistmodel->eraseFiles(removed);
+        if(!added.isEmpty())
+            multitaglistmodel->loadFiles(added,false);
+    }else{
+        multitaglistmodel->clear();
+        multitaglistmodel->loadFiles(selectedFiles,false);
+    }
+    shownMultiTagFiles = selectedFiles;
 }
 MainWindow::~MainWindow()
 {
+    // Stop every timer first: none of them may fire while the widgets are gone.
+    if (autoSaveTimer)
+        autoSaveTimer->stop();
+    if (selectionTimer)
+        selectionTimer->stop();
+
+    // Detach the log target before the window that receives the lines dies.
+    teSetLogTarget({});
+
     save_config();
     delete filterWindow;
     delete imageWidget;
+    delete logWindow;
     delete ui;
 }
 
@@ -352,34 +449,32 @@ int MainWindow::saveState(bool ifRunning)
 
     QJsonArray picturesArr;
 
-    {
-        std::lock_guard<std::mutex> lg(picturefileModel->pictureListMutex);
-        for (tePictureFile* file : picturefiles) {
-            QJsonObject picture;
-            auto &taglist = file->taglist;
+    // Runs on the GUI thread (autoSaveTimer / checkSave), so the tag lists are
+    // read while nothing else can be mutating them.
+    for (tePictureFile* file : picturefiles) {
+        QJsonObject picture;
+        auto &taglist = file->taglist;
 
-            if (taglist.isSaved)
-                continue;
+        if (taglist.isSaved)
+            continue;
 
-            taglist.tagsMt.lock();
+        std::lock_guard<std::recursive_mutex> lg(taglist.tagsMt);
 
-            // 新格式：整段文本
-            picture.insert("filepath", file->filepath.qstring);
-            picture.insert("tagsText", taglist.toText());
+        // 新格式：整段文本
+        picture.insert("filepath", file->filepath.qstring);
+        picture.insert("tagsText", taglist.toText());
 
-            // 兼容旧格式：保留数组
-            QJsonArray tags;
-            int tagCount = taglist.size();
-            for (int t = 0; t < tagCount; ++t) {
-                teTagCore& tag = taglist[t];
-                tags.append(QString::fromStdString(joinTag(tag)));
-            }
-            picture.insert("tags", tags);
-
-            taglist.tagsMt.unlock();
-
-            picturesArr.append(picture);
+        // 兼容旧格式：保留数组
+        QJsonArray tags;
+        const int tagCount = int(taglist.size());
+        for (int t = 0; t < tagCount; ++t) {
+            teTagCore* tag = taglist.at(t);
+            if (tag)
+                tags.append(QString::fromStdString(joinTag(*tag)));
         }
+        picture.insert("tags", tags);
+
+        picturesArr.append(picture);
     }
 
     configObj.insert("pictures", picturesArr);
@@ -465,7 +560,6 @@ int MainWindow::loadState()
 }
 
 extern QStringList custom_tags;
-extern QMap<QString,teEditorControl*>* custom_controls;
 
 
 bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, qintptr *result)
@@ -607,12 +701,9 @@ LRESULT MainWindow::OnTestBorder(const QPoint &pt)
 }
 
 int MainWindow::checkSave(){
-    {
-        std::lock_guard<std::mutex>lg(picturefileModel->pictureListMutex);
-        for(tePictureFile*file:picturefileModel->picturefiles){
-            if(!file->taglist.isSaved)
-                goto saveFlag;
-        }
+    for(tePictureFile*file:picturefileModel->picturefiles){
+        if(!file->taglist.isSaved)
+            goto saveFlag;
     }
     return 1;
 saveFlag:
@@ -660,35 +751,207 @@ QList<QPair<tepath,bool>> is_duplicate_path(const tepath&in){
             }else return r;
         }return r;
     }
+    // Neither an ancestor nor a descendant: nothing to filter.
+    // (Falling off the end of this function used to be undefined behaviour.)
+    return {};
 }
+
+namespace {
+
+/// Win32's classic path limit, including the terminating null.
+constexpr int kMaxPathLength = 259;
+
+/**
+ * @brief Builds `<base>_<number><suffix>` without exceeding the path limit.
+ *
+ * Only the base name is shortened (from its tail); the `_<number>` marker is
+ * never trimmed away - trimming it would turn the candidate back into the name
+ * of the file being renamed, which then looks "already taken" for every number.
+ */
+QString makeCandidateName(const QString& folder,const QString& base,int number,const QString& suffix)
+{
+    const QString tail = QStringLiteral("_%1").arg(number) + suffix;
+    const int prefixLength = folder.size() + 1;         // folder + '/'
+    QString trimmed = base;
+    while (trimmed.size() > 1 && prefixLength + trimmed.size() + tail.size() > kMaxPathLength)
+        trimmed.chop(1);            // trim the tail of the name, never the head
+    return trimmed + tail;
+}
+
+/// Lower-cased base names of every entry in `folder`, whatever its extension.
+///
+/// Working with the *base* name (instead of the complete file name) is what
+/// makes the result stable: renaming `b.png` to `b_1.png` while `b_1.jpg`
+/// exists would just create a new duplicate pair, and the next scan would have
+/// to rename again.
+QSet<QString> folderBaseNames(const QString& folder)
+{
+    QSet<QString> bases;
+    const QDir dir(folder);
+    const QStringList entries = dir.entryList(QDir::AllEntries | QDir::Hidden | QDir::System | QDir::NoDotAndDotDot);
+    for (const QString& entry : entries)
+        bases.insert(QFileInfo(entry).completeBaseName().toLower());
+    return bases;
+}
+
+}
+
+teDuplicateStemReport teResolveDuplicateStems(QVector<tepath>& imagePaths)
+{
+    teDuplicateStemReport report;
+
+    // Group by (folder, base name). Windows file names are case insensitive.
+    QHash<QString,QVector<int>> groups;
+    for (int i = 0; i < imagePaths.size(); ++i) {
+        const QFileInfo info(imagePaths[i].qstring);
+        const QString key = info.absolutePath().toLower() + QLatin1Char('|')
+                            + info.completeBaseName().toLower();
+        groups[key].append(i);
+    }
+
+    QHash<QString,QSet<QString>> folderBases;
+
+    for (auto it = groups.cbegin(); it != groups.cend(); ++it) {
+        QVector<int> ids = it.value();
+        if (ids.size() < 2)
+            continue;
+
+        // The first path keeps its name (and therefore the shared caption);
+        // every later one is renamed.
+        std::sort(ids.begin(),ids.end(),[&](int a,int b){
+            return imagePaths[a].qstring < imagePaths[b].qstring;
+        });
+
+        const QString folder = QFileInfo(imagePaths[ids[0]].qstring).absolutePath();
+        QSet<QString>& bases = folderBases[folder.toLower()];
+        if (bases.isEmpty())
+            bases = folderBaseNames(folder);
+
+        const QString first = QFileInfo(imagePaths[ids[0]].qstring).fileName();
+        telog(QStringLiteral("[dataset] %1 images share the name \"%2\" in %3")
+                  .arg(ids.size()).arg(QFileInfo(first).completeBaseName(),folder));
+        report.details << QStringLiteral("%1: %2 images with the same name")
+                              .arg(folder, QString::number(ids.size()));
+
+        for (int n = 1; n < ids.size(); ++n) {
+            const int index = ids[n];
+            const QFileInfo info(imagePaths[index].qstring);
+            const QString fileName = info.fileName();
+            const QString base = info.completeBaseName();
+            const QString suffix = fileName.mid(base.size());   // includes the dot
+            const QString sourcePath = imagePaths[index].qstring;
+
+            if (!info.exists()) {
+                report.skipped++;
+                report.details << QStringLiteral("  skipped %1: the file does not exist").arg(fileName);
+                telog(QStringLiteral("[dataset] skipped %1: the file does not exist").arg(sourcePath));
+                continue;
+            }
+
+            // `<base>.txt` is the caption of *every* image called `<base>.*`, so
+            // it belongs to the image that keeps the original name. It must never
+            // be moved away from it - that would silently strip the tags of the
+            // kept image, which is exactly the kind of loss this function exists
+            // to prevent. The renamed image gets a copy instead.
+            const QString sourceTagPath = folder + QLatin1Char('/') + base + QStringLiteral(".txt");
+            const bool hasTagFile = QFileInfo::exists(sourceTagPath);
+
+            // Find a free `<base>_<n>` name. The candidate base is checked
+            // against the real folder contents, so
+            //  - an unrelated file with that base (any extension) can never be
+            //    overwritten, and
+            //  - the result cannot contain a new duplicate pair either.
+            QString targetName;
+            QString targetPath;
+            QString targetTagPath;
+            QString targetBase;
+            bool foundFreeName = false;
+            for (int counter = 1; counter <= 9999; ++counter) {
+                targetName = makeCandidateName(folder,base,counter,suffix);
+                targetBase = targetName.left(targetName.size() - suffix.size());
+                if (bases.contains(targetBase.toLower()))
+                    continue;
+                targetPath = folder + QLatin1Char('/') + targetName;
+                targetTagPath = folder + QLatin1Char('/') + targetBase + QStringLiteral(".txt");
+                foundFreeName = true;
+                break;
+            }
+
+            if (!foundFreeName) {
+                report.skipped++;
+                report.details << QStringLiteral("  skipped %1: no free name could be built").arg(fileName);
+                telog(QStringLiteral("[dataset] skipped %1: no free name could be built").arg(sourcePath));
+                continue;
+            }
+
+            if (!QFile::rename(sourcePath,targetPath)) {
+                report.skipped++;
+                report.details << QStringLiteral("  skipped %1: the file could not be renamed").arg(fileName);
+                telog(QStringLiteral("[dataset] could not rename %1 to %2").arg(sourcePath,targetPath));
+                continue;
+            }
+
+            if (hasTagFile && !QFile::copy(sourceTagPath,targetTagPath)) {
+                // Roll the image rename back so the caption layout stays
+                // consistent with what the user had before.
+                const bool rolledBack = QFile::rename(targetPath,sourcePath);
+                report.skipped++;
+                report.details << QStringLiteral("  skipped %1: the caption file could not be copied").arg(fileName);
+                telog(QStringLiteral("[dataset] could not copy the caption of %1; image rename rolled back: %2")
+                          .arg(sourcePath, rolledBack ? QStringLiteral("yes") : QStringLiteral("NO - check this file manually")));
+                continue;
+            }
+
+            // The new base is taken from now on; the old one is never reused.
+            bases.insert(targetBase.toLower());
+
+            imagePaths[index].set(targetPath);
+            report.renamed++;
+            report.details << QStringLiteral("  renamed %1 -> %2").arg(fileName, targetName);
+            telog(QStringLiteral("[dataset] renamed %1 to %2").arg(sourcePath,targetPath));
+            if (hasTagFile)
+                telog(QStringLiteral("[dataset] copied the shared caption %1 to %2")
+                          .arg(sourceTagPath, targetTagPath));
+        }
+    }
+
+    return report;
+}
+
 void MainWindow::dialog_LoadPath(bool clear){
-    extern QString defaultPath;
-    QString folderPath = QFileDialog::getExistingDirectory(this, tr("Select folder"), defaultPath)+"/";
+    const QString folderPath = QFileDialog::getExistingDirectory(this, tr("Select folder"), defaultPath)+"/";
 
     if(folderPath.size()<2)return;
     try{
-        tepath rootpath(folderPath);
-        QList<tePictureFile*>appendPicturelist;
-        if(clear){
-            checkSave();
-            ((tePictureFileModel*)ui->picturelist->model())->clear();
-            folder_paths.clear();
+        const tepath rootpath(folderPath);
+        QVector<tepath> paths;
 
-            for(const std::filesystem::directory_entry& entry : std::filesystem::recursive_directory_iterator(rootpath)){
-                if(!entry.is_directory()&&is_image_file(entry.path())){
-                    appendPicturelist.push_back(new tePictureFile(tepath(entry)));
-                }
+        auto collectFrom = [&paths](const tepath& root){
+            for(const std::filesystem::directory_entry& entry : std::filesystem::recursive_directory_iterator(root.stdpath)){
+                if(!entry.is_directory()&&is_image_file(entry.path()))
+                    paths.append(tepath(entry));
             }
+        };
 
+        if(clear){
+            if(!checkSave())
+                return;                     // the user cancelled the save prompt
+            picturefileModel->clear();
+            // A different dataset is being opened: this is the right moment to
+            // give the recycled tag/word widgets back to the system.
+            widgetpool.realloc();
+            widgetpool_ref.realloc();
+            folder_paths.clear();
+            collectFrom(rootpath);
             folder_paths.insert(rootpath);
         }else{
-            QList<QPair<tepath,bool>>duplicate_list = is_duplicate_path(rootpath);
+            const QList<QPair<tepath,bool>> duplicate_list = is_duplicate_path(rootpath);
             if(duplicate_list.size()==1&&duplicate_list.front().second==true)
                 return;
             else if(!duplicate_list.empty()){
                 for (const auto& entry : std::filesystem::directory_iterator(rootpath.stdpath)) {
                     if (entry.is_directory()) {
-                        tepath currentPath(QString::fromStdString(entry.path().string())+'/');
+                        const tepath currentPath(QString::fromStdString(entry.path().string())+'/');
                         bool shouldExclude = false;
                         for (const auto& excludedFolder : folder_paths) {
                             if (currentPath.isSubpath(excludedFolder)||currentPath==excludedFolder) {
@@ -696,38 +959,51 @@ void MainWindow::dialog_LoadPath(bool clear){
                                 break;
                             }
                         }
-                        if (!shouldExclude) {
-                            for(const std::filesystem::directory_entry& pic_entry : std::filesystem::recursive_directory_iterator(currentPath)){
-                                if(is_image_file(pic_entry.path())){
-                                    appendPicturelist.push_back(new tePictureFile(tepath(pic_entry)));
-                                }
-                            }
-                        }
+                        if (!shouldExclude)
+                            collectFrom(currentPath);
                     }else if(is_image_file(entry.path())){
-                        appendPicturelist.push_back(new tePictureFile(tepath(entry)));
+                        paths.append(tepath(entry));
                     }
                 }
             }else{
-                for(const std::filesystem::directory_entry& entry : std::filesystem::recursive_directory_iterator(rootpath)){
-                    if(is_image_file(entry.path())){
-                        appendPicturelist.push_back(new tePictureFile(tepath(entry)));
-                    }
-                }
+                collectFrom(rootpath);
             }
             folder_paths.insert(rootpath);
         }
-        defaultPath=folderPath;
-        ((tePictureFileModel*)ui->picturelist->model())->append(appendPicturelist);
-    }catch(std::exception e){
+
+        // Two images with the same base name cannot share one caption file:
+        // rename the later ones and tell the user what happened.
+        const teDuplicateStemReport report = teResolveDuplicateStems(paths);
+        if (!report.details.isEmpty()) {
+            QString text = tr("Some images in the selected folder share the same name.\n"
+                              "%1 were renamed, %2 were skipped.\n\nSee the log window for details.")
+                               .arg(report.renamed).arg(report.skipped);
+            QMessageBox::warning(this, tr("Duplicate image names"), text);
+        }
+
+        QList<tePictureFile*> appendPicturelist;
+        appendPicturelist.reserve(paths.size());
+        for (const tepath& path : paths)
+            appendPicturelist.push_back(new tePictureFile(path));
+        picturefileModel->append(appendPicturelist);
+    }catch(const std::exception& e){
         telog(e.what());
-        telog("[MainWindow::dialog_openpath]:exception occured, maybe the filepath includes some characters that can't be recognized by c++");
+        telog("[MainWindow::dialog_LoadPath]: exception occurred, maybe a path contains characters that the C++ runtime cannot handle");
     }
     defaultPath=folderPath;
     save_config();
 }
+
 bool is_image_file(const std::filesystem::path &file) {
-    std::string extension = file.extension().string();
-    return extension == ".png" || extension == ".jpg"
-           || extension == ".jpeg" || extension == ".bmp"
-           || extension == ".gif"||extension == ".avif"|| extension == ".webp";
+    // Lower-cased: ".PNG" or ".JPG" must not silently disappear from the list.
+    const std::string extension = file.extension().string();
+    std::string lower;
+    lower.reserve(extension.size());
+    for (char c : extension)
+        lower.push_back(char(std::tolower(static_cast<unsigned char>(c))));
+    return lower == ".png" || lower == ".jpg"
+           || lower == ".jpeg" || lower == ".bmp"
+           || lower == ".gif" || lower == ".avif"
+           || lower == ".webp" || lower == ".jfif"
+           || lower == ".tif" || lower == ".tiff";
 }

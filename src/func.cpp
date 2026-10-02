@@ -1,6 +1,40 @@
 #include "func.h"
 #include "pch.h"
 #include"mainwindow.h"
+#include"logwindow.h"
+
+namespace {
+std::mutex g_logTargetMutex;
+std::function<void(const QString&)> g_logTarget;
+}
+
+void teSetLogTarget(std::function<void(const QString&)> target)
+{
+    std::lock_guard<std::mutex> lg(g_logTargetMutex);
+    g_logTarget = std::move(target);
+}
+
+void teLog(const QString& message)
+{
+    qDebug().noquote() << message;
+
+    QCoreApplication* app = QCoreApplication::instance();
+    if (!app)
+        return;
+
+    // teLog() may be called from the image-loader worker threads, so the widget
+    // update has to be marshalled onto the GUI thread.
+    QMetaObject::invokeMethod(app, [message] {
+        std::function<void(const QString&)> target;
+        {
+            std::lock_guard<std::mutex> lg(g_logTargetMutex);
+            target = g_logTarget;
+        }
+        if (target)
+            target(message);
+    }, Qt::QueuedConnection);
+}
+
 int findWidgetIndexInLayout(QBoxLayout* layout, QWidget* widget) {
     if (!layout || !widget)
         return -1;
@@ -146,8 +180,11 @@ int save_config() {
     configObj.insert("defaultPath", defaultPath);
 
     QJsonArray customTags;
-    for (int i = 0; i < custom_controls->keys().size(); ++i)
-        customTags.append(custom_controls->keys()[i]);
+    if (custom_controls)
+        for (const auto& [name, control] : *custom_controls) {
+            Q_UNUSED(control);
+            customTags.append(name);
+        }
     configObj.insert("customTags", customTags);
     configObj.insert("nsfwMode", nsfwMode);
     QJsonArray mainWindowSplitterLengthArr;
@@ -185,29 +222,6 @@ int save_config() {
         return 0;
     }
     return -1;
-}
-
-void CreateAutoSaveThread(MainWindow*w){
-
-    w->autoSaveThread=std::thread([=] {
-        std::condition_variable cv;
-        std::mutex mtx;
-        std::unique_lock<std::mutex> lock(mtx);
-
-        while(programRunning)
-        {
-            if(cv.wait_for(
-                    lock,
-                    std::chrono::seconds(autoSaveSec),
-                    [&]{ return !programRunning; }))
-            {
-                break;
-            }
-
-            w->saveState(true);
-        }
-    });
-
 }
 
 void MainWindow::checkForUpdate() {

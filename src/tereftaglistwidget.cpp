@@ -9,6 +9,13 @@ void teRefTag::readCore(std::shared_ptr<tetagcore>in_core){
     if(core)
         teDisconnect(core.get());
     core = in_core;
+    if(!core)
+        return;
+    // Deliberately no `core->widget=this` here: `core->widget` means "the widget
+    // of the single image tag list", and the editors must not take it over (the
+    // word plumbing of teTagBase installs the words of *that* list). The editors
+    // resolve their own tag widget through teTagListWidgetBase::widgetForCore(),
+    // which finds this widget in their layout.
     core->teConnect(teCallbackType::edit,qsl("teRefTag::readCore"),this,&teRefTag::load);
     core->teConnect(teCallbackType::edit_with_layout,this,&teRefTag::load);
     load();
@@ -68,7 +75,11 @@ words_loop_end:
         }
     }else --i;
     core->words.insert(i,core->words.takeAt(in_id));
-    core->widget->layout->insertItem(i,core->widget->layout->takeAt(in_id));
+    // The main tag list mirrors the change through its own widget - if it has
+    // one (a tag of a file that is not on screen has none, and dereferencing
+    // core->widget unchecked used to crash there).
+    if(core->widget)
+        core->widget->moveWordWidget(in_id,i);
     core->edited_with_layout();
 }
 
@@ -363,8 +374,14 @@ teTagBase *teRefTagListWidget::taginsert(int index,std::shared_ptr<tetagcore>in_
     tags.insert({widget,in_list});
     layout->insertWidget(index,widget);
     connectTag(widget);
-    QTimer::singleShot(0,[this, widget]{
-        sc->ensureWidgetVisible(widget);
+    // Same as the main tag list: the context object plus a QPointer, so a
+    // recycled tag or a destroyed list cannot be touched from the callback.
+    const QPointer<tereftag> guard(widget);
+    QTimer::singleShot(0,this,[this,guard]{
+        if(!sc)
+            return;
+        if(guard)
+            sc->ensureWidgetVisible(guard);
         sc->horizontalScrollBar()->setValue(0);
     });
     if(select){

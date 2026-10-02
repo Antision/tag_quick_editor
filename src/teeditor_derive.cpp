@@ -56,7 +56,7 @@ bool has_color_conflict(const QStringList& existing, const QStringList& new_colo
 extern bool autoMerge;
 extern bool MergeSwitch;
 extern QStringList custom_tags;
-extern QMap<QString,teEditorControl*>* custom_controls;
+extern teCustomControlList* custom_controls;
 QString teEditor_custom_style = QStringLiteral(R"(
 QPushButton#addNewTagButton{
 font:12pt "Segoe UI";color:white;
@@ -100,20 +100,13 @@ teEditor_custom::teEditor_custom(teTagListWidget*in_taglistwidget,QString&& name
     mainLayout->addWidget(newtagButton);
     mainLayout->addLayout(flowLayout);
     custom_controls=&this->string_controls;
+    // The custom tag buttons can be dragged into any order; that order is what
+    // gets stored in config.json.
+    controlReorderer = new QFlowLayoutReorderer(flowLayout,this,this);
+    connect(controlReorderer,&QFlowLayoutReorderer::reordered,this,&teEditor_custom::syncOrderFromLayout);
     connect(newtagButton,&QPushButton::clicked,&controlWidget,&QWidget::show);
     connect(&controlWidget,&customControlWidget::tagsUpdated,this,[this](QStringList strlist){
-        QStringList uniqueInList;
-        for (const QString& str : strlist) {
-            if (!string_controls.contains(str)) {
-                addControl(str);
-            }
-        }
-        QStringList uniqueInMap;
-        for (const QString& key : string_controls.keys()) {
-            if (!strlist.contains(key)) {
-                removeControl(key);
-            }
-        }
+        setControls(strlist);
     });
     for(const QString &str:custom_tags){
         addControl(str);
@@ -126,22 +119,89 @@ teEditor_custom::teEditor_custom(teTagListWidget*in_taglistwidget,QString&& name
     });
 }
 
+teEditorControl* teEditor_custom::findControl(const QString& str) const {
+    for(const auto& [text,control]:string_controls)
+        if(text==str)
+            return control;
+    return nullptr;
+}
+
 void teEditor_custom::removeControl(const QString &str){
-    QMap<QString,teEditorControl*>::iterator it = string_controls.find(str);
-    controls.removeAt(controls.indexOf(it.value()));
-    delete it.value();
-    string_controls.erase(it);
+    for(int i=0;i<string_controls.size();++i){
+        if(string_controls[i].first!=str)
+            continue;
+        teEditorControl* control = string_controls[i].second;
+        string_controls.removeAt(i);
+        controls.removeAll(control);
+        if(auto* widget = dynamic_cast<QWidget*>(control)){
+            flowLayout->removeWidget(widget);   // deletes the layout item
+            widget->hide();
+        }
+        delete control;
+        return;
+    }
 }
 
 void teEditor_custom::addControl(const QString &str){
     teTagCheckBox* cbptr=new teTagCheckBox({str,str});
     cbptr->setTaglistwidget(taglistwidget);
-    string_controls.insert(str,cbptr);
+    string_controls.append({str,cbptr});
     controls.push_back(cbptr);
     if(taglist)
         for(std::shared_ptr<tetagcore>tc:*taglist)
             cbptr->read(tc);
-    flowLayout->addWidget(cbptr);
+    flowLayout->addWidget(cbptr);   // addWidget() reparents the button
+    controlReorderer->attach(cbptr);
+}
+
+void teEditor_custom::syncOrderFromLayout(){
+    teCustomControlList reordered;
+    reordered.reserve(string_controls.size());
+    for(int i=0;i<flowLayout->count();++i){
+        QWidget* widget = flowLayout->itemAt(i)->widget();
+        for(const auto& entry:string_controls){
+            if(dynamic_cast<QWidget*>(entry.second)==widget&&!reordered.contains(entry)){
+                reordered.append(entry);
+                break;
+            }
+        }
+    }
+    // Anything that is not in the layout (should not happen) keeps its place at
+    // the end so no control is ever lost.
+    for(const auto& entry:string_controls)
+        if(!reordered.contains(entry))
+            reordered.append(entry);
+    string_controls=reordered;
+}
+
+void teEditor_custom::setControls(const QStringList& order){
+    // Remove the controls the user deleted from the dialog.
+    for(int i=string_controls.size()-1;i>=0;--i)
+        if(!order.contains(string_controls[i].first))
+            removeControl(string_controls[i].first);
+    // Add the new ones.
+    for(const QString& str:order)
+        if(!findControl(str))
+            addControl(str);
+    // Reorder so the editor matches the dialog.
+    int target=0;
+    for(const QString& str:order){
+        teEditorControl* control=findControl(str);
+        if(!control){
+            ++target;
+            continue;
+        }
+        int current=-1;
+        for(int i=0;i<flowLayout->count();++i)
+            if(flowLayout->itemAt(i)->widget()==dynamic_cast<QWidget*>(control)){
+                current=i;
+                break;
+            }
+        if(current>=0&&current!=target)
+            flowLayout->moveItem(current,target);
+        ++target;
+    }
+    syncOrderFromLayout();
 }
 
 QString teEditor_pretreat_style = QStringLiteral(R"(
@@ -891,7 +951,10 @@ teEditor_hair_and_eyes::teEditor_hair_and_eyes(teTagListWidget*in_taglistwidget,
                 }
                 tagtext.reserve(maxsize);
                 for(tewordcore*&word:core->words){
-                    word->widget->hide();
+                    // Hide the words this editor shows for the tag; the widget a
+                    // word core may carry belongs to the single image tag list.
+                    for(teWordBase* shown : tag->findChildren<teWordBase*>())
+                        shown->hide();
                     tagtext.append(word->text);
                     tagtext.append(' ');
                 }
@@ -959,12 +1022,12 @@ teEditor_hair_and_eyes::teEditor_hair_and_eyes(teTagListWidget*in_taglistwidget,
                             streaked_btn->setChecked(false);
                             return;
                         }
-                        in_tag->widget->insertWord(-2,qsl("streaked"));
+                        if(auto* editorTag=tagWidgetFor(in_tag)) editorTag->insertWord(-2,qsl("streaked"));
                     }else{
                         int wordcount = in_tag->words.size();
                         for(int i =0;i<wordcount;++i)
                             if(*in_tag->words[i]==qsl("streaked"))
-                            {in_tag->widget->destroyWord(i);--i;--wordcount;}
+                            {if(auto* editorTag=tagWidgetFor(in_tag)) editorTag->destroyWord(i);--i;--wordcount;}
                     }
                     if(in_tag->type==teTagCore::deleteTag)
                         taglistwidget->tagErase(in_tag);
@@ -983,12 +1046,12 @@ teEditor_hair_and_eyes::teEditor_hair_and_eyes(teTagListWidget*in_taglistwidget,
                             gradient_btn->setChecked(false);
                             return;
                         }
-                        in_tag->widget->insertWord(-2,qsl("gradient"));
+                        if(auto* editorTag=tagWidgetFor(in_tag)) editorTag->insertWord(-2,qsl("gradient"));
                     }else{
                         int wordcount = in_tag->words.size();
                         for(int i =0;i<wordcount;++i)
                             if(*in_tag->words[i]==qsl("gradient"))
-                            {in_tag->widget->destroyWord(i);--i;--wordcount;}
+                            {if(auto* editorTag=tagWidgetFor(in_tag)) editorTag->destroyWord(i);--i;--wordcount;}
                     }
                     if(in_tag->type==teTagCore::deleteTag)
                         taglistwidget->tagErase(in_tag);
@@ -1156,15 +1219,22 @@ struct ponytail_buttongroup :teTagButtonGroup {
         for(int i =0;i<3;++i){
             if(boolarray[i]){
                 teWordCore* newword =new tewordcore(prefixes[i]);
-                newword->load();
                 in_tag->words.push_back(newword);
-                if(in_tag->widget&&newword->widget){
-                    in_tag->widget->layout->insertWidget(in_tag->widget->layout->count()-2,newword->widget);
-                }else telog("[ponytail_buttongroup::setTagTextFromBoolArray]:tagcore or wordcore don't have a widget");
             }
         }
         in_tag->words.push_back(backword);
-        in_tag->widget->layout->insertWidget(in_tag->widget->layout->count()-2,backword->widget);
+        // Only a tag list that owns a widget per word needs the widgets moved by
+        // hand; the editors' tag lists rebuild their words from the core, which
+        // is what edited_with_layout() below makes them do.
+        if(teTagBase* editorTag = tagWidgetFor(in_tag)){
+            if(editorTag->ownsWordWidgets()){
+                for(tewordcore* wc : in_tag->words) if(wc && !wc->widget) wc->load();
+                for(int i = 0;i<in_tag->words.size();++i)
+                    if(in_tag->words[i]->widget)
+                        editorTag->layout->insertWidget(editorTag->layout->count()-2,
+                                                        in_tag->words[i]->widget);
+            }
+        }
         in_tag->edited_with_layout();
     }
     bool merge(std::shared_ptr<tetagcore>tag){
@@ -1403,22 +1473,53 @@ QPushButton#editor_switch:checked{
 border:2px solid #008b46;
 })");
 
-QStringList allClothesTypes={
-    qsl("thighhighs"),qsl("pantyhose"),
-    qsl("panties"),qsl("underwear"),
-    qsl("ribbon"),qsl("bow"),qsl("leotard"),
-    qsl("socks"),qsl("bra"),qsl("skirt"),
-    qsl("shorts"),qsl("shirt"),qsl("kimono"),
-    qsl("dress"),qsl("headdress"),qsl("bowtie"),
-    qsl("apron"),qsl("uniform"),qsl("hat"),
-    qsl("jacket"),qsl("coat"),qsl("pants"),
-    qsl("gloves"),qsl("shorts"),qsl("wings"),
-    qsl("swimsuit"),qsl("bikini"),qsl("horns"),
-    qsl("shoes"),qsl("boots"),qsl("footwear"),
-qsl("sleeves"),qsl("glasses"),qsl("hairclip"),
-    qsl("hoodie")
-
+// Clothes types, grouped by the body area they belong to. The groups are only
+// a visual aid: every button shares one exclusive group (built in
+// teEditor_clothes), so a clothes tag still has exactly one type word.
+QStringList headAndNeckClothesTypes{
+    qsl("headdress"),qsl("headwear"),qsl("hat"),qsl("hood"),
+    qsl("hairclip"),qsl("hairband")
 };
+QStringList upperBodyClothesTypes{
+    qsl("shirt"),qsl("jacket"),qsl("coat"),qsl("hoodie"),qsl("sweater"),
+    qsl("bra"),qsl("apron"),qsl("uniform")
+};
+QStringList lowerBodyClothesTypes{
+    qsl("skirt"),qsl("shorts"),qsl("pants"),qsl("leotard"),
+    qsl("thighhighs"),qsl("pantyhose"),qsl("socks")
+};
+QStringList underwearClothesTypes{
+    qsl("underwear"),qsl("panties"),qsl("swimsuit"),qsl("bikini")
+};
+QStringList fullBodyClothesTypes{
+    qsl("dress"),qsl("kimono")
+};
+QStringList feetClothesTypes{
+    qsl("shoes"),qsl("boots"),qsl("footwear")
+};
+QStringList accessoryClothesTypes{
+    qsl("bow"),qsl("ribbon"),qsl("bowtie"),qsl("gloves"),qsl("sleeves"),
+    qsl("wings"),qsl("glasses"),qsl("horns"),qsl("bag")
+};
+
+/// Every word the clothes editor recognises as a garment type.
+QStringList allClothesTypes = QStringList{}
+    << headAndNeckClothesTypes << upperBodyClothesTypes << lowerBodyClothesTypes
+    << underwearClothesTypes << fullBodyClothesTypes << feetClothesTypes
+    << accessoryClothesTypes;
+
+/// Types that mean the same garment. Only one of them may exist in one list;
+/// the first entry of a group is the canonical spelling and wins.
+QVector<QStringList> clothesTypeSynonyms{
+    {qsl("underwear"),qsl("panties")},
+};
+
+QString canonicalClothesType(const QString& type){
+    for(const QStringList& group:clothesTypeSynonyms)
+        if(group.contains(type))
+            return group.first();
+    return type;
+}
 std::multimap<QString, QString> prefix_back{
     {qsl("dress"),qsl("wedding")},
     {qsl("waist"),qsl("apron")},
@@ -1439,7 +1540,29 @@ std::multimap<QString, QString> prefix_front{
 QVector<QSet<QString>> exclusiveModifierGroups{
 
 };
-QStringList preposwords{{qsl("in"),qsl("on"),qsl("under"),qsl("from")}};
+
+/// Prepositions that turn a tag into an interaction ("reaching through
+/// panties", "hand in panties") instead of a piece of clothing.
+///
+/// This is deliberately a *small* list: it is the exclusion dictionary asked
+/// for, and a word such as "with" is missing on purpose so that legitimate
+/// garment tags ("dress with bow") keep working.
+QStringList preposwords{
+    qsl("in"),qsl("on"),qsl("under"),qsl("from"),qsl("through"),qsl("into"),
+    qsl("onto"),qsl("inside"),qsl("beneath"),qsl("underneath"),qsl("at"),
+    qsl("beside"),qsl("between"),qsl("across"),qsl("around"),qsl("against"),
+    qsl("past"),qsl("toward"),qsl("towards")
+};
+
+/// True when a word before the trailing type word is a preposition, i.e. the
+/// tag describes what someone does with a garment rather than the garment.
+bool looksLikeActionPhrase(const teTagCore& tag){
+    const int last = tag.words.size()-1;
+    for(int i=0;i<last;++i)
+        if(preposwords.contains(tag.words[i]->text))
+            return true;
+    return false;
+}
 teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&name, QString *styleSheet, QWidget *parent):teEditor_standard(in_taglistwidget,name, &teEditor_clothes_style, parent){
     struct ClothesList: teTagListControl{
         std::shared_ptr<tetagcore> clothes_editing=nullptr;
@@ -1560,9 +1683,7 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
                             colors.push_back(in_core->words[i]);
                             if(!ifnew){
                                 teWordCore*takecore = in_core->takeWordAt(i,false);
-                                if(!takecore->widget){
-                                    takecore->load();
-                                }
+                                takecore->ensureWidget();
                                 --i;--wordcountMinusOne;--colorpos;
                             }
                         }
@@ -1573,9 +1694,7 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
                             if(!ifnew){
                                 teWordCore*takecore = in_core->takeWordAt(i,false);
 
-                                if(!takecore->widget){
-                                    takecore->load();
-                                }
+                                takecore->ensureWidget();
                                 --i;--wordcountMinusOne;--colorpos;
                             }
                         }
@@ -1585,9 +1704,7 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
                             back_adjectives.push_back(in_core->words[i]);
                             if(!ifnew){
                                 teWordCore*takecore = in_core->takeWordAt(i,false);
-                                if(!takecore->widget){
-                                    takecore->load();
-                                }
+                                takecore->ensureWidget();
                                 --i;--wordcountMinusOne;--colorpos;
                             }
                         }
@@ -1619,10 +1736,10 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
 
                 return 0;
                 sortwords:
-                static auto insertWords = [](std::shared_ptr<tetagcore>tag,QVector<QVector<teWordCore*>>wordListList){
-                        bool hasWidget=tag->widget;
+                static auto insertWords = [](std::shared_ptr<tetagcore>tag,QVector<QVector<teWordCore*>>wordListList,teTagBase* tagWidget){
+                        bool hasWidget=tagWidget!=nullptr;
                         if(hasWidget)
-                            tag->widget->disconnectWord();
+                            tagWidget->disconnectWord();
                         tag->words.clear();
                         int pos=-1;
                         QHash<QString, bool> seen;
@@ -1634,7 +1751,7 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
                                 }
                                 seen[*wc]=true;
                                 if(hasWidget)
-                                    tag->widget->insertWord(++pos,wc,true,false);
+                                    tagWidget->insertWord(++pos,wc,true,false);
                                 else
                                     tag->words.append(wc);
                             }
@@ -1646,7 +1763,7 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
                 }else{
                     typeWord=core->words.back();
                 }
-                insertWords(core,{colors,front_adjectives,adjectives,back_adjectives,{typeWord}});
+                insertWords(core,{colors,front_adjectives,adjectives,back_adjectives,{typeWord}},parentList?parentList->tagWidgetFor(core):nullptr);
                 parentList->clothes_editing = in_core;
                 core->edited_with_layout();
                 parentList->clothes_editing = nullptr;
@@ -1713,9 +1830,11 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
                 return true;
             }
             bool sameType(std::shared_ptr<tetagcore>core){
-                if((type.isEmpty())||(core->words.back()->text!=type))
+                if(type.isEmpty()||core->words.empty())
                     return false;
-                return true;
+                // Synonyms ("underwear" / "panties") count as the same garment,
+                // so picking one merges the other instead of leaving both.
+                return canonicalClothesType(core->words.back()->text)==canonicalClothesType(type);
             }
         };
 
@@ -1742,11 +1861,9 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
         bool filter(std::shared_ptr<tetagcore>in_tag)override{
             if(in_tag==clothes_editing)return true;
             if(in_tag->words.empty())return false;
-            if(in_tag->words.size()>2){
-                const QString& sec_last_w = in_tag->words[1]->text;
-                if(preposwords.contains(sec_last_w))
-                    return false;
-            }
+            // "reaching through panties" and friends are actions, not garments.
+            if(looksLikeActionPhrase(*in_tag))
+                return false;
             if(allClothesTypes.contains(*in_tag->words.back())){
                 if(autoMerge&&MergeSwitch){
                     if(!all_clothes.empty()){
@@ -1815,14 +1932,14 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
                 for(int i =0;i<wordcount;++i)
                     if(*in_tag->words[i]==qsl("hair"))
                         hairbow_btn->setChecked(true);
-                connect(hairbow_btn,&QPushButton::clicked,widget,[in_tag](bool ifchecked){
+                connect(hairbow_btn,&QPushButton::clicked,widget,[in_tag,this](bool ifchecked){
                     if(ifchecked)
-                        in_tag->widget->insertWord(-2,qsl("hair"));
+                        if(auto* editorTag=tagWidgetFor(in_tag)) editorTag->insertWord(-2,qsl("hair"));
                     else{
                         int wordcount = in_tag->words.size();
                         for(int i =0;i<wordcount;++i)
                             if(*in_tag->words[i]==qsl("hair"))
-                            {in_tag->widget->destroyWord(i);--i;--wordcount;}
+                            {if(auto* editorTag=tagWidgetFor(in_tag)) editorTag->destroyWord(i);--i;--wordcount;}
                     }
                 },Qt::DirectConnection);
                 widget->insertExtraWidgets(this,hairbow_btn);
@@ -1831,7 +1948,25 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
         void refreshState()override{
 
         }
-    }*clothes_list = new ClothesList(new colorsWidget({ {{qsl("torn"),qsl("striped"),qsl("fishnet"),qsl("frilled")},false}, {allClothesTypes,true}}, nullptr),taglistwidget);
+    }*clothes_list = new ClothesList(new colorsWidget(
+        {
+            { {qsl("torn"),qsl("striped"),qsl("fishnet"),qsl("frilled")}, false },
+            { headAndNeckClothesTypes, true },
+            { upperBodyClothesTypes, true },
+            { lowerBodyClothesTypes, true },
+            { underwearClothesTypes, true },
+            { fullBodyClothesTypes, true },
+            { feetClothesTypes, true },
+            { accessoryClothesTypes, true },
+        },
+        nullptr, 0, {},
+        { QString{}, qsl("head / neck"), qsl("upper body"), qsl("legs"),
+          qsl("underwear / swimwear"), qsl("full body"), qsl("feet"),
+          qsl("accessories") },
+        // Every type button belongs to one exclusive group, so a clothes tag
+        // always keeps exactly one type word.
+        new QButtonGroup(nullptr),
+        true),taglistwidget);
     contentLayout->addWidget(clothes_list);
     controls.push_back(clothes_list);
 

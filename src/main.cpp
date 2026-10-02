@@ -17,9 +17,12 @@ int main(int argc, char *argv[])
     MainWindow w;
     w.show();
     w.loadState();
-    CreateAutoSaveThread(&w);
     w.checkForUpdate();
     a.exec();
-    w.autoSaveThread.join();
+
+    // Wait for the pending thumbnail decodes before the window (and the
+    // QApplication they post their results to) go away.
+    thread_pool.wait();
     save_config();
+    return 0;
 }
