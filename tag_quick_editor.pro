@@ -21,6 +21,7 @@ RC_ICONS = res/icon.ico
 SOURCES += \
     src/ctag.cpp \
     src/func.cpp \
+    src/logwindow.cpp \
     src/main.cpp \
     src/mainwindow.cpp \
     src/prefix_priority.cpp \
@@ -47,6 +48,7 @@ HEADERS += \
     src/BS_thread_pool.hpp \
     src/ctag.h \
     src/func.h \
+    src/logwindow.h \
     src/mainwindow.h \
     src/pch.h \
     src/prefix_priority.h \
@@ -69,6 +71,7 @@ HEADERS += \
     src/widget_pool.h
 
 FORMS += \
+    src/logwindow.ui \
     src/mainwindow.ui
 
 # Default rules for deployment.

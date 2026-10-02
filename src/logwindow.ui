@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>LogWindow</class>
+ <widget class="QWidget" name="LogWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>445</width>
+    <height>358</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QWidget{
+	color:rgb(255, 255, 255);
+}
+
+QMainWindow{
+    border-radius: 10px;             /*四角圆角的直径*/
+    border:1px solid rgb(27,27,27);
+}
+
+QPushButton{
+	background-color:#345e11;
+    border:1px solid #23a125;
+}
+
+QPushButton:hover{
+	background-color:#478117;
+    border:1px solid #31bc33;
+}</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QPlainTextEdit" name="logTextEdit">
+     <property name="styleSheet">
+      <string notr="true">QPlainTextEdit{
+	color:white;
+	background-color: rgb(16, 3, 30);
+}</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="clearButton">
+     <property name="text">
+      <string>clear</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

@@ -178,7 +178,7 @@ QTabBar::tab:only-one {
 }</string>
       </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="selectList_tab">
        <property name="sizePolicy">
@@ -287,7 +287,7 @@ font:italic 14px;color:rgb(200,200,200);
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>26</height>
+     <height>22</height>
     </rect>
    </property>
    <property name="styleSheet">
@@ -355,6 +355,7 @@ selection-background-color: rgb(70, 70, 70);
      <string>Tools</string>
     </property>
     <addaction name="action_filt"/>
+    <addaction name="action_log_window"/>
    </widget>
    <addaction name="menu"/>
    <addaction name="menu_2"/>
@@ -450,6 +451,11 @@ selection-background-color: rgb(70, 70, 70);
   <action name="actionLicense">
    <property name="text">
     <string>License</string>
+   </property>
+  </action>
+  <action name="action_log_window">
+   <property name="text">
+    <string>Log Window</string>
    </property>
   </action>
  </widget>
