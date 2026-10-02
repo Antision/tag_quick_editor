@@ -256,7 +256,7 @@ void readCSV(stringstream&& ss) {
 }
 void download_tags(){
     QNetworkAccessManager manager;
-    const QUrl url("https://raw.githubusercontent.com/DominikDoom/a1111-sd-webui-tagcomplete/main/tags/danbooru_e621_merged.csv");
+    const QUrl url("https://raw.githubusercontent.com/DraconicDragon/dbr-e621-lists-archive/refs/heads/main/tag-lists/danbooru/danbooru_2026-04-01_pt20-ia-dd.csv");
 
     QNetworkRequest request(url);
     QNetworkReply* reply = manager.get(request);
