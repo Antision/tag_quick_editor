@@ -59,6 +59,14 @@ public:
     /// Same, for a tag that is drawn by a delegate and has no widget.
     void showTagDisplayCore(std::shared_ptr<teTag> core);
     void hideTagDisplay();
+    /**
+     * @brief Global point the popup is placed next to.
+     *
+     * The widget based list uses the right edge of the tag's widget; a model/view
+     * list overrides this with the right edge of the row, which is what the user
+     * asked for ("at the right border of the tag list view").
+     */
+    virtual QPoint tagDisplayAnchor(std::shared_ptr<teTag> core) const;
     /// Hides the popup when the key was Escape; true when it did.
     bool handleTagDisplayEscape(QKeyEvent* event);
     void tagDisplayHideTick();
@@ -162,8 +170,6 @@ public slots:
      */
     void onLineEditStop();
 public:
-    void enterEvent(QEnterEvent*)override;
-
     /**
      * @brief Connects a tag for signal handling
      * @param tagwidget Tag widget to connect
@@ -325,6 +331,8 @@ public:
     teTagListView* view() const { return m_view; }
     /// The model behind the view.
     teTagListModel* model() const { return m_model; }
+    /// The delegate that draws and edits the rows.
+    teTagDelegate* delegate() const { return m_delegate; }
     /// Tag of the current row, or nullptr.
     std::shared_ptr<teTag> currentCore() const;
     /// Scrolls back to the top of the list.
@@ -361,6 +369,8 @@ public:
     virtual int setSelectRangeCore(std::shared_ptr<teTag> core,bool ifclear=true)override;
     virtual bool isCoreSelected(std::shared_ptr<teTag> core) const override;
     virtual void ensureCoreVisible(std::shared_ptr<teTag> core)override;
+    /// Right edge of the row showing `core` (see the base class).
+    QPoint tagDisplayAnchor(std::shared_ptr<teTag> core) const override;
     virtual int setSelectRange(teTagWidgetBase*in,bool ifclear=true)override;
     /// The text of the selected rows, one tag per line.
     QString getSelectText()override;

@@ -1,7 +1,7 @@
 #ifndef TEEDITORLISTPAGEVIEW_H
 #define TEEDITORLISTPAGEVIEW_H
 #include "pch.h"
-#include "temultitaglistview.h"
+#include "teselectiontaglist.h"
 #include "tesignalwidget.h"
 
 class teEditorListPageView;

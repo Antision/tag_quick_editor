@@ -121,6 +121,11 @@ public:
     /// Height of one row; 30 matches the multi tag list.
     int rowHeight() const { return m_rowHeight; }
     void setRowHeight(int height){ m_rowHeight=height; }
+    /// True while the inline editor is shown over `row` (and therefore its text
+    /// is not painted).
+    bool isEditingRow(int row) const {
+        return m_activeEditor&&m_activeEditor->isVisible()&&m_editingRow==row;
+    }
 
     void paint(QPainter* painter,const QStyleOptionViewItem& option,const QModelIndex& index) const override;
     QSize sizeHint(const QStyleOptionViewItem& option,const QModelIndex& index) const override;
@@ -132,6 +137,10 @@ public:
     /// The editor is reused for every row, so Qt must not delete it.
     void destroyEditor(QWidget* editor,const QModelIndex& index) const override {
         Q_UNUSED(editor); Q_UNUSED(index);
+        // Editing ended (commit, Escape or focus loss): the row must be painted
+        // normally again.
+        m_editingRow=-1;
+        m_activeEditor=nullptr;
     }
 
 protected:
@@ -147,6 +156,9 @@ private:
     QPointer<QListWidget> m_suggestionBox;
     QPointer<suggestionLineEdit> m_editor;
     mutable int m_editingRow=-1;
+    /// The editor handed out by createEditor(); used by paint() to know whether
+    /// the text is currently covered by it.
+    mutable QPointer<QWidget> m_activeEditor;
 };
 
 #endif // TETAGLISTMODEL_H

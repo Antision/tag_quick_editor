@@ -1507,17 +1507,31 @@ QStringList allClothesTypes = QStringList{}
     << underwearClothesTypes << fullBodyClothesTypes << feetClothesTypes
     << accessoryClothesTypes;
 
-/// Types that mean the same garment. Only one of them may exist in one list;
-/// the first entry of a group is the canonical spelling and wins.
-QVector<QStringList> clothesTypeSynonyms{
-    {qsl("underwear"),qsl("panties")},
+/// Generic garment words the user does not want, and the specific words they are
+/// absorbed by. A tag that says "underwear" or "footwear" is merged into an
+/// existing tag of the same family, and the *specific* spelling survives.
+QHash<QString,QSet<QString>> genericClothesTypes{
+    {qsl("underwear"),{qsl("panties")}},
+    {qsl("footwear"),{qsl("shoes"),qsl("boots")}},
 };
 
-QString canonicalClothesType(const QString& type){
-    for(const QStringList& group:clothesTypeSynonyms)
-        if(group.contains(type))
-            return group.first();
-    return type;
+/// True when the two type words mean the same garment, i.e. may not both exist in
+/// one tag list. A generic word matches every specific word of its family.
+bool sameClothesType(const QString& a,const QString& b){
+    if(a==b)
+        return true;
+    for(auto it=genericClothesTypes.constBegin();it!=genericClothesTypes.constEnd();++it){
+        if(it.key()==a&&it.value().contains(b))
+            return true;
+        if(it.key()==b&&it.value().contains(a))
+            return true;
+    }
+    return false;
+}
+
+/// True when `type` is one of the generic words (which never survive a merge).
+bool isGenericClothesType(const QString& type){
+    return genericClothesTypes.contains(type);
 }
 std::multimap<QString, QString> prefix_back{
     {qsl("dress"),qsl("wedding")},
@@ -1567,6 +1581,17 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
         std::shared_ptr<teTag> clothes_editing=nullptr;
         struct teClothes:public teObject{
             ClothesList*parentList = nullptr;
+            /**
+             * @brief True once this wrapper has been retired.
+             *
+             * Retiring means "removed from all_clothes, delete it later". The
+             * deletion itself has to be deferred: readCore() emits
+             * edited_with_layout(), whose slot (reReadClothes) uses to delete the
+             * wrapper - and readCore() then kept using `this`, so `parentList`
+             * was read from freed memory (the crash in teeditor_derive.cpp:1768).
+             * Every entry point checks this flag instead.
+             */
+            bool dead=false;
             teTagListWidget*parentTagListWidget=nullptr;
             std::shared_ptr<teTag>core=nullptr;
             QVector<teWord*>colors;
@@ -1580,16 +1605,18 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
                 core->teConnect(teCallbackType::edit,this,&teClothes::reReadClothes,core);
                 core->teConnect(teCallbackType::edit_with_layout,this,&teClothes::reReadClothes,core);
             }
-            teClothes(std::shared_ptr<teTag>core){
-                readCore(core);
-            }
-            teClothes(QString t){
-                type = t;
-            }
+            // Deliberately no constructor without a parentList: every method here
+            // goes through it, and a wrapper built without one was exactly the
+            // dangling-parentList crash this class used to have.
             ~teClothes(){
+                // Drop the callbacks the tag core holds for this wrapper, so a
+                // deleted wrapper can never be called again.
+                teDisconnect();
             }
 
             void reReadClothes(std::shared_ptr<teTag>tag){
+                if(dead)
+                    return;
                 if(tag==parentList->clothes_editing)return;
                 if(tag->type==teTag::deleteTag)
                     return;
@@ -1598,22 +1625,31 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
                     return;
                 }
                 parentList->all_clothes.erase(tagClothes);
-                for(teClothes*clz:parentList->all_clothes){
-                    if(clz==this) continue;
+                // Snapshot: merge() below can retire other wrappers (it goes
+                // through readCore() -> edited_with_layout() -> reReadClothes),
+                // which would invalidate an iterator into the set.
+                const QVector<teClothes*> others(parentList->all_clothes.begin(),
+                                                 parentList->all_clothes.end());
+                for(teClothes*clz:others){
+                    if(clz==this||clz->dead||!parentList->all_clothes.count(clz))
+                        continue;
                     if(clz->merge(tag)){
                         tag->type=teTag::deleteTag;
                         parentTagListWidget->tagErase(tag);
-                        delete tagClothes;
+                        parentList->retire(tagClothes);
                         return;
                     }
                 }
+                if(tagClothes->dead)
+                    return;
                 if(tagClothes->readCore()>=0)
                     parentList->all_clothes.insert(tagClothes);
-                else{
-                    delete tagClothes;
-                }
+                else
+                    parentList->retire(tagClothes);
             }
             int readCore(std::shared_ptr<teTag>in_core=nullptr){
+                if(dead)
+                    return 0;
                 if((core||!in_core)&&parentList->clothes_editing==core)return 0;
                 if(core==in_core) in_core=nullptr;
 
@@ -1648,6 +1684,10 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
                         return -1;
                     }
                     MergeSwitch=true;
+                    // filter() re-enters this class through the tag signals and
+                    // can retire this wrapper.
+                    if(dead)
+                        return 1;
                 }
                 auto [colorpos,colorcount] = is_color(*in_core);
 
@@ -1765,12 +1805,17 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
                 insertWords(core,{colors,front_adjectives,adjectives,back_adjectives,{typeWord}},parentList?parentList->tagWidgetFor(core):nullptr);
                 parentList->clothes_editing = in_core;
                 core->edited_with_layout();
+                // The signal above may have retired this wrapper (and thus freed
+                // nothing yet, but every member is off limits from then on).
+                if(dead)
+                    return 1;
                 parentList->clothes_editing = nullptr;
                 if(in_core&&in_core!=core){
                     parentList->clothes_editing = in_core;
                     in_core->type=teTag::deleteTag;
                     in_core->edited_with_layout();
-                    parentList->clothes_editing=nullptr;
+                    if(!dead)
+                        parentList->clothes_editing=nullptr;
                 }
                 return 1;
             }
@@ -1816,6 +1861,8 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
             }
 
             bool merge(std::shared_ptr<teTag>in_core){
+                if(dead)
+                    return false;
                 if(!sameType(in_core))return false;
                 if(auto[cp,cc] = is_color(*in_core);cc>0&&!colors.empty()){
                     if(cc!=colors.count())return false;
@@ -1825,15 +1872,25 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
                 }
                 if(in_core==core)
                     return false;
+                // The generic word is the one being absorbed, so the specific
+                // spelling of the incoming tag replaces it: with "underwear" in
+                // the list and "panties" typed, the result says "panties".
+                const QString incoming = in_core->words.isEmpty()?QString{}:in_core->words.back()->text;
+                if(!incoming.isEmpty()&&isGenericClothesType(type)&&!isGenericClothesType(incoming)){
+                    type = incoming;
+                    if(core&&!core->words.isEmpty())
+                        core->words.back()->text = incoming;
+                }
                 readCore(in_core);
                 return true;
             }
             bool sameType(std::shared_ptr<teTag>core){
                 if(type.isEmpty()||core->words.empty())
                     return false;
-                // Synonyms ("underwear" / "panties") count as the same garment,
-                // so picking one merges the other instead of leaving both.
-                return canonicalClothesType(core->words.back()->text)==canonicalClothesType(type);
+                // Synonyms ("underwear" / "panties") and the generic words
+                // ("footwear" / "boots") count as the same garment, so picking one
+                // merges the other instead of leaving both.
+                return sameClothesType(core->words.back()->text,type);
             }
         };
 
@@ -1843,6 +1900,44 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
             else
                 return a->type<b->type;
         }};
+        /// Wrappers waiting to be deleted (see teClothes::dead).
+        QVector<teClothes*> retired_clothes;
+        bool purgeScheduled=false;
+        /**
+         * @brief Takes a wrapper out of all_clothes and deletes it later.
+         *
+         * Never delete a teClothes while anything may still be running inside it:
+         * both reReadClothes() and readCore() are re-entered through the tag's
+         * signals, and they used to delete the wrapper they were called from.
+         */
+        void retire(teClothes*wrapper){
+            if(!wrapper||wrapper->dead)
+                return;
+            wrapper->dead=true;
+            wrapper->core.reset();
+            all_clothes.erase(wrapper);
+            retired_clothes.append(wrapper);
+            purgeRetired();
+        }
+        void purgeRetired(){
+            if(purgeScheduled||retired_clothes.isEmpty())
+                return;
+            purgeScheduled=true;
+            // Deferred to the event loop: everything that is still on the stack
+            // only looks at the dead flag, which is already set.
+            QTimer::singleShot(0,this,[this]{
+                purgeScheduled=false;
+                for(teClothes*wrapper:retired_clothes)
+                    delete wrapper;
+                retired_clothes.clear();
+            });
+        }
+        void purgeRetiredNow(){
+            purgeScheduled=false;
+            for(teClothes*wrapper:retired_clothes)
+                delete wrapper;
+            retired_clothes.clear();
+        }
         teClothes* findClothes(std::shared_ptr<teTag>tag){
             for(teClothes*clz:all_clothes){
                 if(clz->core==tag){
@@ -1857,6 +1952,11 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
             this->info=QStringLiteral("ClothesList");
             sc->setMinimumHeight(110);
         }
+        ~ClothesList(){
+            // The deferred purge is bound to this widget, so it will not run any
+            // more: delete what it was still holding.
+            purgeRetiredNow();
+        }
         bool filter(std::shared_ptr<teTag>in_tag)override{
             if(in_tag==clothes_editing)return true;
             if(in_tag->words.empty())return false;
@@ -1866,17 +1966,26 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
             if(allClothesTypes.contains(*in_tag->words.back())){
                 if(autoMerge&&MergeSwitch){
                     if(!all_clothes.empty()){
-                        auto tmp = teClothes{*in_tag->words.back()};
-                        auto begin = all_clothes.lower_bound(&tmp);
-                        auto end = all_clothes.upper_bound(&tmp);
-                        for(auto it =begin;it!=end;++it){
-                            if(in_tag==(*it)->core){
-                                (*it)->readCore();
+                        // Every wrapper is a candidate: the type words that mean
+                        // the same garment ("panties"/"underwear") are *not*
+                        // adjacent in the type-ordered set, so looking them up
+                        // with lower_bound()/upper_bound() never found them -
+                        // which is why the merge was not automatic.
+                        // Snapshot first: readCore()/merge() re-enter this class
+                        // through the tag signals and can retire wrappers.
+                        const QVector<teClothes*> candidates(all_clothes.begin(),all_clothes.end());
+                        for(teClothes*clothes:candidates){
+                            if(clothes->dead||!all_clothes.count(clothes))
+                                continue;
+                            if(in_tag==clothes->core){
+                                clothes->readCore();
                                 return false;
                             }
                         }
-                        for(;begin!=end;++begin){
-                            if((*begin)->merge(in_tag)){
+                        for(teClothes*clothes:candidates){
+                            if(clothes->dead||!all_clothes.count(clothes))
+                                continue;
+                            if(clothes->merge(in_tag)){
                                 in_tag->type=teTag::deleteTag;
                                 return false;
                             }
@@ -1891,13 +2000,10 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
         }
 
         virtual void clear()override{
-            auto it = all_clothes.begin();
-            int itemCount = all_clothes.size();
-            while(itemCount>0){
-                delete *it;
-                it=all_clothes.erase(it);
-                --itemCount;
-            }
+            for(teClothes*clothes:all_clothes)
+                clothes->dead=true;         // no callback may touch them any more
+            purgeRetiredNow();
+            all_clothes.clear();
             teTagListControl::clear();
         };
         void link(std::shared_ptr<teTag>in_tag)override{
@@ -1911,10 +2017,9 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
         }
         void unlink(std::shared_ptr<teTag>in_tag)override{
             // teDisconnect(in_tag.get());
-            for(auto it= all_clothes.begin(),end = all_clothes.end();it!=end;++it)
-                if((*it)->core==in_tag){
-                    delete *it;
-                    all_clothes.erase(it);
+            for(teClothes*clothes:QVector<teClothes*>(all_clothes.begin(),all_clothes.end()))
+                if(clothes->core==in_tag){
+                    retire(clothes);
                     break;
                 }
             tagErase(in_tag);

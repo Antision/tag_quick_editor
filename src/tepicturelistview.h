@@ -72,11 +72,6 @@ public:
 
     tePictureFileModel* fileModel(){ return &picturefileModel; }
 
-    void enterEvent(QEnterEvent *event)override{
-        setFocus();
-        QListView::enterEvent(event);
-    }
-
     void selectNext();
     void selectPrevious();
     void selectIndexList(QVector<QModelIndex> indexes);

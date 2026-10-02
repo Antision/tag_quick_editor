@@ -1,5 +1,5 @@
-#ifndef TEMULTITAGLISTVIEW_H
-#define TEMULTITAGLISTVIEW_H
+#ifndef TESELECTIONTAGLIST_H
+#define TESELECTIONTAGLIST_H
 #include <QListView>
 #include <QStandardItemModel>
 #include "qstyleditemdelegate.h"
@@ -169,8 +169,14 @@ public:
     }
     void destroyEditor(QWidget* editor, const QModelIndex& index) const override {
         Q_UNUSED(editor); Q_UNUSED(index);
+        // Editing ended (commit, Escape or focus loss). Without this the row was
+        // painted without its text until another row was edited.
+        showEditor=false;
+        editingRow=-1;
     }
     mutable bool showEditor=false;
+    /// Row whose text is currently covered by the inline editor (-1: none).
+    mutable int editingRow=-1;
     void updateEditorGeometry(QWidget *editor, const QStyleOptionViewItem &option, const QModelIndex &index) const override {
         Q_UNUSED(index);
         if(!showEditor)return;
@@ -193,10 +199,6 @@ public:
     explicit teSelectionTagListView(QWidget *parent = nullptr);
     QAction *editAction,*insertAction,*insertBelowAction,* deleteAction,*copyAction,*cutAction,*setposAction,*pasteAction;
     void initializeMenu();
-    void enterEvent(QEnterEvent *event)override{
-        setFocus();
-        QListView::enterEvent(event);
-    }
     void dropEvent(QDropEvent *event)override;
     void startDrag(Qt::DropActions supportedActions)override;
 
@@ -207,4 +209,4 @@ public:
 private slots:
     void showContextMenu(const QPoint &pos);
 };
-#endif // TEMULTITAGLISTVIEW_H
+#endif // TESELECTIONTAGLIST_H

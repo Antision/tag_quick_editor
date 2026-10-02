@@ -59,6 +59,9 @@ signals:
 
 protected:
     void leaveEvent(QEvent* event) override;
+    /// Closes the popup when the mouse is pressed outside it and outside the tag
+    /// list (installed on the application while the popup is up).
+    bool eventFilter(QObject* watched,QEvent* event) override;
 
 private:
     void startEditing(teWordWidgetBase* clickedWord);
@@ -80,6 +83,8 @@ private:
 
     teTagListWidgetBase* m_owner=nullptr;
     teTagWidgetBase* m_source=nullptr;
+    /// True while this widget filters the application's events (popup is up).
+    bool m_watching=false;
     QFlowLayout* m_flow=nullptr;
     QFlowLayoutReorderer* m_wordReorderer=nullptr;
     QLineEdit* m_editor=nullptr;

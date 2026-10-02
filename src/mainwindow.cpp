@@ -1,5 +1,5 @@
 #include "mainwindow.h"
-#include "temultitaglistview.h"
+#include "teselectiontaglist.h"
 #include "tepicturelistview.h"
 #include "ui_mainwindow.h"
 #include"tepicturefile.h"
@@ -105,7 +105,7 @@ MainWindow::MainWindow(QWidget *parent)
     splitter->setStyleSheet("background-color:transparent");
     splitter->setAttribute(Qt::WA_TranslucentBackground);
     splitter->addWidget(ui->picturelist);
-    splitter->addWidget(ui->TaglistTabWidget);
+    splitter->addWidget(ui->tagListTabWidget);
     splitter->addWidget(ui->editorlist);
     if(mainWindowSplitterLength[0]>0){
         QList<int>sizes;
@@ -123,18 +123,18 @@ MainWindow::MainWindow(QWidget *parent)
     multitaglistmodel=multitaglist->model;
 
     connect(ui->GlobalMultiTaglistView->model,&teSelectionTagModel::listModified,this,[this]{
-        connect(ui->TaglistTabWidget,&QTabWidget::currentChanged,ui->taglist,[this]{
+        connect(ui->tagListTabWidget,&QTabWidget::currentChanged,ui->taglist,[this]{
             tePictureFile* tmpPictureFile = ui->taglist->file;
             QItemSelection tmpSelection= picturefileListView->selectionModel()->selection();
             if(tmpSelection.count()==1&&
                 tmpPictureFile==qvariant_cast<tePictureFile*>(picturefileListView->model()->data(tmpSelection.indexes().first())))
                 ui->taglist->loadFile(tmpPictureFile);
-            disconnect(ui->TaglistTabWidget,&QTabWidget::currentChanged,ui->taglist,0);
+            disconnect(ui->tagListTabWidget,&QTabWidget::currentChanged,ui->taglist,0);
         },Qt::SingleShotConnection);
     },Qt::DirectConnection);
 
     ui->selectList_tab_layout->addWidget(multitaglist);
-    ui->TaglistTabWidget->setContentsMargins(0,0,0,0);
+    ui->tagListTabWidget->setContentsMargins(0,0,0,0);
     ui->selectList_tab_layout->setContentsMargins(0,0,0,0);
     ui->allList_tab_layout->setContentsMargins(0,0,0,0);
     multitaglist->hide();
@@ -246,7 +246,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(picturefileListView->selectionModel(), &QItemSelectionModel::selectionChanged,
             this,[this]{
                 selectionTimer->start();
-                ui->TaglistTabWidget->setCurrentIndex(0);
+                ui->tagListTabWidget->setCurrentIndex(0);
             },Qt::DirectConnection);
 
     ui->taglist->editorlist = ui->editorlist;

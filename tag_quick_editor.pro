@@ -26,6 +26,7 @@ SOURCES += \
     src/mainwindow.cpp \
     src/prefix_priority.cpp \
     src/qflowlayout.cpp \
+    src/stylesheet.cpp \
     src/suggestionlineedit.cpp \
     src/teeditor.cpp \
     src/teeditor_derive.cpp \
@@ -33,12 +34,11 @@ SOURCES += \
     src/teeditorlist.cpp \
     src/teeditorlistpageview.cpp \
     src/teimagewidget.cpp \
-    src/temultitaglistview.cpp \
     src/teobject.cpp \
     src/tepicturefile.cpp \
-    src/tepicturelist.cpp \
     src/tepicturelistview.cpp \
     src/tereftaglistwidget.cpp \
+    src/teselectiontaglist.cpp \
     src/tesignalwidget.cpp \
     src/tetag.cpp \
     src/tetagdisplaywidget.cpp \
@@ -62,11 +62,11 @@ HEADERS += \
     src/teeditorlist.h \
     src/teeditorlistpageview.h \
     src/teimagewidget.h \
-    src/temultitaglistview.h \
     src/teobject.h \
     src/tepicturefile.h \
     src/tepicturelistview.h \
     src/tereftaglistwidget.h \
+    src/teselectiontaglist.h \
     src/tesignalwidget.h \
     src/tetag.h \
     src/tetagdisplaywidget.h \

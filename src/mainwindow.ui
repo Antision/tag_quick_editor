@@ -34,31 +34,9 @@
 border-bottom:1px solid rgb(100,100,100);
 border-left:1px solid rgb(100,100,100);
 border-right:1px solid rgb(100,100,100);
-}</string>
-   </property>
-   <layout class="QHBoxLayout" name="horizontalLayout">
-    <item>
-     <widget class="tePictureListView" name="picturelist">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-        <horstretch>2</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="styleSheet">
-       <string notr="true">QFrame{
-border:1px solid #4c399e;
-background-color: rgb(27, 27, 27);
 }
-QFrame:hover{
-    border-color: #6045d6;
-}
-QFrame:!hover{
-    border-color: #4c399e;
-}
-QFrame[saving=&quot;true&quot;]{
-    border-color: #0af581;
-}
+
+
 QScrollBar{background:#5421ff;}
 QScrollBar::vertical{margin: 12px 0px 12px 0px;border:0px solid #5421ff;width:10px;}
 QScrollBar::horizontal{margin: 0px 12px 0px 12px;border:0px solid #5421ff;height:10px;}
@@ -120,11 +98,35 @@ QScrollBar::add-line:horizontal {
     height: 10px;
     width:12px;
 }</string>
+   </property>
+   <layout class="QHBoxLayout" name="horizontalLayout">
+    <item>
+     <widget class="tePictureListView" name="picturelist">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>2</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">#picturelist{
+border:1px solid #4c399e;
+background-color: rgb(27, 27, 27);
+}
+#picturelist:hover{
+    border-color: #6045d6;
+}
+#picturelist:!hover{
+    border-color: #4c399e;
+}
+#picturelist[saving=&quot;true&quot;]{
+    border-color: #0af581;
+}</string>
       </property>
      </widget>
     </item>
     <item>
-     <widget class="QTabWidget" name="TaglistTabWidget">
+     <widget class="QTabWidget" name="tagListTabWidget">
       <property name="sizePolicy">
        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
         <horstretch>3</horstretch>
@@ -132,7 +134,25 @@ QScrollBar::add-line:horizontal {
        </sizepolicy>
       </property>
       <property name="styleSheet">
-       <string notr="true">QTabWidget::pane:hover { /* The tab widget frame */
+       <string notr="true">QWidget{
+	background-color: rgb(27, 27, 27);
+}
+
+QFrame{
+border:1px solid #4c399e;
+background-color: rgb(27, 27, 27);
+}
+QFrame:hover{
+    border-color: #6045d6;
+}
+QFrame:!hover{
+    border-color: #4c399e;
+}
+QFrame[saving=&quot;true&quot;]{
+    border-color: #0af581;
+}
+
+QTabWidget::pane:hover { /* The tab widget frame */
     border-top: 1px solid #6045d6;
 }
 QTabWidget::pane:!hover {
@@ -175,7 +195,9 @@ QTabBar::tab:last:selected {
 
 QTabBar::tab:only-one {
     margin: 0; /* if there is only one tab, we don't want overlapping margins */
-}</string>
+}
+
+</string>
       </property>
       <property name="currentIndex">
        <number>0</number>
@@ -188,7 +210,7 @@ QTabBar::tab:only-one {
         </sizepolicy>
        </property>
        <property name="styleSheet">
-        <string notr="true">background-color: rgb(27, 27, 27);</string>
+        <string notr="true"/>
        </property>
        <attribute name="title">
         <string>Select</string>
@@ -234,9 +256,6 @@ QTabBar::tab:only-one {
          <verstretch>0</verstretch>
         </sizepolicy>
        </property>
-       <property name="styleSheet">
-        <string notr="true">background-color: rgb(27, 27, 27);</string>
-       </property>
        <attribute name="title">
         <string>All</string>
        </attribute>
@@ -275,7 +294,20 @@ QTabBar::tab:only-one {
        <string notr="true">QLabel[type=&quot;title&quot;]{
 font:italic 14px;color:rgb(200,200,200);
 }
-</string>
+
+#editorlist{
+border:1px solid #4c399e;
+background-color: rgb(27, 27, 27);
+}
+#editorlist:hover{
+    border-color: #6045d6;
+}
+#editorlist:!hover{
+    border-color: #4c399e;
+}
+#editorlist[saving=&quot;true&quot;]{
+    border-color: #0af581;
+}</string>
       </property>
      </widget>
     </item>
@@ -480,7 +512,7 @@ selection-background-color: rgb(70, 70, 70);
   <customwidget>
    <class>teSelectionTagListView</class>
    <extends>QListView</extends>
-   <header>temultitaglistview.h</header>
+   <header>teselectiontaglist.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

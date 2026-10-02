@@ -1,4 +1,4 @@
-#include "temultitaglistview.h"
+#include "teselectiontaglist.h"
 
 namespace {
 
@@ -510,6 +510,7 @@ bool teTagListDelegate::eventFilter(QObject *watched, QEvent *e) {
 }
 
 QWidget *teTagListDelegate::createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const {
+    editingRow=index.row();
     Q_UNUSED(option);
     showEditor=true;
     auto* tagcore = index.data(Qt::DisplayRole).value<teSelectionTag*>();

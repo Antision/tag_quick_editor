@@ -105,13 +105,23 @@ bool teTagListWidgetBase::handleTagDisplayEscape(QKeyEvent* event){
 void teTagListWidgetBase::showTagDisplay(teTagWidgetBase* tag){
     if(!tag||!tag->core||!tagDisplay)
         return;
-    tagDisplay->showFor(tag,QCursor::pos());
+    // The popup sits to the right of the tag it belongs to.
+    const QPoint anchor = tag->mapToGlobal(QPoint(tag->width(),tag->height()/2));
+    tagDisplay->showFor(tag,anchor);
 }
 
 void teTagListWidgetBase::showTagDisplayCore(std::shared_ptr<teTag> core){
     if(!core||!tagDisplay)
         return;
-    tagDisplay->showForCore(core,QCursor::pos());
+    tagDisplay->showForCore(core,tagDisplayAnchor(core));
+}
+
+QPoint teTagListWidgetBase::tagDisplayAnchor(std::shared_ptr<teTag> core) const
+{
+    // Widget based list: right edge of the widget showing that tag.
+    if(teTagWidgetBase* tag = widgetForCore(core))
+        return tag->mapToGlobal(QPoint(tag->width(),tag->height()/2));
+    return QCursor::pos();
 }
 
 void teTagListWidgetBase::hideTagDisplay(){
@@ -183,10 +193,6 @@ void teTagListWidgetBase::installTagDisplayFilters(teTagWidgetBase* tag){
         word->installEventFilter(this);
 }
 
-
-void teTagListWidgetBase::enterEvent(QEnterEvent *e){
-    sc->setFocus();
-}
 
 size_t teTagListWidget::size() const{
     if(showing_list)
@@ -318,6 +324,20 @@ void teTagListWidget::ensureCoreVisible(std::shared_ptr<teTag> core)
     if(row<0)
         return;
     m_view->scrollTo(m_model->index(row,0),QAbstractItemView::EnsureVisible);
+}
+
+QPoint teTagListWidget::tagDisplayAnchor(std::shared_ptr<teTag> core) const
+{
+    if(!m_model||!m_view||!core)
+        return QCursor::pos();
+    const int row = m_model->rowOf(core.get());
+    if(row<0)
+        return QCursor::pos();
+    const QRect rect = m_view->visualRect(m_model->index(row,0));
+    if(!rect.isValid()||rect.isEmpty())
+        return QCursor::pos();
+    // Right edge of the view, at the height of that row.
+    return m_view->viewport()->mapToGlobal(QPoint(m_view->viewport()->width(),rect.center().y()));
 }
 
 int teTagListWidget::setSelectRange(teTagWidgetBase *in,bool ifclear){
@@ -1149,6 +1169,10 @@ void teTagListView::sortRows(QVector<int>& rows)
 
 void teTagListView::startDrag(Qt::DropActions supportedActions)
 {
+    // Dragging a tag is no time for the popup: it hides as soon as the drag
+    // starts (the user asked for exactly that).
+    if(auto* list = qobject_cast<teTagListWidget*>(parentWidget()))
+        list->hideTagDisplay();
     // Deliberately not QListView::startDrag(): that one calls clearOrRemove()
     // when the drag ends with MoveAction, which removes the dragged rows a
     // second time - after dropEvent() already moved them into place. That is

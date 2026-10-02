@@ -1,5 +1,6 @@
 #include "tereftaglistwidget.h"
 #include "teeditorcontrol.h"
+#include "mainwindow.h"
 #include "func.h"
 bool teRefTagCmp(teRefTagWidget *a, teRefTagWidget *b){
     return a->core<b->core;
@@ -299,7 +300,6 @@ void teRefTagListWidget::tagDestroy(std::shared_ptr<teTag> tag){
     }
 }
 
-#include "mainwindow.h"
 extern QWidget*global_window;
 void teRefTagListWidget::tagInsertAbove(bool edit, std::shared_ptr<teTag>newtag,int removeDuplicate){
     taginsert(edit,newtag,removeDuplicate);

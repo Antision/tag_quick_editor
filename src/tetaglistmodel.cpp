@@ -420,7 +420,11 @@ void teTagDelegate::paint(QPainter* painter,const QStyleOptionViewItem& option,c
     painter->setPen(QPen(hovered?colors.hoverBorder:colors.border,1));
     painter->drawRect(rect.adjusted(1,1,-1,-1));
 
-    if(m_editingRow!=index.row()){
+    // The text is hidden only while the inline editor is really on screen for
+    // this row. Clearing m_editingRow when the editor closes is not enough on its
+    // own: cancelling with Escape used to leave the row blank until the next row
+    // was edited (and it stayed blank even after switching images).
+    if(!(m_activeEditor&&m_activeEditor->isVisible()&&m_editingRow==index.row())){
         painter->setPen(selected?QColor(0x00,0xd9,0x6d):Qt::white);
         QFont font(QStringLiteral("Segoe UI"),15);
         painter->setFont(font);
@@ -439,6 +443,7 @@ QWidget* teTagDelegate::createEditor(QWidget* parent,const QStyleOptionViewItem&
     if(parent&&m_editor->parent()!=parent)
         m_editor->setParent(parent);
     m_editingRow=index.row();
+    m_activeEditor=m_editor;
     m_editor->start(index.data(Qt::EditRole).toString());
     return m_editor;
 }

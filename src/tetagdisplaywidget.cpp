@@ -9,6 +9,7 @@ constexpr int kTagListWordPointSize = 15;
 
 constexpr int kHorizontalMargin = 6;
 constexpr int kVerticalMargin = 4;
+constexpr int kGap = 6;          ///< distance to the tag the popup belongs to
 
 /// Opacity while the popup only follows the pointer: at full opacity it swallowed
 /// the clicks and wheel events meant for the list behind it.
@@ -158,7 +159,7 @@ int teTagDisplayWidget::displayPointSize() const
     return int(kTagListWordPointSize * 1.5);
 }
 
-void teTagDisplayWidget::showFor(teTagWidgetBase* source,const QPoint& globalMousePos)
+void teTagDisplayWidget::showFor(teTagWidgetBase* source,const QPoint& anchor)
 {
     if (!source || !source->core)
         return;
@@ -168,12 +169,12 @@ void teTagDisplayWidget::showFor(teTagWidgetBase* source,const QPoint& globalMou
     m_source = source;
     readCore(source->core);
     showIdle();
-    placeNextTo(globalMousePos);
+    placeNextTo(anchor);
     show();
     raise();
 }
 
-void teTagDisplayWidget::showForCore(std::shared_ptr<teTag> tagCore,const QPoint& globalMousePos)
+void teTagDisplayWidget::showForCore(std::shared_ptr<teTag> tagCore,const QPoint& anchor)
 {
     if (!tagCore)
         return;
@@ -183,17 +184,23 @@ void teTagDisplayWidget::showForCore(std::shared_ptr<teTag> tagCore,const QPoint
     m_source = nullptr;                         // no widget behind this row
     readCore(tagCore);
     showIdle();
-    placeNextTo(globalMousePos);
+    placeNextTo(anchor);
     show();
     raise();
 }
 
 void teTagDisplayWidget::showIdle()
 {
-    // Translucent while it just hangs next to the pointer, so that clicks and
-    // wheel events reach the list behind it. Clicking it (or dragging a word)
-    // makes it opaque, see setOpaque().
+    // Translucent while it just hangs next to the tag, so that clicks and wheel
+    // events reach the list behind it. Clicking it (or dragging a word) makes it
+    // opaque, see setOpaque().
     setWindowOpacity(kIdleOpacity);
+    // Watch the application while it is up, so a click anywhere outside it and
+    // outside the tag list closes it.
+    if (qApp && !m_watching){
+        qApp->installEventFilter(this);
+        m_watching=true;
+    }
 }
 
 void teTagDisplayWidget::setOpaque()
@@ -202,21 +209,39 @@ void teTagDisplayWidget::setOpaque()
         setWindowOpacity(1.0);
 }
 
-void teTagDisplayWidget::placeNextTo(const QPoint& globalMousePos)
+bool teTagDisplayWidget::eventFilter(QObject* watched,QEvent* event)
 {
-    const QScreen* screen = screenAt(globalMousePos);
-    const QRect available = screen?screen->availableGeometry():QRect(globalMousePos,QSize(800,600));
+    if (event->type()!=QEvent::MouseButtonPress&&event->type()!=QEvent::Wheel)
+        return QWidget::eventFilter(watched,event);
+    const QPoint global = (event->type()==QEvent::MouseButtonPress)
+                              ? static_cast<QMouseEvent*>(event)->globalPosition().toPoint()
+                              : QCursor::pos();
+    if (frameGeometry().contains(global))
+        return QWidget::eventFilter(watched,event);     // our own event
+    QWidget* under = QApplication::widgetAt(global);
+    if (m_owner&&under&&(under==m_owner||m_owner->isAncestorOf(under)))
+        return QWidget::eventFilter(watched,event);     // a click in the tag list
+    hideDisplay();
+    return QWidget::eventFilter(watched,event);
+}
+
+void teTagDisplayWidget::placeNextTo(const QPoint& anchor)
+{
+    // The popup belongs to the right of the tag (the user asked for the right
+    // edge of the list), flipping to its left when that would leave the screen.
+    const QScreen* screen = screenAt(anchor);
+    const QRect available = screen?screen->availableGeometry():QRect(anchor,QSize(800,600));
     // Cap the width so a long tag wraps instead of growing until it is clamped
     // to the edge of the screen (which used to park it at the far left).
-    const int maxWidth = std::max(240,available.width()*2/3);
+    const int maxWidth = std::max(240,available.width()/3);
     if (maximumWidth() != maxWidth)
         setMaximumWidth(maxWidth);
     adjustSize();                               // the flow layout re-wraps
-    int x = globalMousePos.x();
+    int x = anchor.x()+kGap;
     if (x + width() > available.right())
-        x = globalMousePos.x() - width();        // flip to the left of the cursor
+        x = anchor.x() - width() - kGap;        // flip to the left of the anchor
     x = std::clamp(x,available.left(),std::max(available.left(),available.right()-width()));
-    const int y = std::clamp(globalMousePos.y() - height()/2,
+    const int y = std::clamp(anchor.y() - height()/2,
                              available.top(),
                              std::max(available.top(),available.bottom()-height()));
     move(x,y);
@@ -226,6 +251,10 @@ void teTagDisplayWidget::hideDisplay()
 {
     if (m_editor)
         finishEditing(false);
+    if (m_watching&&qApp){
+        qApp->removeEventFilter(this);
+        m_watching=false;
+    }
     hide();
     m_source = nullptr;
     if (core)
@@ -290,7 +319,6 @@ void teTagDisplayWidget::mouseReleaseEvent(QMouseEvent* event)
 
 void teTagDisplayWidget::mouseDoubleClickEvent(QMouseEvent* event)
 {
-    Q_UNUSED(event);
     if (!core)
         return;
     if (core->type == teTag::sentence) {
@@ -301,7 +329,17 @@ void teTagDisplayWidget::mouseDoubleClickEvent(QMouseEvent* event)
             m_owner->tagEditCore(tagCore);
         return;
     }
-    startEditing(nullptr);
+    // The word under the pointer is the one to preselect; a double click next to
+    // the words (on the border of the popup) selects the whole tag. The position
+    // is taken from the *global* one: the event may have been forwarded by a word,
+    // in which case its local position belongs to that word.
+    teWordWidgetBase* clicked = nullptr;
+    if (QWidget* under = childAt(mapFromGlobal(event->globalPosition().toPoint()))) {
+        clicked = qobject_cast<teWordWidgetBase*>(under);
+        if (!clicked)
+            clicked = qobject_cast<teWordWidgetBase*>(under->parentWidget());
+    }
+    startEditing(clicked);
 }
 
 void teTagDisplayWidget::startEditing(teWordWidgetBase* clickedWord)
@@ -309,6 +347,14 @@ void teTagDisplayWidget::startEditing(teWordWidgetBase* clickedWord)
     if (!core || m_editor)
         return;
     setOpaque();                                // editing: do not dim the text
+    // The popup is created as a tool window that never takes the focus (so it
+    // does not steal it from the list). While its inline editor is open it has to
+    // accept the focus, otherwise the line edit has no caret and cannot be typed
+    // into - which is exactly what happened.
+    setAttribute(Qt::WA_ShowWithoutActivating,false);
+    setWindowFlag(Qt::WindowDoesNotAcceptFocus,false);
+    show();
+    activateWindow();
 
     m_editor = new QLineEdit(this);
     m_editor->setStyleSheet(QStringLiteral("QLineEdit{font:%1pt \"Segoe UI\";color:white;"
@@ -350,6 +396,12 @@ void teTagDisplayWidget::finishEditing(bool accept)
 
     if (accept && core && m_owner && text != static_cast<QString>(*core))
         m_owner->tagEdit(core,text);        // dedupe + undo + editors, all in one place
+
+    // Back to "never takes the focus", so the next click goes to the list.
+    setWindowFlag(Qt::WindowDoesNotAcceptFocus,true);
+    setAttribute(Qt::WA_ShowWithoutActivating,true);
+    if (isVisible())
+        show();
 }
 
 int teTagDisplayWidget::wordOffsetInText(int index) const
