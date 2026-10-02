@@ -68,8 +68,11 @@ public:
     QVBoxLayout*layout = new QVBoxLayout(content);
     QHBoxLayout* signal_button_layout = new QHBoxLayout;
     /// Sections are layed out horizontally by default; pass
-    /// `verticalSections = true` to stack them instead.
+    /// `verticalSections = true` to stack them instead, or `sectionColumns` to
+    /// group them into a few columns (each section stacked in its own column).
     QBoxLayout* content_layout = nullptr;
+    /// One entry per column when `sectionColumns` was used.
+    QVector<QVBoxLayout*> columns;
     QVBoxLayout shade_layout;
     QButtonGroup*shade_buttongroup = new QButtonGroup(content);
 
@@ -81,8 +84,9 @@ public:
     QVector<std::pair<QLayout*,QButtonGroup*>>objectLayoutList;
     QString otherWords;
     void uncheckAllButtons();
-    /// Adds one section (with an optional caption above it) to content_layout.
-    void addSectionToContent(QLayout* sectionLayout,const QString& heading);
+    /// Adds one section (with an optional caption above it) to content_layout
+    /// (or to `column` when the widget was built with section columns).
+    void addSectionToContent(QLayout* sectionLayout,const QString& heading,int column=-1);
     /**
      * @param objects one entry per button section. A single-element list with
      *        `ifExclusive == true` renders as a fixed word (a label that becomes
@@ -96,16 +100,23 @@ public:
      *        button of the whole widget can be checked at a time.
      * @param verticalSections stack the sections instead of placing them side
      *        by side.
+     * @param sectionColumns one entry per section: which column it belongs to
+     *        (empty = one column per section). Used by the clothes dialog to put
+     *        the colours and features in the left column and the clothes types in
+     *        the right one, which keeps the window square.
      */
     colorsWidget(QVector<QPair<QStringList,bool>>&&objects,QWidget*parent=nullptr,int colorListPos=0,
                  std::optional<QStringList>extraButtons={},
                  QVector<QString> headings={},
                  QButtonGroup* sharedExclusiveGroup=nullptr,
-                 bool verticalSections=false);
+                 bool verticalSections=false,
+                 QVector<int> sectionColumns={});
     void closeEvent(QCloseEvent *event) override {
         emit cancelSignal();
         uncheckAllButtons();
     }
+    /// Moves itself next to the cursor, clamped to the screen, and shows.
+    void showNearCursor();
 
     QPushButton* getColorButton(const QString&colorText,int r,int g,int b,bool ifblacktext=false);
     void sendString(bool ifadd);

@@ -257,7 +257,7 @@ QTabBar::tab:only-one {
          <number>1</number>
         </property>
         <item>
-         <widget class="teMultitagListView" name="GlobalMultiTaglistView"/>
+         <widget class="teSelectionTagListView" name="GlobalMultiTaglistView"/>
         </item>
        </layout>
       </widget>
@@ -473,14 +473,14 @@ selection-background-color: rgb(70, 70, 70);
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>teMultitagListView</class>
-   <extends>QListView</extends>
-   <header>temultitaglistview.h</header>
-  </customwidget>
-  <customwidget>
    <class>tePictureListView</class>
    <extends>QListView</extends>
    <header>tepicturelistview.h</header>
+  </customwidget>
+  <customwidget>
+   <class>teSelectionTagListView</class>
+   <extends>QListView</extends>
+   <header>temultitaglistview.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

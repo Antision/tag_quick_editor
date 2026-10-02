@@ -30,7 +30,7 @@ extern std::vector<ctag> ctags;
 extern QWidget* global_window;
 
 class tePictureFileModel;
-class teMultitagListView;
+class teSelectionTagListView;
 class teSelectionTagModel;
 class LogWindow;
 
@@ -77,7 +77,7 @@ public:
     tePictureListView* picturefileListView;
     teImageWidget*imageWidget=nullptr;
     teSelectionTagModel* multitaglistmodel;
-    teMultitagListView*multitaglist;
+    teSelectionTagListView*multitaglist;
     filterWidget*filterWindow=nullptr;
     EditorListLayoutWidget* editorlistlayoutwidget;
     LogWindow* logWindow=nullptr;

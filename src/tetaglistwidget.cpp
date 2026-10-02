@@ -62,20 +62,9 @@ teTagListWidgetBase::teTagListWidgetBase(int wordsize,QWidget *parent): QWidget{
     menu->setAttribute(Qt::WA_TranslucentBackground);
     menu->setWindowFlags(menu->windowFlags() | Qt::FramelessWindowHint);
 
-    // Magnified hover view. The two timers implement the usual hover dance:
-    // appear after a short delay, and stay alive while the pointer travels from
-    // the tag into the popup.
+    // Magnified popup. It appears when a tag is clicked (or picked in a list),
+    // not after a hover delay, and stays while the pointer travels into it.
     tagDisplay = new teTagDisplayWidget(this);
-    tagDisplayTimer = new QTimer(this);
-    tagDisplayTimer->setSingleShot(true);
-    connect(tagDisplayTimer,&QTimer::timeout,this,[this]{
-        // A model/view list has no widget for the tag it hovers, so it parks a
-        // core instead of a teTagBase.
-        if(pendingDisplayCore)
-            showTagDisplayCore(pendingDisplayCore);
-        else
-            showTagDisplay(pendingDisplayTag);
-    });
     tagDisplayHideTimer = new QTimer(this);
     tagDisplayHideTimer->setSingleShot(true);
     connect(tagDisplayHideTimer,&QTimer::timeout,this,&teTagListWidgetBase::tagDisplayHideTick);
@@ -87,30 +76,30 @@ teTagListWidgetBase::~teTagListWidgetBase(){
     delete tagDisplay;
 }
 
-void teTagListWidgetBase::scheduleTagDisplay(teTagWidgetBase* tag){
-    if(!tag||!tag->core||!tagDisplay)
+void teTagListWidgetBase::followTagDisplay(teTagWidgetBase* tag){
+    // While the popup is up it follows the pointer from one tag to the next; it
+    // is not what makes it appear (that is a click, see showTagDisplay()).
+    if(!tagDisplay||!tagDisplay->isVisible())
         return;
-    pendingDisplayCore.reset();
-    pendingDisplayTag = tag;
     if(tagDisplayHideTimer)
         tagDisplayHideTimer->stop();
-    if(tagDisplay->isVisible())
-        showTagDisplay(tag);            // moving from one tag to the next
-    else
-        tagDisplayTimer->start(350);
+    showTagDisplay(tag);
 }
 
-void teTagListWidgetBase::scheduleTagDisplayCore(std::shared_ptr<teTag> core){
-    if(!core||!tagDisplay)
+void teTagListWidgetBase::followTagDisplayCore(std::shared_ptr<teTag> core){
+    if(!tagDisplay||!tagDisplay->isVisible()||!core)
         return;
-    pendingDisplayTag = nullptr;
-    pendingDisplayCore = core;
     if(tagDisplayHideTimer)
         tagDisplayHideTimer->stop();
-    if(tagDisplay->isVisible())
-        showTagDisplayCore(core);
-    else
-        tagDisplayTimer->start(350);
+    showTagDisplayCore(core);
+}
+
+bool teTagListWidgetBase::handleTagDisplayEscape(QKeyEvent* event){
+    if(event&&event->key()==Qt::Key_Escape&&tagDisplay&&tagDisplay->isVisible()){
+        hideTagDisplay();
+        return true;
+    }
+    return false;
 }
 
 void teTagListWidgetBase::showTagDisplay(teTagWidgetBase* tag){
@@ -126,8 +115,6 @@ void teTagListWidgetBase::showTagDisplayCore(std::shared_ptr<teTag> core){
 }
 
 void teTagListWidgetBase::hideTagDisplay(){
-    if(tagDisplayTimer)
-        tagDisplayTimer->stop();
     if(tagDisplayHideTimer)
         tagDisplayHideTimer->stop();
     pendingDisplayTag = nullptr;
@@ -176,15 +163,10 @@ bool teTagListWidgetBase::eventFilter(QObject* watched,QEvent* event){
         return QWidget::eventFilter(watched,event);
     switch(event->type()){
     case QEvent::Enter:
-        scheduleTagDisplay(tag);
+        followTagDisplay(tag);          // only while the popup is already up
         break;
     case QEvent::Leave:
         scheduleTagDisplayHide();
-        break;
-    case QEvent::MouseButtonPress:
-        // The pointer is about to interact with the tag itself (selection,
-        // dragging, inline editing), so the popup must get out of the way.
-        hideTagDisplay();
         break;
     default:
         break;
@@ -644,6 +626,10 @@ void teTagListWidget::startEditingRow(int row)
     if(raw&&raw->type==teTag::sentence){
         // Sentences are edited in the plain text window, like before.
         hideTagDisplay();
+        // onPlainTextEditStop() (the confirm handler) needs to know which tag is
+        // being edited; a row has no widget, so it is identified by its core.
+        editingTag=nullptr;
+        editingCore=showing_list?showing_list->shareAt(row):nullptr;
         plaintextedit->start(static_cast<QString>(*raw));
         plaintextedit->show();
         connect(plaintextedit,&teInputWidget::stringSignal,this,&teTagListWidgetBase::onPlainTextEditStop,Qt::DirectConnection);
@@ -701,6 +687,8 @@ void teTagListWidget::tagInsertBelow(bool edit,std::shared_ptr<teTag>newtag,int 
 
 void teTagListWidget::keyPressEvent(QKeyEvent *event) {
     if(!showing_list) return;
+    if(handleTagDisplayEscape(event))
+        return;
     if (event->matches(QKeySequence::SelectAll)) {
         selectAllRows();
     } else if ((event->key() == Qt::Key_W && event->modifiers() == Qt::ControlModifier)||event->key() == Qt::Key_F4) {
@@ -1039,6 +1027,9 @@ void teTagListWidgetBase::onTagLeftButtonClicked(teTagWidgetBase *tag, QPoint po
         if(!isSelected(tag))
             setSelectCurrent(tag,true);
     }
+    // Clicking a tag is what opens the magnified popup (it used to appear after
+    // hovering for a while, which got in the way of clicking and scrolling).
+    showTagDisplay(tag);
 }
 
 void teTagListWidget::onTagEdited(std::shared_ptr<teTag>tag){
@@ -1085,6 +1076,7 @@ teTagListWidget::teTagListWidget(QWidget *parent)
     if(wlayout)
         wlayout->addWidget(m_view);
 
+    connect(m_view,&QListView::clicked,this,&teTagListWidget::onViewClicked);
     connect(m_view,&QListView::doubleClicked,this,&teTagListWidget::onViewDoubleClicked);
     connect(m_view,&QListView::customContextMenuRequested,this,&teTagListWidget::onViewContextMenu);
     if(QItemSelectionModel* selection = m_view->selectionModel())
@@ -1116,36 +1108,94 @@ void teTagListView::dropEvent(QDropEvent* event)
         return;
     }
     QVector<int> rows;
-    for(const QModelIndex& index:selectedIndexes())
-        if(index.column()==0)
-            rows.append(index.row());
-    std::sort(rows.begin(),rows.end());
+    for(const QModelIndex& index:selectionModel()->selectedRows())
+        rows.append(index.row());
     if(rows.isEmpty()){
         event->ignore();
         return;
     }
-    // One moveRows() call handles the whole block (and records it for undo);
-    // the dragged rows must be contiguous for that, which a row selection is.
-    const int sourceRow = rows.first();
-    const int count = int(rows.size());
-    for(int i=0;i<count;++i){
-        if(rows[i]!=sourceRow+i){
-            event->ignore();
-            return;
-        }
-    }
-    const QModelIndex target = indexAt(event->position().toPoint());
-    int destination = target.isValid()?target.row():tagModel->rowCount();
-    if(target.isValid()&&dropIndicatorPosition()==QAbstractItemView::BelowItem)
-        ++destination;
-    if(!tagModel->moveRows(QModelIndex(),sourceRow,count,QModelIndex(),destination)){
+    // Bias the position by half a row, so dropping *on* a row works and a drop
+    // between two rows is unambiguous (same as the multi tag list).
+    auto* tagDelegate = qobject_cast<teTagDelegate*>(itemDelegate());
+    const int rowHeight = tagDelegate?tagDelegate->rowHeight():30;
+    const QPoint pos(event->position().toPoint().x(),
+                     event->position().toPoint().y()+rowHeight/2);
+    const QModelIndex target = indexAt(pos);
+    const int dropRow = target.isValid()?target.row():tagModel->rowCount();
+    if(!tagModel->moveTags(rows,dropRow)){
         event->ignore();
         return;
     }
-    event->acceptProposedAction();
-    const int first = sourceRow<destination?destination-count:destination;
-    if(tagModel->rowCount()>0)
-        setCurrentIndex(tagModel->index(std::clamp(first,0,tagModel->rowCount()-1),0));
+    // Keep the moved rows selected.
+    sortRows(rows);
+    selectionModel()->clearSelection();
+    int first = dropRow;
+    for(int row:rows)
+        if(row<dropRow)
+            --first;
+    first = std::clamp(first,0,tagModel->rowCount()-1);
+    for(int i=0;i<int(rows.size())&&first+i<tagModel->rowCount();++i)
+        selectionModel()->select(tagModel->index(first+i,0),
+                                 QItemSelectionModel::Select|QItemSelectionModel::Rows);
+    setCurrentIndex(tagModel->index(first,0));
+    event->accept();
+}
+
+void teTagListView::sortRows(QVector<int>& rows)
+{
+    std::sort(rows.begin(),rows.end());
+    rows.erase(std::unique(rows.begin(),rows.end()),rows.end());
+}
+
+void teTagListView::startDrag(Qt::DropActions supportedActions)
+{
+    // Deliberately not QListView::startDrag(): that one calls clearOrRemove()
+    // when the drag ends with MoveAction, which removes the dragged rows a
+    // second time - after dropEvent() already moved them into place. That is
+    // what made rows vanish (and, with the model out of sync, crash) while
+    // dragging. The multi tag list draws its own pixmap for the same reason.
+    auto* tagModel = qobject_cast<teTagListModel*>(model());
+    const QModelIndexList indexes = selectionModel()->selectedRows();
+    if(!tagModel||indexes.isEmpty())
+        return;
+
+    QFont font(QStringLiteral("Segoe UI"),10);
+    const QFontMetrics metrics(font);
+    const QString text = indexes.first().data(Qt::DisplayRole).toString();
+    const int width = std::max(40,metrics.horizontalAdvance(text)+16);
+    const int height = metrics.height()+8;
+    QPixmap pixmap(width,height);
+    pixmap.fill(Qt::transparent);
+    {
+        QPainter painter(&pixmap);
+        painter.setRenderHint(QPainter::Antialiasing);
+        painter.setBrush(QColor(21,63,34));
+        painter.setPen(QColor(76,230,56));
+        painter.drawRect(QRect(1,1,width-2,height-2));
+        painter.setFont(font);
+        painter.setPen(Qt::white);
+        painter.drawText(QRect(7,0,width-14,height),Qt::AlignLeft|Qt::AlignVCenter,text);
+    }
+
+    QMimeData* mimeData = tagModel->mimeData(indexes);
+    if(!mimeData)
+        return;
+    QDrag* drag = new QDrag(this);
+    drag->setMimeData(mimeData);
+    drag->setPixmap(pixmap);
+    drag->setHotSpot(QPoint(8,height/2));
+    drag->exec(supportedActions,defaultDropAction());
+}
+
+void teTagListWidget::onViewClicked(const QModelIndex& index)
+{
+    // The popup opens on a click (and on the selection it makes), not on hover.
+    if(!index.isValid()||!showing_list)
+        return;
+    const int row=index.row();
+    if(row<0||row>=int(showing_list->size()))
+        return;
+    showTagDisplayCore(showing_list->shareAt(row));
 }
 
 void teTagListWidget::onViewDoubleClicked(const QModelIndex& index)
@@ -1208,25 +1258,36 @@ bool teTagListWidget::eventFilter(QObject* watched,QEvent* event)
     if(m_view&&watched==m_view->viewport()){
         switch(event->type()){
         case QEvent::MouseMove:{
+            // The popup follows the pointer from row to row while it is up; it is
+            // a click (see the view's clicked() signal) that opens it.
+            if(!tagDisplay||!tagDisplay->isVisible())
+                break;
             auto* mouseEvent = static_cast<QMouseEvent*>(event);
             const QModelIndex index = m_view->indexAt(mouseEvent->position().toPoint());
-            if(index.isValid()){
-                teTag* raw = index.data(teTagListModel::TagCoreRole).value<teTag*>();
-                if(raw){
-                    // The hover popup works on tag cores here: a row has no widget.
-                    for(const std::shared_ptr<teTag>& core:*showing_list)
-                        if(core.get()==raw){
-                            scheduleTagDisplayCore(core);
-                            break;
-                        }
-                }
-            }else
+            if(!index.isValid()){
                 hideTagDisplay();
+                break;
+            }
+            teTag* raw = index.data(teTagListModel::TagCoreRole).value<teTag*>();
+            if(!raw)
+                break;
+            for(const std::shared_ptr<teTag>& core:*showing_list)
+                if(core.get()==raw){
+                    followTagDisplayCore(core);
+                    break;
+                }
             break;
         }
         case QEvent::Leave:
             scheduleTagDisplayHide();
             break;
+        case QEvent::MouseButtonPress:{
+            // A click on empty space below the tags closes the popup.
+            auto* mouseEvent = static_cast<QMouseEvent*>(event);
+            if(!m_view->indexAt(mouseEvent->position().toPoint()).isValid())
+                hideTagDisplay();
+            break;
+        }
         default:
             break;
         }

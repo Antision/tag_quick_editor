@@ -86,6 +86,8 @@ words_loop_end:
 
 
 void teRefTagListWidget::keyPressEvent(QKeyEvent *event) {
+    if (handleTagDisplayEscape(event))
+        return;
     if (event->matches(QKeySequence::SelectAll)) {
         setSelectAll();
     } else if ((event->key() == Qt::Key_D && event->modifiers() == Qt::ControlModifier)||event->key() == Qt::Key_Delete) {

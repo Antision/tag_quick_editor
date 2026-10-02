@@ -45,20 +45,22 @@ public:
 
     QMenu* menu = new QMenu(this);///< Context menu for right-click operations
 
-    // -- magnified hover view -------------------------------------------------
+    // -- magnified popup ------------------------------------------------------
     teTagDisplayWidget* tagDisplay=nullptr;///< floating magnified tag
-    QTimer* tagDisplayTimer=nullptr;///< delay before the popup appears
     QTimer* tagDisplayHideTimer=nullptr;///< grace period while moving into the popup
     QPointer<teTagWidgetBase> pendingDisplayTag;
     std::shared_ptr<teTag> pendingDisplayCore;///< ditto, for the model/view list
-    void scheduleTagDisplay(teTagWidgetBase* tag);
+    /// The popup follows the pointer while it is up (a click is what opens it).
+    void followTagDisplay(teTagWidgetBase* tag);
     /// Same, for a tag that is drawn by a delegate and has no widget.
-    void scheduleTagDisplayCore(std::shared_ptr<teTag> core);
+    void followTagDisplayCore(std::shared_ptr<teTag> core);
     void scheduleTagDisplayHide();
     void showTagDisplay(teTagWidgetBase* tag);
     /// Same, for a tag that is drawn by a delegate and has no widget.
     void showTagDisplayCore(std::shared_ptr<teTag> core);
     void hideTagDisplay();
+    /// Hides the popup when the key was Escape; true when it did.
+    bool handleTagDisplayEscape(QKeyEvent* event);
     void tagDisplayHideTick();
     /// Installs the hover filter on a tag and on the words it already owns.
     void installTagDisplayFilters(teTagWidgetBase* tag);
@@ -287,6 +289,11 @@ public:
     explicit teTagListView(QWidget* parent=nullptr):QListView(parent){}
 protected:
     void dropEvent(QDropEvent* event) override;
+    /// Draws its own drag pixmap and, more importantly, does not let Qt remove
+    /// the dragged rows a second time (see the comment in the implementation).
+    void startDrag(Qt::DropActions supportedActions) override;
+private:
+    static void sortRows(QVector<int>& rows);
 };
 
 /**
@@ -360,6 +367,7 @@ public:
     /// Hides the magnified popup when the pointer really left it.
     bool eventFilter(QObject* watched,QEvent* event)override;
 public slots:
+    void onViewClicked(const QModelIndex& index);
     void onViewDoubleClicked(const QModelIndex& index);
     void onViewContextMenu(const QPoint& pos);
     void onViewCurrentChanged(const QModelIndex& current,const QModelIndex& previous);

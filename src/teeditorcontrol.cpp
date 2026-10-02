@@ -227,9 +227,12 @@ void teTagButtonGroup::onClicked(int id){
             while(linked_tags.size()>1){
                 taglistwidget->tagErase(*linked_tags.begin());
             }
-            // The editor's own tag widget shows that tag for this control.
-            if(teTagWidgetBase* editorTag = tagWidgetFor(*linked_tags.begin()))
-                editorTag->setText(final_string);
+            // A button group is not a tag list, so it has no widget of its own:
+            // the composed text goes straight to the tag core, and the lists
+            // showing that tag pick it up through the core's edit signal. (This
+            // used to write to core->widget - the single image tag list's widget,
+            // which does not exist any more.)
+            (*linked_tags.begin())->read(final_string,true);
         }
     }else{
         while(!linked_tags.empty())
@@ -575,8 +578,7 @@ void teTagListControl::unlink(std::shared_ptr<teTag> in_tag){
 
 void teTagListControl::onAddButtonClicked(){
     ifedit=false;
-    onEdit_widget->show();
-    onEdit_widget->move(QCursor::pos().x()-onEdit_widget->width(),QCursor::pos().y()-onEdit_widget->height()/2);
+    onEdit_widget->showNearCursor();
 }
 
 void teTagListControl::reciveWidgetSignal(QString data, bool ifadd){
@@ -602,7 +604,6 @@ void teTagListControl::reciveDestroySignal(){
 void teTagListControl::tagEdit(teTagWidgetBase *tag, teWordWidgetBase *word){
     ifedit=true;
     onEdit_widget->input_and_show(tag->core);
-    onEdit_widget->move(QCursor::pos().x()-onEdit_widget->width(),QCursor::pos().y()-onEdit_widget->height()/2);
 }
 
 // The three overrides below mirror the editor's selection into the main tag

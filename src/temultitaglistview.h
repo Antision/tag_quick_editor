@@ -51,7 +51,7 @@ public:
     }
 };
 
-class teMultitagListView;
+class teSelectionTagListView;
 
 class teSelectionTagModel : public QAbstractItemModel,public teObject {
     Q_OBJECT
@@ -184,13 +184,13 @@ public:
     }
 };
 
-class teMultitagListView : public QListView,public teObject {
+class teSelectionTagListView : public QListView,public teObject {
     Q_OBJECT
 public:
     QMenu* menu = new QMenu(this);
     teSelectionTagModel*model;
     teTagListDelegate delegate{this};
-    explicit teMultitagListView(QWidget *parent = nullptr);
+    explicit teSelectionTagListView(QWidget *parent = nullptr);
     QAction *editAction,*insertAction,*insertBelowAction,* deleteAction,*copyAction,*cutAction,*setposAction,*pasteAction;
     void initializeMenu();
     void enterEvent(QEnterEvent *event)override{

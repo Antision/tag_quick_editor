@@ -575,7 +575,7 @@ void teTagListDelegate::paint(QPainter *painter, const QStyleOptionViewItem &opt
     painter->restore();
 }
 
-teMultitagListView::teMultitagListView(QWidget *parent) : QListView(parent) {
+teSelectionTagListView::teSelectionTagListView(QWidget *parent) : QListView(parent) {
     model = new teSelectionTagModel(this);
     model->listview=this;
     setModel(model);
@@ -591,10 +591,10 @@ teMultitagListView::teMultitagListView(QWidget *parent) : QListView(parent) {
     initializeMenu();
     setContextMenuPolicy(Qt::CustomContextMenu);
     setStyleSheet(liststyle.arg(0));
-    connect(this, &QWidget::customContextMenuRequested, this, &teMultitagListView::showContextMenu);
+    connect(this, &QWidget::customContextMenuRequested, this, &teSelectionTagListView::showContextMenu);
 }
 
-void teMultitagListView::initializeMenu(){
+void teSelectionTagListView::initializeMenu(){
     editAction = menu->addAction(QIcon(":/res/menu_edit.png"),"edit (F2/Ctrl+E)");
     deleteAction = menu->addAction(QIcon(":/res/menu_remove.png"),"delete (Ctrl+D/del)");
     insertAction = menu->addAction(QIcon(":/res/menu_add.png"),"insert above (Ctrl+W)");
@@ -623,7 +623,7 @@ void teMultitagListView::initializeMenu(){
     menu->setWindowFlags(menu->windowFlags() | Qt::FramelessWindowHint );
 }
 
-void teMultitagListView::dropEvent(QDropEvent *event) {
+void teSelectionTagListView::dropEvent(QDropEvent *event) {
     const bool isMoveAction = (event->dropAction() == Qt::MoveAction ||
                                dragDropMode() == QAbstractItemView::InternalMove);
     if (!isMoveAction) {
@@ -661,7 +661,7 @@ void teMultitagListView::dropEvent(QDropEvent *event) {
     }
 }
 
-void teMultitagListView::startDrag(Qt::DropActions supportedActions) {
+void teSelectionTagListView::startDrag(Qt::DropActions supportedActions) {
     const QModelIndexList indexes = selectedIndexes();
     if (indexes.isEmpty())
         return;
@@ -715,7 +715,7 @@ void teMultitagListView::startDrag(Qt::DropActions supportedActions) {
     drag->exec(supportedActions, defaultDropAction());
 }
 
-void teMultitagListView::copyToClipBoard(bool ifcut){
+void teSelectionTagListView::copyToClipBoard(bool ifcut){
     const QModelIndexList selectedIndexes = selectionModel()->selectedRows();
     if(selectedIndexes.isEmpty())
         return;
@@ -743,7 +743,7 @@ void teMultitagListView::copyToClipBoard(bool ifcut){
     }
 }
 
-void teMultitagListView::paste(const QModelIndex &index){
+void teSelectionTagListView::paste(const QModelIndex &index){
     int row = index.isValid()?index.row():model->rowCount();
     const int modelTagCount = model->tags.size();
 
@@ -760,7 +760,7 @@ void teMultitagListView::paste(const QModelIndex &index){
     }
 }
 
-void teMultitagListView::keyPressEvent(QKeyEvent *event) {
+void teSelectionTagListView::keyPressEvent(QKeyEvent *event) {
     if (event->key() == Qt::Key_W && event->modifiers() == Qt::ControlModifier) {
         if(!selectionModel()->selectedRows().empty())
             model->tagInsert(selectionModel()->selectedRows()[0].row(),std::shared_ptr<teTag>(nullptr),true);
@@ -788,7 +788,7 @@ void teMultitagListView::keyPressEvent(QKeyEvent *event) {
     }
 }
 
-void teMultitagListView::showContextMenu(const QPoint &pos) {
+void teSelectionTagListView::showContextMenu(const QPoint &pos) {
     const QModelIndex index = indexAt(pos);
     if(index.isValid()&&!selectionModel()->isSelected(index))
         selectionModel()->select(index,QItemSelectionModel::ClearAndSelect);

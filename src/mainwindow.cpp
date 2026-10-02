@@ -119,7 +119,7 @@ MainWindow::MainWindow(QWidget *parent)
         splitter->setSizes({totalWidth/7*1,totalWidth/7*2,static_cast<int>(totalWidth/7*(2+editorlistlayout.editors.size()*2))});
     }
     centralWidget()->layout()->addWidget(splitter);
-    multitaglist = new teMultitagListView;
+    multitaglist = new teSelectionTagListView;
     multitaglistmodel=multitaglist->model;
 
     connect(ui->GlobalMultiTaglistView->model,&teSelectionTagModel::listModified,this,[this]{
@@ -364,7 +364,8 @@ void MainWindow::emitloadlists(const QItemSelection &selected, const QItemSelect
             multitaglist->hide();
         }
         shownMultiTagFiles.clear();
-        ui->taglist->sc->verticalScrollBar()->setValue(0);
+        // The list is a QListView now; its own scrollbar is the one to reset.
+        ui->taglist->scrollToTop();
         ui->taglist->loadFile(selectedFiles.first());
         return;
     }

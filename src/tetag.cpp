@@ -509,11 +509,13 @@ teTag::teTag(const QList<teWord *> in, teTagWidgetBase *child):widget(child){
 }
 
 teTag::teTag(const QString &str, teTagWidgetBase *child, bool forceSentence):widget(child){
-    read(str);
+    // The flag used to be dropped here, so a tag built as a sentence came out as
+    // a plain tag and was then edited in the wrong window.
+    read(str,true,forceSentence);
 }
 
 teTag::teTag(const char *str, teTagWidgetBase *child, bool forceSentence):widget(child){
-    read(QString(str));
+    read(QString(str),true,forceSentence);
 }
 
 teTag::teTag(teTag &&in):words(std::move(in.words)),widget(in.widget){

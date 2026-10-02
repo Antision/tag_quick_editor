@@ -970,8 +970,7 @@ teEditor_hair_and_eyes::teEditor_hair_and_eyes(teTagListWidget*in_taglistwidget,
             }else{
                 ifedit=true;
                 onEdit_widget->input_and_show(tag->core);
-                onEdit_widget->move(QCursor::pos().x()-onEdit_widget->width(),QCursor::pos().y()-onEdit_widget->height()/2);
-            }
+                        }
         }
         void link(std::shared_ptr<teTag>in_tag)override{
             if(autoMerge&&MergeSwitch&&(!in_tag->contains("eyes"))&&
@@ -1964,9 +1963,12 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
           qsl("underwear / swimwear"), qsl("full body"), qsl("feet"),
           qsl("accessories") },
         // Every type button belongs to one exclusive group, so a clothes tag
-        // always keeps exactly one type word.
+        // always keeps exactly one type word. The columns put the colours and the
+        // features on the left and the clothes types on the right, which keeps
+        // this dialog square instead of a tall strip.
         new QButtonGroup(nullptr),
-        true),taglistwidget);
+        false,
+        { 0, 1, 1, 1, 1, 1, 1, 1 }),taglistwidget);
     contentLayout->addWidget(clothes_list);
     controls.push_back(clothes_list);
 

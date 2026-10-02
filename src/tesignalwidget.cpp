@@ -36,10 +36,11 @@ void addButtonsToGridLayout(QGridLayout *gridLayout, QButtonGroup *buttonGroup, 
     }
 }
 
-void colorsWidget::addSectionToContent(QLayout* sectionLayout,const QString& heading)
+void colorsWidget::addSectionToContent(QLayout* sectionLayout,const QString& heading,int column)
 {
+    QBoxLayout* target = (column>=0&&column<int(columns.size()))?columns[column]:content_layout;
     if(heading.isEmpty()){
-        content_layout->addLayout(sectionLayout);
+        target->addLayout(sectionLayout);
         return;
     }
     // A caption is purely visual: it is wrapped together with its section so it
@@ -52,7 +53,7 @@ void colorsWidget::addSectionToContent(QLayout* sectionLayout,const QString& hea
     label->setStyleSheet(qsl("QLabel{color:#c8c8c8;font:italic 12px \"Segoe UI\";border:none;background:transparent;}"));
     wrapper->addWidget(label);
     wrapper->addLayout(sectionLayout);
-    content_layout->addLayout(wrapper);
+    target->addLayout(wrapper);
 }
 
 void colorsWidget::uncheckAllButtons(){
@@ -69,9 +70,29 @@ void colorsWidget::uncheckAllButtons(){
     otherWords.clear();
 }
 
-colorsWidget::colorsWidget(QVector<QPair<QStringList, bool> > &&objects, QWidget *parent, int colorListPos, std::optional<QStringList> extraButtons, QVector<QString> headings, QButtonGroup* sharedExclusiveGroup, bool verticalSections):teSignalWidget(parent){
-    content_layout = verticalSections ? static_cast<QBoxLayout*>(new QVBoxLayout)
-                                      : static_cast<QBoxLayout*>(new QHBoxLayout);
+colorsWidget::colorsWidget(QVector<QPair<QStringList, bool> > &&objects, QWidget *parent, int colorListPos, std::optional<QStringList> extraButtons, QVector<QString> headings, QButtonGroup* sharedExclusiveGroup, bool verticalSections, QVector<int> sectionColumns):teSignalWidget(parent){
+    // Three arrangements:
+    //  - sectionColumns given: that many columns, each section stacked inside its
+    //    column (the clothes dialog puts the colours/features left and the
+    //    clothes types right, so the window stays square instead of a strip);
+    //  - verticalSections: every section on its own line;
+    //  - otherwise: every section in its own column (the old default).
+    int columnCount = 0;
+    for(int column:sectionColumns)
+        columnCount = std::max(columnCount,column+1);
+    if(columnCount>0){
+        content_layout = new QHBoxLayout;
+        columns.reserve(columnCount);
+        for(int i=0;i<columnCount;++i){
+            auto* column = new QVBoxLayout;
+            column->setContentsMargins(0,0,0,0);
+            column->setSpacing(1);
+            columns.push_back(column);
+            content_layout->addLayout(column);
+        }
+    }else
+        content_layout = verticalSections ? static_cast<QBoxLayout*>(new QVBoxLayout)
+                                          : static_cast<QBoxLayout*>(new QHBoxLayout);
     content_layout->setContentsMargins(0,0,0,0);
     content_layout->setSpacing(1);
     objectLayoutList.reserve(objects.size()+3);
@@ -90,7 +111,8 @@ colorsWidget::colorsWidget(QVector<QPair<QStringList, bool> > &&objects, QWidget
             object_layout=new QVBoxLayout(this);
             object_layout->addWidget(label);
             objectLayoutList.push_back({object_layout,nullptr});
-            addSectionToContent(object_layout,sectionIndex<headings.size()?headings[sectionIndex]:QString());
+            addSectionToContent(object_layout,sectionIndex<headings.size()?headings[sectionIndex]:QString(),
+                                sectionColumns.value(sectionIndex,-1));
             extern QString labelItemStyle;
             label->setStyleSheet(labelItemStyle);
             continue;
@@ -125,7 +147,8 @@ colorsWidget::colorsWidget(QVector<QPair<QStringList, bool> > &&objects, QWidget
             }
         }
         objectLayoutList.push_back({object_layout,object_buttongroup});
-        addSectionToContent(object_layout,sectionIndex<headings.size()?headings[sectionIndex]:QString());
+        addSectionToContent(object_layout,sectionIndex<headings.size()?headings[sectionIndex]:QString(),
+                            sectionColumns.value(sectionIndex,-1));
     }
 
     if(sharedGroup){
@@ -150,7 +173,8 @@ colorsWidget::colorsWidget(QVector<QPair<QStringList, bool> > &&objects, QWidget
         shade_buttongroup->addButton(deep_btn);
         deep_btn->setCheckable(true);
 
-        content_layout->insertLayout(colorListPos,&shade_layout);
+        QBoxLayout* colorColumn = columns.empty()?content_layout:columns.front();
+        colorColumn->insertLayout(colorListPos,&shade_layout);
         shade_buttongroup->setExclusive(false);
         connect(shade_buttongroup,&QButtonGroup::buttonToggled,this,[this](QAbstractButton*btn,bool checked){if(checked)buttons_mutual_exclusion(btn,checked,shade_buttongroup);},Qt::DirectConnection);
         objectLayoutList.insert(colorListPos,{&shade_layout,shade_buttongroup});
@@ -171,7 +195,7 @@ colorsWidget::colorsWidget(QVector<QPair<QStringList, bool> > &&objects, QWidget
         colors_layout.addWidget(getColorButton(qsl("white"),255,255,255,true),1,2);
         colors_layout.addWidget(getColorButton(qsl("black"),0,0,0),2,2);
         colors_layout.addWidget(getColorButton(qsl("grey"),127,127,127),3,2);
-        content_layout->insertLayout(colorListPos+1,&colors_layout);
+        colorColumn->insertLayout(colorListPos+1,&colors_layout);
         objectLayoutList.insert(colorListPos+1,{&colors_layout,colors_buttongroup});
         colors_buttongroup->setExclusive(false);
         connect(colors_buttongroup,&QButtonGroup::buttonToggled,this,[this](QAbstractButton*btn,bool checked){if(checked)buttons_mutual_exclusion(btn,checked,colors_buttongroup);},Qt::DirectConnection);
@@ -239,6 +263,25 @@ QPushButton *colorsWidget::getColorButton(const QString &colorText, int r, int g
     return btn;
 }
 
+void colorsWidget::showNearCursor()
+{
+    // These windows are opened with the mouse, so they belong next to the
+    // pointer - but a long one used to be pushed off the screen (and then stayed
+    // there), so it is clamped onto the screen it appears on.
+    adjustSize();
+    const QPoint cursor = QCursor::pos();
+    QScreen* screen = QGuiApplication::screenAt(cursor);
+    if(!screen)
+        screen = QGuiApplication::primaryScreen();
+    const QRect available = screen?screen->availableGeometry():QRect(cursor,QSize(800,600));
+    QPoint pos(cursor.x()-width(),cursor.y()-height()/2);
+    pos.setX(std::clamp(pos.x(),available.left(),std::max(available.left(),available.right()-width()+1)));
+    pos.setY(std::clamp(pos.y(),available.top(),std::max(available.top(),available.bottom()-height()+1)));
+    move(pos);
+    show();
+    raise();
+}
+
 void colorsWidget::sendString(bool ifadd){
     QString sendData="";
     if(extra_buttongroup){
@@ -289,33 +332,45 @@ void colorsWidget::input_and_show(std::shared_ptr<teTag> in_tag){
                     return;
                 }
         }
-        for(int i=0;i<wordCount;++i){
-            teWord*wc = words[i];
-            QString wordtext = wc->text;
-
+        // Turns on the button with this text; true when one was found (or when a
+        // label section claimed the word, which is how it was before).
+        auto lightWord = [this](const QString& wordtext)->bool{
             for(auto&[layout,buttongroup]:objectLayoutList){
                 if(buttongroup){
                     auto buttonlist = buttongroup->buttons();
                     for(QAbstractButton*btn:buttonlist)
                         if(btn->text()==wordtext){
                             btn->setChecked(true);
-                            goto nextword;
+                            return true;
                         }
                 }else{
                     int count=layout->count();
                     for(int i=0;i<count;++i){
-                        QLabel*label = qobject_cast<QLabel*>(layout->itemAt(i)->widget());
-                        if(label){
-                            goto nextword;
-                        }
+                        if(qobject_cast<QLabel*>(layout->itemAt(i)->widget()))
+                            return true;
                     }
                 }
             }
-            otherWords.append(*wc+' ');
-        nextword:;
-        }
+            return false;
+        };
+        // The tag's last word is the variant selector: in the hair colour window
+        // it is the "hair"/"eyes" button that renames "yellow" into "blonde".
+        // Matching it first is what makes the renamed button light up for a
+        // "blonde hair" tag - matching in tag order left "blonde" unrecognised
+        // (it landed in otherWords) and the tag then came back as
+        // "pink blonde hair". The remaining words are matched in their original
+        // order so otherWords keeps the order of the tag.
+        QVector<bool> matched(wordCount,false);
+        if(wordCount>0)
+            matched[wordCount-1]=lightWord(words.back()->text);
+        for(int i=0;i<wordCount;++i)
+            if(i!=wordCount-1&&!matched[i])
+                matched[i]=lightWord(words[i]->text);
+        for(int i=0;i<wordCount;++i)
+            if(!matched[i])
+                otherWords.append(*words[i]+' ');
     }
-    show();
+    showNearCursor();
 }
 QString teWidgetStyle = QStringLiteral(R"(
 QWidget{

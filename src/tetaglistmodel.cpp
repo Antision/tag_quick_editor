@@ -249,6 +249,55 @@ bool teTagListModel::setTagText(int row,const QString& text)
     return true;
 }
 
+bool teTagListModel::moveTags(const QVector<int>& rows,int destination)
+{
+    if(!m_list||rows.isEmpty())
+        return false;
+    QVector<int> valid;
+    valid.reserve(rows.size());
+    for(int row:rows)
+        if(row>=0&&row<int(m_list->size()))
+            valid.append(row);
+    if(valid.isEmpty())
+        return false;
+    std::sort(valid.begin(),valid.end());
+    valid.erase(std::unique(valid.begin(),valid.end()),valid.end());
+
+    // Our own announcements: the tagMoved() signals below must not be mistaken
+    // for somebody changing the list behind the model's back.
+    const bool wasSelfMutation=m_selfMutation;
+    m_selfMutation=true;
+
+    // Take the rows out from the back, so the remaining indices stay valid.
+    QVector<std::shared_ptr<teTag>> moved;
+    moved.reserve(valid.size());
+    for(int i=int(valid.size())-1;i>=0;--i){
+        const int row=valid[i];
+        beginRemoveRows(QModelIndex(),row,row);
+        moved.prepend(m_list->takeTagOut(row));
+        endRemoveRows();
+    }
+    // `destination` was given in the list as it was before the removals.
+    int insertAt=destination;
+    for(int row:valid)
+        if(row<destination)
+            --insertAt;
+    insertAt=std::clamp(insertAt,0,int(m_list->size()));
+
+    beginInsertRows(QModelIndex(),insertAt,insertAt+int(moved.size())-1);
+    for(int i=0;i<int(moved.size());++i)
+        m_list->insertTagIn(insertAt+i,moved[i]);
+    endInsertRows();
+
+    // One undo record per moved tag, like the widget based drop used to get from
+    // teTagList::move().
+    for(int i=0;i<int(moved.size());++i)
+        m_list->onTagMoved(moved[i],valid[i],insertAt+i);
+
+    m_selfMutation=wasSelfMutation;
+    return true;
+}
+
 QStringList teTagListModel::mimeTypes() const
 {
     return {QStringLiteral("application/x-taglistrow")};

@@ -51,6 +51,15 @@ public:
     bool removeRows(int row,int count,const QModelIndex& parent=QModelIndex()) override;
     bool moveRows(const QModelIndex& sourceParent,int sourceRow,int count,
                   const QModelIndex& destinationParent,int destinationRow) override;
+    /**
+     * @brief Moves several rows (a drag & drop) to `destination`.
+     *
+     * `destination` is an index in the list *before* the rows are taken out and
+     * the rows need not be contiguous. Modelled on the multi tag list, which does
+     * the same: Qt's own internal move removes the dragged rows a second time
+     * when the drag ends with MoveAction, which made rows disappear.
+     */
+    bool moveTags(const QVector<int>& rows,int destination);
     /// Dragging a row has to carry data, otherwise Qt never starts the drag;
     /// the payload is the row number (an internal move needs nothing more).
     QMimeData* mimeData(const QModelIndexList& indexes) const override;

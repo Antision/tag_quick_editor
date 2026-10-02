@@ -667,6 +667,25 @@ public:
             return nullptr;
         return tags[index];
     }
+    /**
+     * @brief Takes the tag at `index` out of the list.
+     *
+     * No signal and no undo record: the caller (a model) owns the view
+     * notifications and calls onTagMoved() once the row is back in place. Used
+     * for dragging several rows at once, which is not a contiguous block move.
+     */
+    std::shared_ptr<teTag> takeTagOut(int index){
+        if(index<0||index>=tags.size())
+            return nullptr;
+        return tags.takeAt(index);
+    }
+    /// Puts a tag back (same contract as takeTagOut()).
+    void insertTagIn(int index,std::shared_ptr<teTag> tag){
+        if(!tag)
+            return;
+        index=std::clamp(index,0,int(tags.size()));
+        tags.insert(index,tag);
+    }
 
     /// Removes duplicates.
     ///  - `tag == nullptr`: removes every duplicate pair in the list.

@@ -73,6 +73,10 @@ private:
     /// Character offset of word `index` inside the serialised tag text.
     int wordOffsetInText(int index) const;
     void placeNextTo(const QPoint& globalMousePos);
+    /// Translucent while it only hangs next to the pointer (clicks and the wheel
+    /// must reach the list behind it); opaque once it is being used.
+    void showIdle();
+    void setOpaque();
 
     teTagListWidgetBase* m_owner=nullptr;
     teTagWidgetBase* m_source=nullptr;
