@@ -248,6 +248,7 @@ void teTagButtonGroup::onClicked(int id){
     edited();
 }
 void teTagButtonGroup::clear(){
+    resetPolicy();                              // the subclass's own state first
     setStyleSheetOnce(this,"color:white;");
     for(std::shared_ptr<teTag>tag:linked_tags){
         tag->teDisconnect(this);
@@ -635,7 +636,21 @@ int teTagListControl::setUnselect(teTagWidgetBase *in){
     return 1;
 }
 
+bool teTagListControl::filter(std::shared_ptr<teTag> tag)
+{
+    if(!tag||tag->words.isEmpty())
+        return false;
+    if(!vocabulary.isEmpty()){
+        if(vocabulary.contains(*tag->words.back()))
+            return true;
+        if(vocabulary.contains(static_cast<QString>(*tag)))
+            return true;
+    }
+    return accept?accept(*tag):false;
+}
+
 void teTagListControl::clear(){
+    resetPolicy();                              // the subclass's own state first
     std::set<std::shared_ptr<teTag>>tmplinked_tags = linked_tags;
     for(std::shared_ptr<teTag>tag:tmplinked_tags){
         unlink(tag);

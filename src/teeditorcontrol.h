@@ -28,10 +28,25 @@ public:
     virtual bool read(std::shared_ptr<teTag>tag);
     virtual void reset()=0;
     virtual void clear()=0;
+    /**
+     * @brief Drops control-specific state when the control is cleared.
+     *
+     * The clear() of every control kind calls this *first*, so a subclass never
+     * has to override clear() just to forget a pointer or a remembered sub-state
+     * (several controls in teeditor_derive.cpp did). What is left in the subclass
+     * is its actual policy.
+     */
+    virtual void resetPolicy(){}
     virtual void link(std::shared_ptr<teTag>in_tag);
     virtual void unlink(std::shared_ptr<teTag> in_tag);
     bool ifrefreshState=true;
-    virtual void refreshState()=0;
+    /**
+     * @brief Brings the control's own display in line with its linked tags.
+     *
+     * Not pure: several controls have nothing to show beyond what the base does
+     * (they used to write an empty override just to satisfy the pure virtual).
+     */
+    virtual void refreshState(){}
     virtual bool linked(std::shared_ptr<teTag>tag);
     virtual void setTaglistwidget(teTagListView* in_taglistwidget);
     /**
@@ -75,6 +90,19 @@ public:
     virtual bool filter(std::shared_ptr<teTag>tag)override;
     virtual void refreshState()override;
     virtual void reform(int id){};
+    /**
+     * @brief Unchecks every button in `others` except `keep`.
+     *
+     * "Only one of these may be on" was hand written in several button groups
+     * (mouth, ears, breast): the same loop over their indices, each time with a
+     * different set. Using a QButtonGroup for it is not possible because these
+     * groups must allow *no* selection as well, which an exclusive group forbids.
+     */
+    void uncheckOthers(int keep,std::initializer_list<int> others){
+        for(int i:others)
+            if(i!=keep&&i>=0&&i<buttons.size())
+                buttons[i]->setChecked(false);
+    }
     std::unordered_set<QString> defaultFiltStrings;
     virtual void getDefaultFiltStrings();
 };
@@ -165,6 +193,20 @@ class teTagListControl:public teRefTagListWidget,public teEditorControl {
     Q_OBJECT
 public:
     bool ifedit=false;
+    /**
+     * @brief Words (or whole tags) this control claims.
+     *
+     * A control whose filter is "these words are mine" only has to fill this in
+     * its constructor: the shared filter() below tests both the tag's last word
+     * and the whole tag text against it. Controls with a real pattern (the
+     * object list's three-word shape, the clothes merge, the hair colours) still
+     * override filter() - their rule is not a word list.
+     */
+    QSet<QString> vocabulary;
+    /// Optional extra test, used together with `vocabulary`.
+    std::function<bool(const teTag&)> accept;
+    /// teEditorControl: the shared word-list filter (override for real patterns).
+    bool filter(std::shared_ptr<teTag> tag) override;
     colorsWidget*onEdit_widget;
     QHBoxLayout* buttonLayout= new QHBoxLayout();
     teTagListControl(colorsWidget*in_onEdit_widget,teTagListView*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr,QString title = QString{});

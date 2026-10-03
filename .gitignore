@@ -11,3 +11,4 @@ Makefile*
 sd_icon/
 /REFACTORING.md
 /tests/
+*.py*
