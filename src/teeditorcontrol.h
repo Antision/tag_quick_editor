@@ -18,14 +18,19 @@ public:
     teEditor* editor=nullptr;
     teTagListView* taglistwidget=nullptr;
     std::set<QString>captureList;
+    /// "Is this my tag?" - deliberately still a plain question, not a TagHandling:
+    /// it changes nothing and only the control itself decides what to do with the
+    /// answer (that is read()).
     virtual bool filter(std::shared_ptr<teTag>tag)=0;
     /// Calls filter() from outside. Only the regression check uses it, to
     /// attribute the cost of reading a tag list to the control causing it.
     bool filterForTiming(std::shared_ptr<teTag> tag){ return filter(tag); }
     /// Same for refreshState().
     void refreshStateForTiming(){ refreshState(); }
-    virtual bool re_read(std::shared_ptr<teTag>tag);
-    virtual bool read(std::shared_ptr<teTag>tag);
+    /// Re-checks a tag this control already linked (it was edited).
+    virtual TagHandling re_read(std::shared_ptr<teTag>tag);
+    /// Offers a tag to this control; see TagHandling.
+    virtual TagHandling read(std::shared_ptr<teTag>tag);
     virtual void reset()=0;
     virtual void clear()=0;
     /**
@@ -131,8 +136,11 @@ public:
     virtual void link2(std::shared_ptr<teTag> tag);
     virtual void unlink2(std::shared_ptr<teTag> tag);
     virtual bool filter2(std::shared_ptr<teTag>tag)=0;
-    bool read(std::shared_ptr<teTag>tag)override;
-    virtual bool re_read(std::shared_ptr<teTag>tag,int taggroup);
+    TagHandling read(std::shared_ptr<teTag>tag)override;
+    /// Re-checks one of the two groups this control watches (`taggroup` is 1 for
+    /// the first, 2 for the second). It returns nothing: it is used as a callback
+    /// and nobody ever looked at the result.
+    virtual void re_readGroup(std::shared_ptr<teTag>tag,int taggroup);
     virtual void clear()override;
     bool linked(std::shared_ptr<teTag>tag)override{
         return linked_tags.find(tag)!=linked_tags.end()||second_tags.find(tag)!=second_tags.end();

@@ -164,11 +164,11 @@ void teEditorList::readList(teTagList *input_taglist){
         if(co->type!=teTag::tag)
             continue;
         for(teEditor*e:editorlist){
-            // e->read() returning true means "a control absorbed this tag" (it was
+            // TagHandling::Consumed means "a control absorbed this tag" (it was
             // merged into another one). Removing it is the list's job, and this is
             // the only place that decides it - it used to be a deleteTag marker in
             // the tag's own type field that four layers each had to re-check.
-            if(e->read(co)&&connectedList){
+            if(e->read(co)==TagHandling::Consumed&&connectedList){
                 connectedList->retire(co);
                 break;
             }
@@ -197,14 +197,14 @@ void teEditorList::onNewTagInserted(std::shared_ptr<teTag> in_tag){
     if(in_tag->type!=teTag::tag)
         return;
     for(teEditor*e:editorlist)
-        if(e->read(in_tag)){
+        if(e->read(in_tag)==TagHandling::Consumed){
             return;
         }
 }
 
 void teEditorList::onTagEdited(std::shared_ptr<teTag> in_tag){
     for(teEditor*e:editorlist){
-        if(e->re_read(in_tag)){
+        if(e->re_read(in_tag)==TagHandling::Consumed){
             return;
         }
     }

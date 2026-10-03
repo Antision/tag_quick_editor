@@ -145,6 +145,24 @@ public:
         setMaximumHeight(20);
     }
 };
+/**
+ * @brief What an editor control did with a tag it was offered.
+ *
+ * These answers used to be plain `bool`s, and the same `true` meant "I claim this
+ * tag" in one place and "this tag is gone, stop looking" in another - the callers
+ * could not tell the two apart. Splitting them makes the contract explicit: only
+ * Consumed tells the caller to stop.
+ */
+enum class TagHandling {
+    /// Not this control's tag: keep asking the other controls.
+    NotMine,
+    /// This control claims the tag and shows it (its filter() said yes).
+    Linked,
+    /// The tag was retired while it was read (it was merged away). The list
+    /// erases it, and no other control has to look at it any more.
+    Consumed,
+};
+
 class teTag:public teObject,public std::enable_shared_from_this<teTag>{
 public:
     enum teTagType{

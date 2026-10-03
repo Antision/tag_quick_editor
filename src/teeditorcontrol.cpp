@@ -2,24 +2,25 @@
 #include "tetag.h"
 #include "tetaglistwidget.h"
 
-bool teEditorControl::re_read(std::shared_ptr<teTag>tag){
+TagHandling teEditorControl::re_read(std::shared_ptr<teTag>tag){
     if(!filter(tag)){
         if(tag->retired){
             if(taglistwidget)
                 taglistwidget->retire(tag);
-            return true;
+            return TagHandling::Consumed;
         }
         unlink(tag);
+        return TagHandling::NotMine;
     }
-    return false;       // this control does not handle the tag any more
+    return TagHandling::Linked;
 }
 
-bool teEditorControl::read(std::shared_ptr<teTag>tag){
+TagHandling teEditorControl::read(std::shared_ptr<teTag>tag){
     const bool iffilt = filter(tag);
     if(tag->retired){
         if(taglistwidget)
             taglistwidget->retire(tag);
-        return true;
+        return TagHandling::Consumed;
     }
     if(iffilt){
         if(taglistwidget)
@@ -28,10 +29,11 @@ bool teEditorControl::read(std::shared_ptr<teTag>tag){
         if(tag->retired){
             if(taglistwidget)
                 taglistwidget->retire(tag);
-            return true;
+            return TagHandling::Consumed;
         }
+        return TagHandling::Linked;
     }
-    return false;
+    return TagHandling::NotMine;
 }
 
 void teEditorControl::link(std::shared_ptr<teTag>in_tag){
@@ -471,8 +473,8 @@ void teTagCheckBox::refreshState(){
 
 void teTagCheckBoxPlus::link2(std::shared_ptr<teTag>in_tag){
     in_tag->teConnect(teCallbackType::destroy,this,&teTagCheckBoxPlus::unlink2,in_tag);
-    in_tag->teConnect(teCallbackType::edit,qsl("teTagCheckBoxPlus::link2"),this,&teTagCheckBoxPlus::re_read,in_tag,2);
-    in_tag->teConnect(teCallbackType::edit_with_layout,this,&teTagCheckBoxPlus::re_read,in_tag,2);
+    in_tag->teConnect(teCallbackType::edit,qsl("teTagCheckBoxPlus::link2"),this,&teTagCheckBoxPlus::re_readGroup,in_tag,2);
+    in_tag->teConnect(teCallbackType::edit_with_layout,this,&teTagCheckBoxPlus::re_readGroup,in_tag,2);
     second_tags.insert(in_tag);
 }
 
@@ -482,27 +484,31 @@ void teTagCheckBoxPlus::unlink2(std::shared_ptr<teTag>tag){
     refreshState();
 }
 
-bool teTagCheckBoxPlus::read(std::shared_ptr<teTag>tag){
+TagHandling teTagCheckBoxPlus::read(std::shared_ptr<teTag>tag){
+    bool linked_here=false;
     if(filter(tag)){
         if(taglistwidget)
             taglistwidget->ensureWidgetFor(tag);
         link(tag);
+        linked_here=true;
     }else if(filter2(tag)){
         if(taglistwidget)
             taglistwidget->ensureWidgetFor(tag);
         link2(tag);
+        linked_here=true;
         if(isChecked()){
             onStateChanged(true);
         }
     }
     if(tag->retired){
-        taglistwidget->retire(tag);
-        return true;
+        if(taglistwidget)
+            taglistwidget->retire(tag);
+        return TagHandling::Consumed;
     }
-    return false;
+    return linked_here?TagHandling::Linked:TagHandling::NotMine;
 }
 
-bool teTagCheckBoxPlus::re_read(std::shared_ptr<teTag>tag, int taggroup){
+void teTagCheckBoxPlus::re_readGroup(std::shared_ptr<teTag>tag, int taggroup){
     if(taggroup==1&&!filter(tag)){
         unlink(tag);
     }
@@ -512,9 +518,7 @@ bool teTagCheckBoxPlus::re_read(std::shared_ptr<teTag>tag, int taggroup){
     if(tag->retired){
         if(taglistwidget)
             taglistwidget->retire(tag);
-        return true;
     }
-    return false;
 }
 
 void teTagCheckBoxPlus::clear(){

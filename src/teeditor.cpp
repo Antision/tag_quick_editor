@@ -10,29 +10,38 @@ void teEditor::reset(){
         control->reset();
 }
 
-bool teEditor::read(std::shared_ptr<teTag>tag){
+TagHandling teEditor::read(std::shared_ptr<teTag>tag){
+    // Only Consumed stops the scan: several controls may claim the same tag (a
+    // colour control and a length control, say), and a control that links it
+    // without consuming it must not keep the others from seeing it.
+    TagHandling result=TagHandling::NotMine;
     for(teEditorControl*ctrl_ptr:controls){
-        if(ctrl_ptr->read(tag)){
-            return true;
-        }
+        const TagHandling handled=ctrl_ptr->read(tag);
+        if(handled==TagHandling::Consumed)
+            return TagHandling::Consumed;
+        if(handled==TagHandling::Linked)
+            result=TagHandling::Linked;
     }
-    return false;
+    return result;
 }
-bool teEditor::re_read(std::shared_ptr<teTag>tag){
+TagHandling teEditor::re_read(std::shared_ptr<teTag>tag){
     if(tag->retired)
-        return true;
+        return TagHandling::Consumed;
     if(taglistwidget)
         taglistwidget->ensureWidgetFor(tag);
+    // Only controls that do *not* have the tag are offered it: the ones that do
+    // re-check it through the tag's own edit callbacks (teEditorControl::link
+    // connects re_read for that), so calling re_read here as well would re-read
+    // every linked tag twice.
     for(teEditorControl*ctrl_ptr:controls){
         if(!ctrl_ptr->linked(tag)){
-            if(ctrl_ptr->read(tag)){
-                return true;
-            }
+            if(ctrl_ptr->read(tag)==TagHandling::Consumed)
+                return TagHandling::Consumed;
         }else if(tag->retired){
-            return true;
+            return TagHandling::Consumed;
         }
     }
-    return false;
+    return TagHandling::NotMine;
 }
 void teEditor::clear(){
     for(teEditorControl*ctrl_ptr:controls){

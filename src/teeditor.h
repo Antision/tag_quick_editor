@@ -17,8 +17,8 @@ public:
     teTagListView*taglistwidget;
     teTagList*taglist=nullptr;
     virtual void reset();
-    virtual bool read(std::shared_ptr<teTag>tag);
-    virtual bool re_read(std::shared_ptr<teTag>tag);
+    virtual TagHandling read(std::shared_ptr<teTag>tag);
+    virtual TagHandling re_read(std::shared_ptr<teTag>tag);
     virtual void clear();
     void setTagListWidget(teTagListView*listwidget);
 };
