@@ -19,6 +19,11 @@ public:
     teTagListWidget* taglistwidget=nullptr;
     std::set<QString>captureList;
     virtual bool filter(std::shared_ptr<teTag>tag)=0;
+    /// Calls filter() from outside. Only the regression check uses it, to
+    /// attribute the cost of reading a tag list to the control causing it.
+    bool filterForTiming(std::shared_ptr<teTag> tag){ return filter(tag); }
+    /// Same for refreshState().
+    void refreshStateForTiming(){ refreshState(); }
     virtual bool re_read(std::shared_ptr<teTag>tag);
     virtual bool read(std::shared_ptr<teTag>tag);
     virtual void reset()=0;

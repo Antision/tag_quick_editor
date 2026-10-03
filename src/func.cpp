@@ -35,6 +35,33 @@ void teLog(const QString& message)
     }, Qt::QueuedConnection);
 }
 
+void setStyleSheetOnce(QWidget* widget,const QString& sheet)
+{
+    if (!widget)
+        return;
+    static const char* const kLastSheet = "teLastStyleSheet";
+    if (widget->property(kLastSheet).toString() == sheet)
+        return;                                 // already in place, do not re-parse
+    widget->setProperty(kLastSheet,sheet);
+    widget->setStyleSheet(sheet);
+}
+
+void setStateTextColor(QWidget* widget,const QColor& color)
+{
+    if (!widget)
+        return;
+    static const char* const kStateColor = "teStateColor";
+    const QVariant cached = widget->property(kStateColor);
+    if (cached.isValid() && cached.value<QColor>() == color)
+        return;
+    widget->setProperty(kStateColor,color);
+    QPalette pal = widget->palette();
+    pal.setColor(QPalette::WindowText,color);
+    pal.setColor(QPalette::Text,color);
+    pal.setColor(QPalette::ButtonText,color);
+    widget->setPalette(pal);
+}
+
 int findWidgetIndexInLayout(QBoxLayout* layout, QWidget* widget) {
     if (!layout || !widget)
         return -1;

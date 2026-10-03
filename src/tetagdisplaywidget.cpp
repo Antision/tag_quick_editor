@@ -145,6 +145,13 @@ void teTagDisplayWidget::load()
         word->setParent(this);
         word->setMaximumHeight(QWIDGETSIZE_MAX);       // undo the 27px tag-list cap
         word->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
+        if (core->type == teTag::sentence) {
+            // A sentence cannot be reordered word by word, so it may as well wrap:
+            // without this a long sentence made the popup as wide as the text.
+            word->setWordWrap(true);
+            word->setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Minimum);
+            word->setMaximumWidth(maxContentWidth() - 2*kHorizontalMargin);
+        }
         word->show();
         connect(word,&teWordWidgetBase::mouseDoubleClicked,this,[this](teWordWidgetBase* clicked){
             startEditing(clicked);
@@ -245,6 +252,14 @@ bool teTagDisplayWidget::eventFilter(QObject* watched,QEvent* event)
     return QWidget::eventFilter(watched,event);
 }
 
+int teTagDisplayWidget::maxContentWidth() const
+{
+    // The popup never grows wider than a third of the screen it appears on.
+    QScreen* screen = screenAt(QCursor::pos());
+    const int screenWidth = screen?screen->availableGeometry().width():1200;
+    return std::max(240,screenWidth/3);
+}
+
 void teTagDisplayWidget::placeNextTo(const QPoint& anchor)
 {
     // The popup belongs to the right of the tag (the user asked for the right
@@ -253,7 +268,7 @@ void teTagDisplayWidget::placeNextTo(const QPoint& anchor)
     const QRect available = screen?screen->availableGeometry():QRect(anchor,QSize(800,600));
     // Cap the width so a long tag wraps instead of growing until it is clamped
     // to the edge of the screen (which used to park it at the far left).
-    const int maxWidth = std::max(240,available.width()/3);
+    const int maxWidth = maxContentWidth();
     if (maximumWidth() != maxWidth)
         setMaximumWidth(maxWidth);
     adjustSize();                               // the flow layout re-wraps
@@ -296,6 +311,10 @@ void teTagDisplayWidget::mousePressEvent(QMouseEvent* event)
         hideDisplay();                          // its tag was merged away
         return;
     }
+    // Clicking the popup (or one of its words: those forward their events here)
+    // also selects the tag it shows, so the list view follows.
+    if (m_owner)
+        m_owner->setSelectCurrentCore(core);
     setOpaque();                                // clicked: show it at full opacity
     m_pressGlobal = event->globalPosition().toPoint();
     m_draggingTag = false;

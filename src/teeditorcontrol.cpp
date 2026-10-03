@@ -90,7 +90,7 @@ bool teTagComboBox::filter(std::shared_ptr<teTag>tag){
 }
 
 void teTagComboBox::clear(){
-    setStyleSheet("color:white;");
+    setStyleSheetOnce(this,"color:white;");
     for(std::shared_ptr<teTag>tag:linked_tags){
         tag->teDisconnect(this);
     }
@@ -151,9 +151,13 @@ void teTagComboBox::refreshState(){
         --excute;
         setCurrentIndex(0);
         ++excute;
-        setStyleSheet("color:#07f680;");
+        // Palette, not a stylesheet: a setStyleSheet() here costs about 7 ms
+        // because Qt re-parses the sheet and re-polishes the combo together with
+        // its popup view, and this runs for every combo box, on every image
+        // switch (measured: 101 of 102 ms of the editor rebuild).
+        setStateTextColor(this,QColor(0x07,0xf6,0x80));
     }else{
-        setStyleSheet("color:white;");
+        setStateTextColor(this,QColor(Qt::white));
         setItemText(0,default_text);
         setItemData(0,QStringList{});
     }
@@ -244,7 +248,7 @@ void teTagButtonGroup::onClicked(int id){
     edited();
 }
 void teTagButtonGroup::clear(){
-    setStyleSheet("color:white;");
+    setStyleSheetOnce(this,"color:white;");
     for(std::shared_ptr<teTag>tag:linked_tags){
         tag->teDisconnect(this);
     }
@@ -376,7 +380,7 @@ void teTagLineedit::onEditingFinished(){
 }
 
 void teTagLineedit::clear(){
-    setStyleSheet("color:white;");
+    setStyleSheetOnce(this,"color:white;");
     for(std::shared_ptr<teTag>tag:linked_tags){
         tag->teDisconnect(this);
     }
@@ -404,7 +408,7 @@ void teTagCheckBox::reset(){
     unselect();
 }
 void teTagCheckBox::clear(){
-    setStyleSheet("color:white;");
+    setStyleSheetOnce(this,"color:white;");
     for(std::shared_ptr<teTag>tag:linked_tags){
         tag->teDisconnect(this);
     }
@@ -512,7 +516,7 @@ bool teTagCheckBoxPlus::re_read(std::shared_ptr<teTag>tag, int taggroup){
 }
 
 void teTagCheckBoxPlus::clear(){
-    setStyleSheet("color:white;");
+    setStyleSheetOnce(this,"color:white;");
     for(std::shared_ptr<teTag>tag:linked_tags){
         tag->teDisconnect(this);
     }

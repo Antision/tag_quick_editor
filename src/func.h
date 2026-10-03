@@ -7,6 +7,26 @@ extern int mainWindowSplitterLength[MainWindowWidgetCount];
 int findWidgetIndexInLayout(QBoxLayout* layout, QWidget* widget);
 extern QRect mainwindowGeometry;
 
+/**
+ * @brief setStyleSheet() only when the sheet really changes.
+ *
+ * Qt re-parses a stylesheet on every call, which costs on the order of a
+ * millisecond for these small editor widgets. The editors set the same sheet for
+ * the same state over and over - per control, per tag and per image switch - and
+ * that is what made switching images slow.
+ */
+void setStyleSheetOnce(QWidget* widget,const QString& sheet);
+
+/**
+ * @brief Sets a widget's "linked / not linked" text colour without a stylesheet.
+ *
+ * A setStyleSheet() on a QComboBox costs about 7 ms (Qt re-parses the sheet and
+ * re-polishes the combo together with its popup view), and the editors' combo
+ * boxes toggle that colour on every image switch - eleven of them made up almost
+ * the whole 100 ms of the per-image editor rebuild. The palette is free.
+ */
+void setStateTextColor(QWidget* widget,const QColor& color);
+
 int load_config();
 
 int save_config();

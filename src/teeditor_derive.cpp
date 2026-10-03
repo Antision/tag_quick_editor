@@ -222,7 +222,17 @@ teEditor_pretreat::teEditor_pretreat(teTagListWidget*in_taglistwidget,QString&& 
     QVBoxLayout* people_widget_layout = new QVBoxLayout(people_widget);
     struct teTagLineedit_people :teTagLineedit {
         QString objtext = "";
-        teTagLineedit_people(QString&& objtext, QString&& text) :teTagLineedit(std::move(text)), objtext(std::move(objtext)) {
+        /**
+         * @brief This control's pattern, compiled once.
+         *
+         * Building (and therefore compiling) the QRegularExpression inside
+         * filter() meant a fresh compile for every tag, for every control, on
+         * every image switch - that alone was most of the per-image cost of the
+         * pretreat editor.
+         */
+        QRegularExpression regex;
+        teTagLineedit_people(QString&& objtext, QString&& text) :teTagLineedit(std::move(text)), objtext(std::move(objtext)),
+            regex(QStringLiteral(R"(^(\d+)\+?%1s?$)").arg(this->objtext)) {
             lineedit->setValidator(new QRegularExpressionValidator(QRegularExpression(QStringLiteral(R"(^\d+\+?$)"))));
         }
         QString getText() {
@@ -232,7 +242,6 @@ teEditor_pretreat::teEditor_pretreat(teTagListWidget*in_taglistwidget,QString&& 
         bool filter(std::shared_ptr<teTag> tag)override {
             if (!tag) return false;
             QString tagStr = static_cast<QString>(*tag);
-            QRegularExpression regex(QStringLiteral(R"(^(\d+)\+?%1s?$)").arg(objtext));
             QRegularExpressionMatch m = regex.match(tagStr);
             if(m.hasMatch()){
                 lineedit->setText(m.captured(1));
@@ -243,12 +252,11 @@ teEditor_pretreat::teEditor_pretreat(teTagListWidget*in_taglistwidget,QString&& 
         virtual void refreshState()override{
             if(linked_tags.empty()) {
                 lineedit->clear();
-                setStyleSheet("color:white;");
+                setStyleSheetOnce(this,"color:white;");
             }
             else{
-                QRegularExpression regex(QStringLiteral(R"(^(\d+)\+?%1s?$)").arg(objtext));
                 lineedit->setText(regex.match(((QString)*(*linked_tags.begin()))).captured(1));
-                setStyleSheet("color:#07f680;");
+                setStyleSheetOnce(this,"color:#07f680;");
             }
             edited();
         }
@@ -323,10 +331,10 @@ teEditor_pretreat::teEditor_pretreat(teTagListWidget*in_taglistwidget,QString&& 
 
             if(!showing_string.isEmpty()){
                 showing_string.chop(1);
-                linked_widget->setStyleSheet("color:#07f680;");
+                setStyleSheetOnce(linked_widget,"color:#07f680;");
             }else{
                 showing_string=QStringLiteral("(nobody)");
-                linked_widget->setStyleSheet("color:white;");
+                setStyleSheetOnce(linked_widget,"color:white;");
             }
             QFontMetrics fontMetrics(((QPushButton*)linked_widget)->font());
             ((QPushButton*)linked_widget)->setText(fontMetrics.elidedText(showing_string, Qt::ElideMiddle, linked_widget->width()));

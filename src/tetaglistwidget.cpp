@@ -688,9 +688,15 @@ void teTagListWidget::tagInsertAbove(bool edit,std::shared_ptr<teTag>newtag,int 
     const int row = current<0?0:current;
     if(m_model->insertTag(row,newtag,removeDuplicate)<0)
         return;
+    // The editors may have merged the new tag into an existing one (they run from
+    // the insertion's announcement), so find where it is now instead of trusting
+    // the row we asked for.
+    const int inserted = m_model->rowOf(newtag.get());
+    if(inserted<0)
+        return;                                 // merged away: nothing to select
     setSelectCurrentCore(newtag);
     if(edit)
-        startEditingRow(row);
+        startEditingRow(inserted);
 }
 
 void teTagListWidget::tagInsertBelow(bool edit,std::shared_ptr<teTag>newtag,int removeDuplicate){
@@ -704,9 +710,12 @@ void teTagListWidget::tagInsertBelow(bool edit,std::shared_ptr<teTag>newtag,int 
     const int row = current<0?m_model->rowCount():current+1;
     if(m_model->insertTag(row,newtag,removeDuplicate)<0)
         return;
+    const int inserted = m_model->rowOf(newtag.get());
+    if(inserted<0)
+        return;                                 // merged away: nothing to select
     setSelectCurrentCore(newtag);
     if(edit)
-        startEditingRow(row);
+        startEditingRow(inserted);
 }
 
 void teTagListWidget::keyPressEvent(QKeyEvent *event) {

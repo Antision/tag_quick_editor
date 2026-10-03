@@ -159,9 +159,18 @@ int teTagListModel::insertTag(int row,std::shared_ptr<teTag> tag,int removeDupli
     row = std::clamp(row,0,int(m_list->size()));
     beginInsertRows(QModelIndex(),row,row);
     m_selfMutation=true;
-    const int result = m_list->insert(row,tag,0,true);      // 0: dedupe already done
+    // Insert *without* letting teTagList announce it: that announcement reaches
+    // the editors, whose filter() merges the new tag into an existing one - and a
+    // merge erases rows. A nested structural change inside begin/endInsertRows()
+    // corrupts Qt's persistent indexes (it crashed in endInsertRows() as soon as
+    // anything was selected). The announcement is made below instead, once the
+    // model is consistent again.
+    const int result = m_list->insert(row,tag,0,false);     // 0: dedupe already done
+    const int inserted = m_list->find(tag);
     m_selfMutation=false;
     endInsertRows();
+    if(inserted >= 0)
+        m_list->onTagInserted(tag,inserted,true);           // now the editors may react
     return result;
 }
 
