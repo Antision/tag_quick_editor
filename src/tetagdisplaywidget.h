@@ -80,6 +80,13 @@ private:
     void placeNextTo(const QPoint& globalMousePos);
     /// Widest the popup (and a wrapped sentence word) may become.
     int maxContentWidth() const;
+    /// Width a wrapped sentence label takes: the popup's own width when it is on
+    /// screen, the cap before that.
+    int sentenceWordWidth() const;
+    /// Makes a wrapped sentence fill the popup after it was placed or reloaded.
+    void fitWrappedSentence();
+    /// Runs the flow layout synchronously (Qt defers it while hidden).
+    void layOutNow();
     /// Hides the words while the inline editor covers the popup, and brings them
     /// back when it closes.
     void hideWordWidgets();
@@ -93,6 +100,11 @@ private:
     teTagWidgetBase* m_source=nullptr;
     /// True while this widget filters the application's events (popup is up).
     bool m_watching=false;
+    /// Width the popup would like (single line, uncapped); the cap is applied when
+    /// it is placed.
+    int m_naturalWidth=0;
+    /// Where it was placed last, so a reload while shown can refit itself.
+    QPoint m_lastAnchor;
     QFlowLayout* m_flow=nullptr;
     QFlowLayoutReorderer* m_wordReorderer=nullptr;
     QPlainTextEdit* m_editor=nullptr;

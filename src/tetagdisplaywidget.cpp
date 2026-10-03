@@ -169,8 +169,7 @@ void teTagDisplayWidget::load()
             // to that width while the label stayed at the maximum - the text
             // wrapped into the left half with the right half empty.
             word->setWordWrap(true);
-            word->setFixedWidth(maxContentWidth() - 2*kHorizontalMargin);
-            word->setAlignment(Qt::AlignLeft|Qt::AlignVCenter);
+            word->setFixedWidth(sentenceWordWidth());            word->setAlignment(Qt::AlignLeft|Qt::AlignVCenter);
         }
         // While the inline editor is open it covers the popup: the words must not
         // shine through below it (a wrapped tag would otherwise show its second
@@ -186,20 +185,31 @@ void teTagDisplayWidget::load()
         m_wordReorderer->attach(word);
     }
 
-    // Natural single-line width unless the screen is narrower; the height then
-    // follows from the flow layout, so a wrapped tag grows downwards while its
-    // left edge stays where it is.
+    // Natural single-line width: the width the popup *would* like to have, capped
+    // when it is placed (see placeNextTo()). It deliberately does not setFixedSize()
+    // here: that also set the popup's *minimum* width, so for a long tag the popup
+    // stayed as wide as the whole line no matter what maximum was applied later -
+    // which is why a long tag (and a long sentence) kept its empty right half.
     const QFontMetrics metrics(QFont(QStringLiteral("Segoe UI"),pointSize));
     int natural = 2*kHorizontalMargin;
     for (teWord* wordCore : core->words)
         natural += metrics.horizontalAdvance(wordCore->text) + 8;
-    natural = std::max(natural,60);
+    m_naturalWidth = std::max(natural,60);
 
-    const QScreen* screen = screenAt(QCursor::pos());
-    const int screenWidth = screen ? screen->availableGeometry().width() : natural;
-    const int width = std::min(natural,std::max(screenWidth-40,160));
-    const int height = std::max(m_flow->heightForWidth(width),metrics.height()+2*kVerticalMargin);
-    setFixedSize(width,height);
+    // Lay the words out *now*. Qt defers a layout pass while the widget is hidden
+    // and skips it again when a resize does not change the size, so a freshly
+    // built word kept whatever geometry show() had given it until something else
+    // ran the layout - which is what made the first word sit on a line of its own
+    // at the very top until a drag "fixed" it. placeNextTo() also ends with this.
+    if (isVisible()&&!m_lastAnchor.isNull())
+        placeNextTo(m_lastAnchor);              // reloaded while shown: refit
+    else
+        layOutNow();
+}
+
+void teTagDisplayWidget::layOutNow()
+{
+    m_flow->invalidate();
     m_flow->setGeometry(rect());
 }
 
@@ -222,6 +232,7 @@ void teTagDisplayWidget::showFor(teTagWidgetBase* source,const QPoint& anchor)
     showIdle();
     placeNextTo(anchor);
     show();
+    layOutNow();                                // exact geometry once it is mapped
     raise();
 }
 
@@ -237,6 +248,7 @@ void teTagDisplayWidget::showForCore(std::shared_ptr<teTag> tagCore,const QPoint
     showIdle();
     placeNextTo(anchor);
     show();
+    layOutNow();                                // exact geometry once it is mapped
     raise();
 }
 
@@ -300,25 +312,69 @@ int teTagDisplayWidget::maxContentWidth() const
     return std::max(240,screenWidth/3);
 }
 
+int teTagDisplayWidget::sentenceWordWidth() const
+{
+    // While the popup is on screen *its* width is the truth - deriving the label
+    // from the popup is what stops the two from disagreeing (the empty right half
+    // came from the label being sized from one screen while the popup was sized
+    // from another). Before the popup exists there is nothing to measure, so the
+    // cap is used and fitWrappedSentence() corrects it right after placement.
+    // Both margin pairs are taken from Qt instead of guessed: guessing left the
+    // layout's minimum 2px above the popup's maximum, and a minimum wins.
+    const QMargins flow = m_flow->contentsMargins();
+    const QMargins own = contentsMargins();
+    const int horizontal = flow.left()+flow.right()+own.left()+own.right();
+    return std::max(80,(isVisible()?width():maxContentWidth())-horizontal);
+}
+
+void teTagDisplayWidget::fitWrappedSentence()
+{
+    if (!core||core->type!=teTag::sentence)
+        return;
+    // Twice: narrowing the label can change the popup's height, and with it the
+    // width the label should take.
+    for (int pass=0;pass<2;++pass){
+        const int wanted = sentenceWordWidth();
+        bool changed = false;
+        for (teWordWidgetBase* word : findChildren<teWordWidgetBase*>()){
+            if (word->wordWrap()&&word->width()!=wanted){
+                word->setFixedWidth(wanted);
+                changed = true;
+            }
+        }
+        adjustSize();
+        if (!changed)
+            break;
+    }
+}
+
 void teTagDisplayWidget::placeNextTo(const QPoint& anchor)
 {
+    m_lastAnchor = anchor;
     // The popup belongs to the right of the tag (the user asked for the right
     // edge of the list), flipping to its left when that would leave the screen.
     const QScreen* screen = screenAt(anchor);
     const QRect available = screen?screen->availableGeometry():QRect(anchor,QSize(800,600));
-    // Cap the width so a long tag wraps instead of growing until it is clamped
-    // to the edge of the screen (which used to park it at the far left).
-    const int maxWidth = maxContentWidth();
-    if (maximumWidth() != maxWidth)
-        setMaximumWidth(maxWidth);
-    adjustSize();                               // the flow layout re-wraps
+    // Never wider than a third of the screen the popup is placed on.
+    const int maxWidth = std::max(240,available.width()/3);
+    const int wanted = std::clamp(std::min(m_naturalWidth,maxWidth),120,maxWidth);
+    // setMinimumWidth(0) as well: nothing may keep the popup wide once the cap
+    // shrinks (a leftover minimum is exactly what made the cap ineffective).
+    setMinimumWidth(0);
+    setMaximumWidth(maxWidth);
+    const QFontMetrics metrics(QFont(QStringLiteral("Segoe UI"),displayPointSize()));
+    const int height = std::max(m_flow->heightForWidth(wanted),
+                                metrics.height()+2*kVerticalMargin);
+    resize(wanted,height);
+    fitWrappedSentence();                       // a wrapped sentence fills the popup
+    layOutNow();                                // positions every word, first one included
     int x = anchor.x()+kGap;
     if (x + width() > available.right())
         x = anchor.x() - width() - kGap;        // flip to the left of the anchor
     x = std::clamp(x,available.left(),std::max(available.left(),available.right()-width()));
-    const int y = std::clamp(anchor.y() - height()/2,
+    const int y = std::clamp(anchor.y() - height/2,
                              available.top(),
-                             std::max(available.top(),available.bottom()-height()));
+                             std::max(available.top(),available.bottom()-height));
     move(x,y);
 }
 
