@@ -552,6 +552,26 @@ void teTagListView::tagEditCore(std::shared_ptr<teTag> core)
         startEditingRow(row);
 }
 
+void teTagListView::adoptAsRow(std::shared_ptr<teTag> tag)
+{
+    if(!tag)
+        return;
+    // The editors build a real widget for a tag they are about to insert (the
+    // controls call load() on it, and some of them ask every word for its widget
+    // before the tag ever reaches this list). This list draws rows itself, so that
+    // widget has to go: it was parked under the view and stayed visible - and
+    // draggable - on top of the tag list. Doing it here catches every insertion
+    // path, however late the flag is set.
+    tag->ifViewOwned=true;
+    for(teWord* word : tag->words){
+        if(!word)
+            continue;
+        word->ifViewOwned=true;
+        word->unload();
+    }
+    tag->unload();
+}
+
 void teTagListView::tagInsertAbove(bool edit,std::shared_ptr<teTag>newtag,int removeDuplicate){
     if(!showing_list||!m_model)
         return;
@@ -559,6 +579,7 @@ void teTagListView::tagInsertAbove(bool edit,std::shared_ptr<teTag>newtag,int re
         newtag=std::make_shared<teTag>();
         removeDuplicate=2;
     }
+    adoptAsRow(newtag);
     const int current = this->currentIndex().isValid()?this->currentIndex().row():-1;
     const int row = current<0?0:current;
     if(m_model->insertTag(row,newtag,removeDuplicate)<0)
@@ -581,6 +602,7 @@ void teTagListView::tagInsertBelow(bool edit,std::shared_ptr<teTag>newtag,int re
         newtag=std::make_shared<teTag>();
         removeDuplicate=2;
     }
+    adoptAsRow(newtag);
     const int current = this->currentIndex().isValid()?this->currentIndex().row():-1;
     const int row = current<0?m_model->rowCount():current+1;
     if(m_model->insertTag(row,newtag,removeDuplicate)<0)
@@ -755,8 +777,7 @@ teTagWidgetBase* teTagListView::taginsert(int index, std::shared_ptr<teTag>in_ta
         return nullptr;
     while(index<0)
         index+=int(showing_list->size())+1;
-    if(in_tag)
-        in_tag->ifViewOwned=true;       // this list never builds a widget for it
+    adoptAsRow(in_tag);                 // this list never builds a widget for it
     const int row = m_model->insertTag(index,in_tag,removeDuplicate);
     if(row<0){
         // The tag was never part of the list, so nothing may be recorded on the

@@ -394,6 +394,9 @@ private:
     void startEditingRow(int row);
     /// Erases every selected row.
     void eraseSelectedRows();
+    /// Takes a tag over as a row: no widget of its own, whatever it built before
+    /// it was inserted (see the comment in the implementation).
+    void adoptAsRow(std::shared_ptr<teTag> tag);
     /// Drops a row that was left empty by the inline editor.
     void finishRowEdit(int row);
     /// Scrolls the popup away when the pointer left it (grace period).
