@@ -262,6 +262,27 @@ teTagWidgetBase* teTagListWidgetBase::widgetForCore(const std::shared_ptr<teTag>
     return nullptr;
 }
 
+teTagWidgetBase* teTagListWidgetBase::ensureWidgetFor(std::shared_ptr<teTag> core)
+{
+    if(!core)
+        return nullptr;
+    if(teTagWidgetBase* existing = widgetForCore(core))
+        return existing;
+    // Step 1 of decoupling tag and widget: the *list* is the entry point for "give
+    // me the widget of this tag". The body still asks the tag to build it (the pool
+    // lives there today); the next step moves that call here and the tag stops
+    // knowing about widgets at all.
+    core->load();
+    return widgetForCore(core);
+}
+
+void teTagListWidgetBase::releaseWidgetFor(std::shared_ptr<teTag> core)
+{
+    if(!core)
+        return;
+    core->unload();                 // ditto: the pool side moves here next
+}
+
 void teTagListWidgetBase::setSelectCurrentCore(std::shared_ptr<teTag> core,bool ifclear){
     setSelectCurrent(widgetForCore(core),ifclear);
     ensureCoreVisible(core);

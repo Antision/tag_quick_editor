@@ -76,11 +76,9 @@ words_loop_end:
         }
     }else --i;
     core->words.insert(i,core->words.takeAt(in_id));
-    // The main tag list mirrors the change through its own widget - if it has
-    // one (a tag of a file that is not on screen has none, and dereferencing
-    // core->widget unchecked used to crash there).
-    if(core->widget)
-        core->widget->moveWordWidget(in_id,i);
+    // The main tag list draws its rows itself (no widget per tag), and it mirrors
+    // the word order through edited_with_layout() below; a widget based main list
+    // would be asked through its own API rather than through the tag.
     core->edited_with_layout();
 }
 

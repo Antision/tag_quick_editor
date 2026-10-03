@@ -1730,7 +1730,7 @@ teEditor_clothes::teEditor_clothes(teTagListView*in_taglistwidget,QString &&name
                             colors.push_back(in_core->words[i]);
                             if(!isNewEntry){
                                 teWord*takecore = in_core->takeWordAt(i,false);
-                                takecore->ensureWidget();
+                                Q_UNUSED(takecore);
                                 --i;--wordcountMinusOne;--colorpos;
                             }
                         }
@@ -1740,8 +1740,7 @@ teEditor_clothes::teEditor_clothes(teTagListView*in_taglistwidget,QString &&name
                             front_adjectives.push_back(in_core->words[i]);
                             if(!isNewEntry){
                                 teWord*takecore = in_core->takeWordAt(i,false);
-
-                                takecore->ensureWidget();
+                                Q_UNUSED(takecore);
                                 --i;--wordcountMinusOne;--colorpos;
                             }
                         }
@@ -1751,7 +1750,7 @@ teEditor_clothes::teEditor_clothes(teTagListView*in_taglistwidget,QString &&name
                             back_adjectives.push_back(in_core->words[i]);
                             if(!isNewEntry){
                                 teWord*takecore = in_core->takeWordAt(i,false);
-                                takecore->ensureWidget();
+                                Q_UNUSED(takecore);       // no widget for it: the list owns widgets
                                 --i;--wordcountMinusOne;--colorpos;
                             }
                         }
@@ -1760,9 +1759,7 @@ teEditor_clothes::teEditor_clothes(teTagListView*in_taglistwidget,QString &&name
                         adjectives.push_back(in_core->words[i]);
                         if(!isNewEntry){
                             teWord*takecore = in_core->takeWordAt(i,false);
-                            if(!takecore->widget){
-                                takecore->load();
-                            }
+                            Q_UNUSED(takecore);
                             --i;--wordcountMinusOne;--colorpos;
                         }
                     }

@@ -104,6 +104,17 @@ public slots:
      */
     /// The widget currently representing `core` in this list, or nullptr.
     teTagWidgetBase* widgetForCore(const std::shared_ptr<teTag>& core) const;
+    /**
+     * @brief The list's entry point for "give me the widget of this tag".
+     *
+     * Widgets belong to the list that shows them, not to the tag: this is where
+     * that ownership is established. teTagListView() overrides both with a no-op
+     * (a model/view list has no widget per tag), which is what makes a widget
+     * leaking onto the view structurally impossible instead of a flag to test.
+     */
+    virtual teTagWidgetBase* ensureWidgetFor(std::shared_ptr<teTag> core);
+    /// Gives the widget of `core` back (it is going away or is not shown here).
+    virtual void releaseWidgetFor(std::shared_ptr<teTag> core);
     virtual void setSelectCurrentCore(std::shared_ptr<teTag> core,bool ifclear=true);
     virtual void setSelectCore(std::shared_ptr<teTag> core);
     virtual int setUnselectCore(std::shared_ptr<teTag> core=nullptr);
@@ -301,6 +312,21 @@ public:
     bool dropRowsAt(const QPoint& viewportPos);
     /// The model behind the rows.
     teTagListModel* tagModel() const { return m_model; }
+    /**
+     * @brief A model/view list has no widget per tag, so this is always nullptr.
+     *
+     * This is the whole reason tag and widget can be decoupled: the editor code
+     * asks the *list* for a tag's widget, and the only list that has widgets is
+     * the editors' own widget based one. Nothing can leak a widget onto these
+     * rows, and no "is this tag view owned" flag is needed to prevent it.
+     */
+    teTagWidgetBase* ensureWidgetFor(std::shared_ptr<teTag> core) {
+        Q_UNUSED(core);
+        return nullptr;
+    }
+    void releaseWidgetFor(std::shared_ptr<teTag> core) {
+        Q_UNUSED(core);
+    }
     /// The delegate that draws and edits the rows.
     teTagDelegate* delegate() const { return m_delegate; }
     size_t size()const;

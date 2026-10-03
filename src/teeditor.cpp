@@ -21,7 +21,8 @@ bool teEditor::read(std::shared_ptr<teTag>tag){
 bool teEditor::re_read(std::shared_ptr<teTag>tag){
     if(tag->retired)
         return true;
-    tag->ensureWidget();
+    if(taglistwidget)
+        taglistwidget->ensureWidgetFor(tag);
     for(teEditorControl*ctrl_ptr:controls){
         if(!ctrl_ptr->linked(tag)){
             if(ctrl_ptr->read(tag)){

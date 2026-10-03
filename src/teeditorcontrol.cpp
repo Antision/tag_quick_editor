@@ -22,7 +22,8 @@ bool teEditorControl::read(std::shared_ptr<teTag>tag){
         return true;
     }
     if(iffilt){
-        tag->ensureWidget();
+        if(taglistwidget)
+            taglistwidget->ensureWidgetFor(tag);
         link(tag);
         if(tag->retired){
             if(taglistwidget)
@@ -484,10 +485,12 @@ void teTagCheckBoxPlus::unlink2(std::shared_ptr<teTag>tag){
 
 bool teTagCheckBoxPlus::read(std::shared_ptr<teTag>tag){
     if(filter(tag)){
-        tag->ensureWidget();
+        if(taglistwidget)
+            taglistwidget->ensureWidgetFor(tag);
         link(tag);
     }else if(filter2(tag)){
-        tag->ensureWidget();
+        if(taglistwidget)
+            taglistwidget->ensureWidgetFor(tag);
         link2(tag);
         if(isChecked()){
             onStateChanged(true);
