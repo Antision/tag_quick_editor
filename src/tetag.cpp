@@ -14,6 +14,7 @@ void teTagWidget::readCore(std::shared_ptr<teTag>in_core){
     }
     core = in_core;
     in_core->teConnect(teCallbackType::edit,this,&teTagWidget::load);
+    in_core->teConnect(teCallbackType::edit_with_layout,this,&teTagWidget::load);
     in_core->widget=this;
 
     if(in_core->type==teTag::sentence)
@@ -316,6 +317,12 @@ int teTagList::edit(std::shared_ptr<teTag> core, QString text, int removeDuplica
         return -1;
 
     {
+        // read() announces the change itself (edit_with_layout), which is what
+        // makes the tag widgets, the editors and the list view react at once -
+        // an in-place text change used to be visible in the list only after the
+        // next repaint. The list records and re-emits it below instead, so its
+        // own reaction to that signal is suppressed while it runs.
+        ChangeSuppressor suppressor(this);
         std::lock_guard<std::recursive_mutex> lg(tagsMt);
         core->read(text);
     }
@@ -612,7 +619,7 @@ void teTag::read(const QString &str, bool ifclear, bool forceSentence)
     type = tag;
 
     if (ifclear)
-        edited();
+        edited_with_layout();   // read() rebuilds the words; the list listens to this one
 }
 
 teWord *teTag::takeWordAt(int index, bool ifSendSignal){

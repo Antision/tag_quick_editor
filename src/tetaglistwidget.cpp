@@ -77,6 +77,8 @@ teTagListWidgetBase::~teTagListWidgetBase(){
 }
 
 void teTagListWidgetBase::followTagDisplay(teTagWidgetBase* tag){
+    if(!wantsTagDisplay())
+        return;
     // While the popup is up it follows the pointer from one tag to the next; it
     // is not what makes it appear (that is a click, see showTagDisplay()).
     if(!tagDisplay||!tagDisplay->isVisible())
@@ -185,6 +187,8 @@ bool teTagListWidgetBase::eventFilter(QObject* watched,QEvent* event){
 }
 
 void teTagListWidgetBase::installTagDisplayFilters(teTagWidgetBase* tag){
+    if(!wantsTagDisplay())
+        return;
     if(!tag)
         return;
     tag->installEventFilter(this);
@@ -1048,8 +1052,10 @@ void teTagListWidgetBase::onTagLeftButtonClicked(teTagWidgetBase *tag, QPoint po
             setSelectCurrent(tag,true);
     }
     // Clicking a tag is what opens the magnified popup (it used to appear after
-    // hovering for a while, which got in the way of clicking and scrolling).
-    showTagDisplay(tag);
+    // hovering for a while, which got in the way of clicking and scrolling). The
+    // widget based lists do not want it at all.
+    if(wantsTagDisplay())
+        showTagDisplay(tag);
 }
 
 void teTagListWidget::onTagEdited(std::shared_ptr<teTag>tag){

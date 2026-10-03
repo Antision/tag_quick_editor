@@ -102,9 +102,27 @@ void teTagDisplayWidget::readCore(std::shared_ptr<teTag> in_core)
     if (core)
         core->teDisconnect(this);
     core = in_core;
-    if (core)
+    if (core){
         core->teConnect(teCallbackType::edit,this,&teTagDisplayWidget::load);
+        core->teConnect(teCallbackType::edit_with_layout,this,&teTagDisplayWidget::load);
+    }
     load();
+}
+
+bool teTagDisplayWidget::isCoreStillListed() const
+{
+    // Holding the shared_ptr keeps the tag object alive, but a merge moves (and
+    // deletes) its word cores and takes the tag out of the list. Anything that
+    // touches the words - dragging one, editing one - has to ask first, otherwise
+    // it works on freed word cores.
+    if (!core)
+        return false;
+    if (!m_owner)
+        return false;
+    teTagList* list = m_owner->shownList();
+    if (!list)
+        return false;
+    return list->find(core) >= 0;
 }
 
 void teTagDisplayWidget::load()
@@ -219,7 +237,9 @@ bool teTagDisplayWidget::eventFilter(QObject* watched,QEvent* event)
     if (frameGeometry().contains(global))
         return QWidget::eventFilter(watched,event);     // our own event
     QWidget* under = QApplication::widgetAt(global);
-    if (m_owner&&under&&(under==m_owner||m_owner->isAncestorOf(under)))
+    if (!under)
+        return QWidget::eventFilter(watched,event);     // cannot tell where it landed
+    if (m_owner&&(under==m_owner||m_owner->isAncestorOf(under)))
         return QWidget::eventFilter(watched,event);     // a click in the tag list
     hideDisplay();
     return QWidget::eventFilter(watched,event);
@@ -272,6 +292,10 @@ void teTagDisplayWidget::mousePressEvent(QMouseEvent* event)
 {
     if (event->button() != Qt::LeftButton)
         return;
+    if (!isCoreStillListed()) {
+        hideDisplay();                          // its tag was merged away
+        return;
+    }
     setOpaque();                                // clicked: show it at full opacity
     m_pressGlobal = event->globalPosition().toPoint();
     m_draggingTag = false;
@@ -346,6 +370,10 @@ void teTagDisplayWidget::startEditing(teWordWidgetBase* clickedWord)
 {
     if (!core || m_editor)
         return;
+    if (!isCoreStillListed()) {
+        hideDisplay();                          // its tag was merged away
+        return;
+    }
     setOpaque();                                // editing: do not dim the text
     // The popup is created as a tool window that never takes the focus (so it
     // does not steal it from the list). While its inline editor is open it has to
@@ -394,7 +422,7 @@ void teTagDisplayWidget::finishEditing(bool accept)
     editor->hide();
     editor->deleteLater();
 
-    if (accept && core && m_owner && text != static_cast<QString>(*core))
+    if (accept && core && m_owner && text != static_cast<QString>(*core) && isCoreStillListed())
         m_owner->tagEdit(core,text);        // dedupe + undo + editors, all in one place
 
     // Back to "never takes the focus", so the next click goes to the list.
@@ -441,11 +469,18 @@ void teTagDisplayWidget::syncWordOrderFromLayout()
 {
     if (!core)
         return;
+    if (!isCoreStillListed()) {
+        // The tag was merged away while the drag was running: its word cores now
+        // belong to (or were deleted by) the surviving tag, so the order must not
+        // be written anywhere.
+        hideDisplay();
+        return;
+    }
 
     QList<teWord*> ordered;
     for (int i = 0; i < m_flow->count(); ++i) {
         if (auto* word = dynamic_cast<teWordWidgetBase*>(m_flow->itemAt(i)->widget())) {
-            if (word->core && !ordered.contains(word->core))
+            if (word->core && core->words.contains(word->core) && !ordered.contains(word->core))
                 ordered.append(word->core);
         }
     }
@@ -463,8 +498,14 @@ void teTagDisplayWidget::syncWordOrderFromLayout()
     const QString text = static_cast<QString>(*core);
     // Deferred on purpose: applying the edit rebuilds our word widgets, and
     // doing that synchronously would delete the widget that is still handling
-    // the mouse release inside the reorderer's event filter.
-    QTimer::singleShot(0,this,[owner,tag,text]{
+    // the mouse release inside the reorderer's event filter. The tag may be gone
+    // by then (a merge), hence the check inside the lambda.
+    QTimer::singleShot(0,this,[this,owner,tag,text]{
+        if (core != tag || !isCoreStillListed()) {
+            if (core == tag)
+                hideDisplay();
+            return;
+        }
         owner->tagEdit(tag,text);
     });
 }

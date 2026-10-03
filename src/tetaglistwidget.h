@@ -72,6 +72,17 @@ public:
     void tagDisplayHideTick();
     /// Installs the hover filter on a tag and on the words it already owns.
     void installTagDisplayFilters(teTagWidgetBase* tag);
+    /**
+     * @brief True when this list wants the magnified popup.
+     *
+     * Only the model/view list does: a row cannot be dragged word by word or
+     * edited word by word, which is the whole reason the popup exists. The widget
+     * based lists (the editors' tag lists) drag words and open the inline editor
+     * on the tag itself, so the popup would only get in their way.
+     */
+    virtual bool wantsTagDisplay() const { return false; }
+    /// The list this widget currently shows (nullptr when it shows nothing).
+    virtual teTagList* shownList() const { return nullptr; }
     /// Hides the popup when the cursor really left it (buttons, editors, ...).
     bool eventFilter(QObject* watched,QEvent* event) override;
 
@@ -369,6 +380,9 @@ public:
     virtual int setSelectRangeCore(std::shared_ptr<teTag> core,bool ifclear=true)override;
     virtual bool isCoreSelected(std::shared_ptr<teTag> core) const override;
     virtual void ensureCoreVisible(std::shared_ptr<teTag> core)override;
+    /// The model/view list is the one that needs the magnified popup.
+    bool wantsTagDisplay() const override { return true; }
+    teTagList* shownList() const override { return showing_list; }
     /// Right edge of the row showing `core` (see the base class).
     QPoint tagDisplayAnchor(std::shared_ptr<teTag> core) const override;
     virtual int setSelectRange(teTagWidgetBase*in,bool ifclear=true)override;

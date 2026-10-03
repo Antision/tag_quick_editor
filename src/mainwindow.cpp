@@ -302,7 +302,8 @@ QPushButton:hover{background-color:rgba(100,100,100,100);})"));
         ,new teEditor_pretreat{ui->taglist,QStringLiteral("pretreat")}
         ,new teEditor_hair_and_eyes{ui->taglist,QStringLiteral("hair and eyes")}
         ,new teEditor_clothes{ui->taglist,QStringLiteral("clothes")}
-        ,new teEditor_nsfw{ui->taglist,QStringLiteral("nsfw")}};
+        ,new teEditor_nsfw{ui->taglist,QStringLiteral("nsfw")}
+    };
     extern int nsfwMode;
     if(nsfwMode<1)
         delete allEditors.takeLast();

@@ -43,6 +43,8 @@ public:
     void showForCore(std::shared_ptr<teTag> tagCore,const QPoint& globalMousePos);
     /// Hides the popup and forgets the tag.
     void hideDisplay();
+    /// True while the tag it shows is still part of the owner's list.
+    bool isCoreStillListed() const;
 
     void readCore(std::shared_ptr<teTag> in_core) override;
     void load() override;
