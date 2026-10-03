@@ -4,7 +4,7 @@
 
 extern const QString editorliststyle;
 extern const QString editorListScrollAreaStyle;
-class teTagListWidget;
+class teTagListView;
 
 
 class teEditorList:public QWidget,public teObject
@@ -13,7 +13,7 @@ class teEditorList:public QWidget,public teObject
 public:
     QVector<teEditor*> editorlist;
     QHBoxLayout* layout = new QHBoxLayout(this);
-    teTagListWidget* tagListWidget=nullptr;
+    teTagListView* tagListWidget=nullptr;
     teTagList* connectedList=nullptr;
     QSplitter* pageSplitter = new QSplitter(Qt::Horizontal,this);
     editorListLayout* editorLayout;
@@ -27,7 +27,7 @@ public:
     teEditorList(QWidget* parent=nullptr):QWidget(parent){}
     void loadEditors(const QVector<teEditor*>& input_vector_ptr,editorListLayout*in_listpage);
     void setEditorsToPages();
-    void connectTaglistWidget(teTagListWidget*in_taglist);
+    void connectTaglistWidget(teTagListView*in_taglist);
     void onNewTaglistLoaded();
     void readList(teTagList*input_taglist);
     void unloadList();

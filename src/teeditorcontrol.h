@@ -3,7 +3,7 @@
 #include"tetag.h"
 #include"tereftaglistwidget.h"
 #include"tesignalwidget.h"
-class teTagListWidget;
+class teTagListView;
 struct teEditor;
 struct anytype{
     template<typename...Args>
@@ -16,7 +16,7 @@ class teEditorControl:virtual public teObject{
 public:
     std::set<std::shared_ptr<teTag>>linked_tags;
     teEditor* editor=nullptr;
-    teTagListWidget* taglistwidget=nullptr;
+    teTagListView* taglistwidget=nullptr;
     std::set<QString>captureList;
     virtual bool filter(std::shared_ptr<teTag>tag)=0;
     /// Calls filter() from outside. Only the regression check uses it, to
@@ -33,7 +33,7 @@ public:
     bool ifrefreshState=true;
     virtual void refreshState()=0;
     virtual bool linked(std::shared_ptr<teTag>tag);
-    virtual void setTaglistwidget(teTagListWidget* in_taglistwidget);
+    virtual void setTaglistwidget(teTagListView* in_taglistwidget);
     /**
      * @brief The widget that displays `core` in this editor's tag list.
      *
@@ -167,7 +167,7 @@ public:
     bool ifedit=false;
     colorsWidget*onEdit_widget;
     QHBoxLayout* buttonLayout= new QHBoxLayout();
-    teTagListControl(colorsWidget*in_onEdit_widget,teTagListWidget*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr,QString title = QString{});
+    teTagListControl(colorsWidget*in_onEdit_widget,teTagListView*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr,QString title = QString{});
     ~teTagListControl(){
         delete onEdit_widget;
     }

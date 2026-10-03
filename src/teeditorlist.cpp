@@ -129,15 +129,15 @@ void teEditorList::setEditorsToPages(){
     }
 }
 
-void teEditorList::connectTaglistWidget(teTagListWidget *in_listWidget){
+void teEditorList::connectTaglistWidget(teTagListView *in_listWidget){
     if(tagListWidget!=nullptr) disconnect(tagListWidget,0,this,0);
     if(!in_listWidget){telog("input taglist is nullptr");return;}
     tagListWidget=in_listWidget;
     for(teEditor*e:editorlist){
         e->setTagListWidget(in_listWidget);
     }
-    connect(in_listWidget,&teTagListWidget::newlistloaded,this,&teEditorList::readList,Qt::DirectConnection);
-    connect(in_listWidget,&teTagListWidget::showinglistDestroyed,this,&teEditorList::unloadList,Qt::DirectConnection);
+    connect(in_listWidget,&teTagListView::newlistloaded,this,&teEditorList::readList,Qt::DirectConnection);
+    connect(in_listWidget,&teTagListView::showinglistDestroyed,this,&teEditorList::unloadList,Qt::DirectConnection);
 }
 
 void teEditorList::onNewTaglistLoaded(){

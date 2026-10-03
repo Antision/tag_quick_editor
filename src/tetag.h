@@ -557,7 +557,7 @@ public:
 
 class teTagList:public QObject,public teObject{
     Q_OBJECT
-    friend class teTagListWidget;
+    friend class teTagListView;
     friend class tePictureFile;
 public:
     teTagList(){};

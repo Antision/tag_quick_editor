@@ -202,17 +202,17 @@ void teTagListWidgetBase::installTagDisplayFilters(teTagWidgetBase* tag){
 }
 
 
-size_t teTagListWidget::size() const{
+size_t teTagListView::size() const{
     if(showing_list)
         return showing_list->size();
     return 0;
 }
 
-std::shared_ptr<teTag> teTagListWidget::currentCore() const
+std::shared_ptr<teTag> teTagListView::currentCore() const
 {
-    if(!m_view)
+    if(!this)
         return nullptr;
-    const QModelIndex index = m_view->currentIndex();
+    const QModelIndex index = this->currentIndex();
     if(!index.isValid())
         return nullptr;
     teTag* raw = index.data(teTagListModel::TagCoreRole).value<teTag*>();
@@ -228,29 +228,29 @@ std::shared_ptr<teTag> teTagListWidget::currentCore() const
     return nullptr;
 }
 
-void teTagListWidget::scrollToTop()
+void teTagListView::scrollToTop()
 {
-    if(m_view&&m_view->verticalScrollBar())
-        m_view->verticalScrollBar()->setValue(0);
+    if(this&&this->verticalScrollBar())
+        this->verticalScrollBar()->setValue(0);
 }
 
-void teTagListWidget::selectAllRows()
+void teTagListView::selectAllRows()
 {
-    if(m_view&&m_model&&m_model->rowCount()>0)
-        m_view->selectAll();
+    if(this&&m_model&&m_model->rowCount()>0)
+        this->selectAll();
 }
 
 // --------------------------------------------------------------- selection
 
-void teTagListWidget::setSelectCurrentCore(std::shared_ptr<teTag> core,bool ifclear)
+void teTagListView::setSelectCurrentCore(std::shared_ptr<teTag> core,bool ifclear)
 {
-    if(!m_model||!m_view)
+    if(!m_model||!this)
         return;
     if(!core){
         // Same as setSelectCurrent(nullptr) in the widget based list: clear.
         // setCurrentIndex(invalid) is a no-op in Qt, so the current row is
         // cleared through the selection model.
-        if(QItemSelectionModel* selection = m_view->selectionModel()){
+        if(QItemSelectionModel* selection = this->selectionModel()){
             selection->clearCurrentIndex();
             selection->clearSelection();
         }
@@ -261,104 +261,104 @@ void teTagListWidget::setSelectCurrentCore(std::shared_ptr<teTag> core,bool ifcl
         return;                         // not in this list: leave the selection alone
     const QModelIndex index = m_model->index(row,0);
     if(ifclear)
-        m_view->clearSelection();
-    m_view->setCurrentIndex(index);
-    m_view->selectionModel()->select(index,QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);
-    m_view->scrollTo(index,QAbstractItemView::EnsureVisible);
+        this->clearSelection();
+    this->setCurrentIndex(index);
+    this->selectionModel()->select(index,QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);
+    this->scrollTo(index,QAbstractItemView::EnsureVisible);
 }
 
-void teTagListWidget::setSelectCore(std::shared_ptr<teTag> core)
+void teTagListView::setSelectCore(std::shared_ptr<teTag> core)
 {
-    if(!m_model||!m_view)
+    if(!m_model||!this)
         return;
     const int row = m_model->rowOf(core.get());
     if(row<0)
         return;
-    m_view->selectionModel()->select(m_model->index(row,0),
+    this->selectionModel()->select(m_model->index(row,0),
                                      QItemSelectionModel::Select|QItemSelectionModel::Rows);
 }
 
-int teTagListWidget::setUnselectCore(std::shared_ptr<teTag> core)
+int teTagListView::setUnselectCore(std::shared_ptr<teTag> core)
 {
-    if(!m_model||!m_view)
+    if(!m_model||!this)
         return 0;
     if(!core){
-        const int count = int(m_view->selectionModel()->selectedRows().size());
-        m_view->clearSelection();
+        const int count = int(this->selectionModel()->selectedRows().size());
+        this->clearSelection();
         return count;
     }
     const int row = m_model->rowOf(core.get());
     if(row<0)
         return 0;
-    m_view->selectionModel()->select(m_model->index(row,0),
+    this->selectionModel()->select(m_model->index(row,0),
                                      QItemSelectionModel::Deselect|QItemSelectionModel::Rows);
     return 1;
 }
 
-int teTagListWidget::setSelectRangeCore(std::shared_ptr<teTag> core,bool ifclear)
+int teTagListView::setSelectRangeCore(std::shared_ptr<teTag> core,bool ifclear)
 {
-    if(!m_model||!m_view)
+    if(!m_model||!this)
         return 0;
     const int row = m_model->rowOf(core.get());
-    const QModelIndex current = m_view->currentIndex();
+    const QModelIndex current = this->currentIndex();
     if(row<0||!current.isValid())
         return 0;
     if(ifclear)
-        m_view->clearSelection();
+        this->clearSelection();
     // Same as the widget based list: select from the current tag to this one.
     const int first = std::min(current.row(),row);
     const int last  = std::max(current.row(),row);
     QItemSelection selection;
     selection.select(m_model->index(first,0),m_model->index(last,0));
-    m_view->selectionModel()->select(selection,QItemSelectionModel::Select|QItemSelectionModel::Rows);
+    this->selectionModel()->select(selection,QItemSelectionModel::Select|QItemSelectionModel::Rows);
     return last-first+1;
 }
 
-bool teTagListWidget::isCoreSelected(std::shared_ptr<teTag> core) const
+bool teTagListView::isCoreSelected(std::shared_ptr<teTag> core) const
 {
-    if(!m_model||!m_view||!core)
+    if(!m_model||!this||!core)
         return false;
     const int row = m_model->rowOf(core.get());
     if(row<0)
         return false;
-    return m_view->selectionModel()->isSelected(m_model->index(row,0));
+    return this->selectionModel()->isSelected(m_model->index(row,0));
 }
 
-void teTagListWidget::ensureCoreVisible(std::shared_ptr<teTag> core)
+void teTagListView::ensureCoreVisible(std::shared_ptr<teTag> core)
 {
-    if(!m_model||!m_view||!core)
+    if(!m_model||!this||!core)
         return;
     const int row = m_model->rowOf(core.get());
     if(row<0)
         return;
-    m_view->scrollTo(m_model->index(row,0),QAbstractItemView::EnsureVisible);
+    this->scrollTo(m_model->index(row,0),QAbstractItemView::EnsureVisible);
 }
 
-QPoint teTagListWidget::tagDisplayAnchor(std::shared_ptr<teTag> core) const
+QPoint teTagListView::tagDisplayAnchor(std::shared_ptr<teTag> core) const
 {
-    if(!m_model||!m_view||!core)
+    if(!m_model||!this||!core)
         return QCursor::pos();
     const int row = m_model->rowOf(core.get());
     if(row<0)
         return QCursor::pos();
-    const QRect rect = m_view->visualRect(m_model->index(row,0));
+    const QRect rect = this->visualRect(m_model->index(row,0));
     if(!rect.isValid()||rect.isEmpty())
         return QCursor::pos();
     // Right edge of the view, at the height of that row.
-    return m_view->viewport()->mapToGlobal(QPoint(m_view->viewport()->width(),rect.center().y()));
+    return this->viewport()->mapToGlobal(QPoint(this->viewport()->width(),rect.center().y()));
 }
 
-QString teTagListWidget::getSelectText(){
+QString teTagListView::getSelectText(){
     // The clipboard has to carry exactly what saving the caption would write:
     // tags joined with ", ", sentences on their own line, brackets kept glued to
     // their word. Joining the rows with newlines (as this used to do) loses all
     // of that. The widget based list already uses the same serializer.
     QVector<std::shared_ptr<teTag>> cores;
-    if(m_model&&m_view){
-        QModelIndexList rows = m_view->selectionModel()->selectedRows();
+    if(m_model&&this){
+        QModelIndexList rows = this->selectionModel()->selectedRows();
         std::sort(rows.begin(),rows.end(),[](const QModelIndex&a,const QModelIndex&b){return a.row()<b.row();});
-        if(rows.isEmpty()&&m_view->currentIndex().isValid())
-            rows.append(m_view->currentIndex());    // nothing selected: the current row
+        if(rows.isEmpty()&&this->currentIndex().isValid())
+            rows.append(this->currentIndex());    // nothing selected: the current row
         cores.reserve(rows.size());
         for(const QModelIndex& index:rows){
             if(teTag* raw = index.data(teTagListModel::TagCoreRole).value<teTag*>())
@@ -576,14 +576,14 @@ int teTagListWidgetBase::setUnselect(teTagWidgetBase *in){
 }
 
 
-void teTagListWidget::tagErase(int index){
+void teTagListView::tagErase(int index){
     hideTagDisplay();
     if(!showing_list||!m_model||index<0||index>=int(showing_list->size())){
-        telog(QString("[teTagListWidget::tagErase] index %1 out of range").arg(index));
+        telog(QString("[teTagListView::tagErase] index %1 out of range").arg(index));
         return;
     }
     // The view keeps the current row on a neighbour of the erased one.
-    const int current = m_view->currentIndex().isValid()?m_view->currentIndex().row():-1;
+    const int current = this->currentIndex().isValid()?this->currentIndex().row():-1;
     if(!m_model->eraseTag(index))
         return;
     const int rows = m_model->rowCount();
@@ -594,15 +594,15 @@ void teTagListWidget::tagErase(int index){
     scrollToTop();
 }
 
-void teTagListWidget::tagErase(std::shared_ptr<teTag>tag){
+void teTagListView::tagErase(std::shared_ptr<teTag>tag){
     if(!showing_list||!m_model)
         return;
-    const int current = m_view->currentIndex().isValid()?m_view->currentIndex().row():-1;
+    const int current = this->currentIndex().isValid()?this->currentIndex().row():-1;
     if(tag==nullptr&&m_model->rowCount()==0)
         return;
     if(tag==nullptr){
         // "erase the selection": the current row plus every selected row.
-        QModelIndexList selected = m_view->selectionModel()->selectedRows();
+        QModelIndexList selected = this->selectionModel()->selectedRows();
         if(selected.isEmpty()&&current>=0)
             selected.append(m_model->index(current,0));
         QVector<int> indexes;
@@ -628,7 +628,7 @@ void teTagListWidget::tagErase(std::shared_ptr<teTag>tag){
     }
     const int pos = showing_list->find(tag);
     if(pos<0){
-        telog("[teTagListWidget::tagErase]:tag not exist");
+        telog("[teTagListView::tagErase]:tag not exist");
         return;
     }
     if(!m_model->eraseTag(pos))
@@ -640,14 +640,14 @@ void teTagListWidget::tagErase(std::shared_ptr<teTag>tag){
 }
 
 
-void teTagListWidget::tagEdit(std::shared_ptr<teTag>tag, QString text,int removeDuplicate,bool ifemit){
+void teTagListView::tagEdit(std::shared_ptr<teTag>tag, QString text,int removeDuplicate,bool ifemit){
     if(!showing_list)
         return;
     if(showing_list->edit(tag,text,removeDuplicate,ifemit)==-1&&removeDuplicate==1)
         tagErase(tag);
 }
 
-void teTagListWidget::startEditingRow(int row)
+void teTagListView::startEditingRow(int row)
 {
     if(!m_model||row<0||row>=m_model->rowCount())
         return;
@@ -661,18 +661,18 @@ void teTagListWidget::startEditingRow(int row)
         m_plainTextCore=showing_list?showing_list->shareAt(row):nullptr;
         plaintextedit->start(static_cast<QString>(*raw));
         plaintextedit->show();
-        connect(plaintextedit,&teInputWidget::stringSignal,this,&teTagListWidget::onPlainTextEditStop,Qt::DirectConnection);
+        connect(plaintextedit,&teInputWidget::stringSignal,this,&teTagListView::onPlainTextEditStop,Qt::DirectConnection);
         connect(plaintextedit,&teInputWidget::cancelSignal,this,[this]{
             disconnect(plaintextedit,&teInputWidget::stringSignal,0,0);
             disconnect(plaintextedit,&teInputWidget::cancelSignal,0,0);
         });
         return;
     }
-    m_view->setCurrentIndex(index);
-    m_view->edit(index);
+    this->setCurrentIndex(index);
+    this->edit(index);
 }
 
-void teTagListWidget::tagEditCore(std::shared_ptr<teTag> core)
+void teTagListView::tagEditCore(std::shared_ptr<teTag> core)
 {
     hideTagDisplay();
     if(!core||!m_model)
@@ -682,14 +682,14 @@ void teTagListWidget::tagEditCore(std::shared_ptr<teTag> core)
         startEditingRow(row);
 }
 
-void teTagListWidget::tagInsertAbove(bool edit,std::shared_ptr<teTag>newtag,int removeDuplicate){
+void teTagListView::tagInsertAbove(bool edit,std::shared_ptr<teTag>newtag,int removeDuplicate){
     if(!showing_list||!m_model)
         return;
     if(newtag==nullptr){
         newtag=std::make_shared<teTag>();
         removeDuplicate=2;
     }
-    const int current = m_view->currentIndex().isValid()?m_view->currentIndex().row():-1;
+    const int current = this->currentIndex().isValid()?this->currentIndex().row():-1;
     const int row = current<0?0:current;
     if(m_model->insertTag(row,newtag,removeDuplicate)<0)
         return;
@@ -704,14 +704,14 @@ void teTagListWidget::tagInsertAbove(bool edit,std::shared_ptr<teTag>newtag,int 
         startEditingRow(inserted);
 }
 
-void teTagListWidget::tagInsertBelow(bool edit,std::shared_ptr<teTag>newtag,int removeDuplicate){
+void teTagListView::tagInsertBelow(bool edit,std::shared_ptr<teTag>newtag,int removeDuplicate){
     if(!showing_list||!m_model)
         return;
     if(newtag==nullptr){
         newtag=std::make_shared<teTag>();
         removeDuplicate=2;
     }
-    const int current = m_view->currentIndex().isValid()?m_view->currentIndex().row():-1;
+    const int current = this->currentIndex().isValid()?this->currentIndex().row():-1;
     const int row = current<0?m_model->rowCount():current+1;
     if(m_model->insertTag(row,newtag,removeDuplicate)<0)
         return;
@@ -723,7 +723,7 @@ void teTagListWidget::tagInsertBelow(bool edit,std::shared_ptr<teTag>newtag,int 
         startEditingRow(inserted);
 }
 
-void teTagListWidget::keyPressEvent(QKeyEvent *event) {
+void teTagListView::keyPressEvent(QKeyEvent *event) {
     if(!showing_list) return;
     if(handleTagDisplayEscape(event))
         return;
@@ -733,8 +733,8 @@ void teTagListWidget::keyPressEvent(QKeyEvent *event) {
         tagInsertAbove();
     } else if ((event->key() == Qt::Key_D && event->modifiers() == Qt::ControlModifier)||event->key() == Qt::Key_Delete) {
         tagErase();
-        if(m_view)
-            m_view->setFocus();
+        if(this)
+            this->setFocus();
     } else if (event->key() == Qt::Key_Enter||event->key() == Qt::Key_Return) {
         tagEditCore(currentCore());
     } else if ((event->key() == Qt::Key_E && event->modifiers() == Qt::ControlModifier)||event->key() == Qt::Key_F2) {
@@ -750,7 +750,7 @@ void teTagListWidget::keyPressEvent(QKeyEvent *event) {
     }
 }
 
-void teTagListWidget::onFileDeleted(tePictureFile *obj){
+void teTagListView::onFileDeleted(tePictureFile *obj){
     if(obj==file){
         clear();
         file=nullptr;
@@ -795,7 +795,7 @@ void teTagListWidgetBase::paste()
     }
 }
 
-void teTagListWidget::load(teTagList*newlist){
+void teTagListView::load(teTagList*newlist){
     hideTagDisplay();
     showing_list=newlist;
     if(!showing_list)
@@ -818,7 +818,7 @@ void teTagListWidget::load(teTagList*newlist){
     }
 }
 
-void teTagListWidget::loadFile(tePictureFile *f)
+void teTagListView::loadFile(tePictureFile *f)
 {
     if(!f)
         return;
@@ -827,10 +827,10 @@ void teTagListWidget::loadFile(tePictureFile *f)
     clear();
     file=f;
     load(&f->taglist);
-    f->teConnect(teCallbackType::destroy,this,&teTagListWidget::onFileDeleted,f);
+    f->teConnect(teCallbackType::destroy,this,&teTagListView::onFileDeleted,f);
 }
 
-void teTagListWidget::clear(teTagList *in){
+void teTagListView::clear(teTagList *in){
     hideTagDisplay();
     // Editing state of the view's inline editor belongs to the old list: end it,
     // otherwise its suggestion box outlives the picture (the editor is hidden by
@@ -870,7 +870,7 @@ void teTagListWidgetBase::disconnectTag(teTagWidgetBase *tagwidget){
     disconnect(tagwidget,0,this,0);
     teDisconnect(tagwidget->core.get());
 }
-teTagWidgetBase* teTagListWidget::taginsert(int index, std::shared_ptr<teTag>in_tag,int removeDuplicate,bool select){
+teTagWidgetBase* teTagListView::taginsert(int index, std::shared_ptr<teTag>in_tag,int removeDuplicate,bool select){
     if(!showing_list||!m_model)
         return nullptr;
     while(index<0)
@@ -909,7 +909,7 @@ struct UndoRedoGuard{
 };
 }
 
-void teTagListWidget::undo(){
+void teTagListView::undo(){
     if(!showing_list)return;
     try{
         teTagOperation&lastOp = showing_list->operationlist.take();
@@ -923,22 +923,22 @@ void teTagListWidget::undo(){
         }
         case teTagOperation::tagedit:{
             int previousOp =showing_list->operationlist.previousEditOperation(lastOp.tag_ptr.lock());
-            if(previousOp<0)throw std::exception("[teTagListWidget::undo]:coult not find previous operation for edit operation");
+            if(previousOp<0)throw std::exception("[teTagListView::undo]:coult not find previous operation for edit operation");
             teTagOperation&lastEditOp = showing_list->operationlist.operations[previousOp];
             *lastOp.tag_ptr.lock()=lastEditOp.nowCore;
             break;
         }
         case teTagOperation::tagmove:{
             if(lastOp.idp>=showing_list->tags.size()){
-                telog("[teTagListWidget::undo]:position in opereationList is out of range");
+                telog("[teTagListView::undo]:position in opereationList is out of range");
                 lastOp.idp=showing_list->tags.size()-1;
             }
             if(lastOp.idn<0||lastOp.idn>=showing_list->tags.size()||lastOp.idp<0){
-                telog("[teTagListWidget::undo]:position in opereationList is out of range");
+                telog("[teTagListView::undo]:position in opereationList is out of range");
                 break;
             }
             if(showing_list->tags[lastOp.idn]!=lastOp.tag_ptr.lock()){
-                telog("[teTagListWidget::undo]:position in opereationList is wrong");
+                telog("[teTagListView::undo]:position in opereationList is wrong");
                 lastOp.idn=showing_list->find(lastOp.tag_ptr.lock());
                 if(lastOp.idn<0)
                     break;
@@ -958,7 +958,7 @@ void teTagListWidget::undo(){
             std::shared_ptr<teTag> newcore(new teTag{lastOp.prevCore});
             showing_list->operationlist.replaceTag(lastOp.tag_ptr.lock(),newcore);
             if(!taginsert(lastOp.idp,newcore,1)){
-                telog(QString("[teTagListWidget::undo]:insert tag failed, inserting a new tagerase operation at %1").arg(lastOp.idp));
+                telog(QString("[teTagListView::undo]:insert tag failed, inserting a new tagerase operation at %1").arg(lastOp.idp));
                 showing_list->operationlist.addEraseOperation(newcore,lastOp.idp,lastOp.prevCore);
             }
             break;
@@ -969,7 +969,7 @@ void teTagListWidget::undo(){
         return;
     }
 }
-void teTagListWidget::redo(){
+void teTagListView::redo(){
     if(!showing_list)return;
     try{
         teTagOperation&nextOp = showing_list->operationlist.forward();
@@ -979,7 +979,7 @@ void teTagListWidget::redo(){
             std::shared_ptr<teTag> newcore(new teTag{nextOp.nowCore});
             showing_list->operationlist.replaceTag(nextOp.tag_ptr.lock(),newcore);
             if(!taginsert(nextOp.idn,newcore,1)){
-                telog(QString("[teTagListWidget::redo]:insert tag failed at %1").arg(nextOp.idn));
+                telog(QString("[teTagListView::redo]:insert tag failed at %1").arg(nextOp.idn));
                 --showing_list->operationlist.rwp;
             }
             break;
@@ -990,18 +990,18 @@ void teTagListWidget::redo(){
         }
         case teTagOperation::tagmove:{
             if(nextOp.idn>=showing_list->tags.size()){
-                telog("[teTagListWidget::redo]:position in opereationList is out of range");
+                telog("[teTagListView::redo]:position in opereationList is out of range");
                 nextOp.idn=showing_list->tags.size()-1;
             }
             if(nextOp.idp<0||nextOp.idp>=showing_list->tags.size()||nextOp.idn<0){
-                telog("[teTagListWidget::redo]:position in opereationList is out of range");
+                telog("[teTagListView::redo]:position in opereationList is out of range");
                 break;
             }
             if(showing_list->tags[nextOp.idp]!=nextOp.tag_ptr.lock()){
-                telog("[teTagListWidget::redo]:position in opereationList is wrong");
+                telog("[teTagListView::redo]:position in opereationList is wrong");
                 nextOp.idp=showing_list->find(nextOp.tag_ptr.lock());
                 if(nextOp.idp<0)
-                    throw std::exception("[teTagListWidget::redo]:tag in opereationList is disappered");
+                    throw std::exception("[teTagListView::redo]:tag in opereationList is disappered");
             }
             const std::shared_ptr<teTag> currentTag = currentCore();
             showing_list->tags.insert(nextOp.idn,showing_list->tags.takeAt(nextOp.idp));
@@ -1066,41 +1066,19 @@ void teTagListWidgetBase::onTagLeftButtonClicked(teTagWidgetBase *tag, QPoint po
         showTagDisplay(tag);
 }
 
-void teTagListWidget::onTagEdited(std::shared_ptr<teTag>tag){
+void teTagListView::onTagEdited(std::shared_ptr<teTag>tag){
     // Editor controls may turn a tag into a copy of another one (a rename, a
     // colour swap, ...). Merging keeps the list free of duplicates; the old
     // code erased the tag twice here, which could take the index of a removed
     // row.
     if(showing_list&&tag&&showing_list->remove_duplicate(tag,true))
-        telog("[teTagListWidget::onTagEdited] merged a duplicated tag");
+        telog("[teTagListView::onTagEdited] merged a duplicated tag");
 }
 
 // ---------------------------------------------------------------- the view
 
 teTagListView::teTagListView(QWidget* parent)
     : QListView(parent)
-{
-    // The view from mainwindow.ui is the display: it builds the controller that
-    // drives it. (The controller used to build a private view of its own, which
-    // left this one empty and showed nothing.)
-    m_controller = new teTagListWidget(*this);
-}
-
-teTagListView::teTagListView(OwnedByController,QWidget* parent)
-    : QListView(parent)
-{
-}
-
-void teTagListView::keyPressEvent(QKeyEvent* event)
-{
-    if(m_controller)
-        m_controller->keyPressEvent(event);     // F2, Ctrl+W, Del, ... live there
-    else
-        QListView::keyPressEvent(event);
-}
-
-teTagListWidget::teTagListWidget(teTagListView& view)
-    : QObject(&view), m_view(&view)
 {
     createModelAndDelegate();
     createMenu();
@@ -1110,21 +1088,20 @@ teTagListWidget::teTagListWidget(teTagListView& view)
     tagDisplay = new teTagDisplayWidget(this);
     tagDisplayHideTimer = new QTimer(this);
     tagDisplayHideTimer->setSingleShot(true);
-    connect(tagDisplayHideTimer,&QTimer::timeout,this,&teTagListWidget::tagDisplayHideTick);
-    connect(tagDisplay,&teTagDisplayWidget::pointerLeft,this,&teTagListWidget::scheduleTagDisplayHide);
-    adoptView(m_view);
+    connect(tagDisplayHideTimer,&QTimer::timeout,this,&teTagListView::tagDisplayHideTick);
+    connect(tagDisplay,&teTagDisplayWidget::pointerLeft,this,&teTagListView::scheduleTagDisplayHide);
 }
 
-teTagListWidget::~teTagListWidget()
+teTagListView::~teTagListView()
 {
     clear();
     delete plaintextedit;
     plaintextedit = nullptr;
 }
 
-void teTagListWidget::createMenu()
+void teTagListView::createMenu()
 {
-    menu = new QMenu(m_view);
+    menu = new QMenu(this);
     editAction = menu->addAction(QIcon(":/res/menu_edit.png"),"edit (F2/Ctrl+E)");
     deleteAction = menu->addAction(QIcon(":/res/menu_remove.png"),"delete (Ctrl+D/del)");
     insertAction = menu->addAction(QIcon(":/res/menu_add.png"),"insert above (Ctrl+W)");
@@ -1152,18 +1129,18 @@ void teTagListWidget::createMenu()
     menu->setWindowFlags(menu->windowFlags() | Qt::FramelessWindowHint);
 }
 
-void teTagListWidget::copy()
+void teTagListView::copy()
 {
     QApplication::clipboard()->setText(getSelectText());
 }
 
-void teTagListWidget::cut()
+void teTagListView::cut()
 {
     copy();
     eraseSelectedRows();
 }
 
-void teTagListWidget::paste()
+void teTagListView::paste()
 {
     const QString text = QApplication::clipboard()->text();
     const auto pieces = splitTextToPieces(text);
@@ -1171,7 +1148,7 @@ void teTagListWidget::paste()
         tagInsertBelow(false,std::make_shared<teTag>(piece.text,nullptr,piece.sentence),2);
 }
 
-void teTagListWidget::onPlainTextEditStop(QString in_str)
+void teTagListView::onPlainTextEditStop(QString in_str)
 {
     disconnect(plaintextedit,&teInputWidget::stringSignal,0,0);
     disconnect(plaintextedit,&teInputWidget::cancelSignal,0,0);
@@ -1184,14 +1161,14 @@ void teTagListWidget::onPlainTextEditStop(QString in_str)
 
 // -- the magnified popup -------------------------------------------------------
 
-void teTagListWidget::showTagDisplayCore(std::shared_ptr<teTag> core)
+void teTagListView::showTagDisplayCore(std::shared_ptr<teTag> core)
 {
     if(!core||!tagDisplay)
         return;
     tagDisplay->showForCore(core,tagDisplayAnchor(core));
 }
 
-void teTagListWidget::followTagDisplayCore(std::shared_ptr<teTag> core)
+void teTagListView::followTagDisplayCore(std::shared_ptr<teTag> core)
 {
     if(!tagDisplay||!tagDisplay->isVisible()||!core)
         return;
@@ -1200,7 +1177,7 @@ void teTagListWidget::followTagDisplayCore(std::shared_ptr<teTag> core)
     showTagDisplayCore(core);
 }
 
-void teTagListWidget::hideTagDisplay()
+void teTagListView::hideTagDisplay()
 {
     if(tagDisplayHideTimer)
         tagDisplayHideTimer->stop();
@@ -1208,7 +1185,7 @@ void teTagListWidget::hideTagDisplay()
         tagDisplay->hideDisplay();
 }
 
-bool teTagListWidget::handleTagDisplayEscape(QKeyEvent* event)
+bool teTagListView::handleTagDisplayEscape(QKeyEvent* event)
 {
     if(event&&event->key()==Qt::Key_Escape&&tagDisplay&&tagDisplay->isVisible()){
         hideTagDisplay();
@@ -1217,14 +1194,14 @@ bool teTagListWidget::handleTagDisplayEscape(QKeyEvent* event)
     return false;
 }
 
-void teTagListWidget::scheduleTagDisplayHide()
+void teTagListView::scheduleTagDisplayHide()
 {
     if(!tagDisplay||!tagDisplay->isVisible()||!tagDisplayHideTimer)
         return;
     tagDisplayHideTimer->start(180);
 }
 
-void teTagListWidget::tagDisplayHideTick()
+void teTagListView::tagDisplayHideTick()
 {
     const QPoint pos = QCursor::pos();
     if(tagDisplay&&tagDisplay->isVisible()&&tagDisplay->frameGeometry().contains(pos))
@@ -1232,53 +1209,46 @@ void teTagListWidget::tagDisplayHideTick()
     hideTagDisplay();
 }
 
-void teTagListWidget::createModelAndDelegate()
+void teTagListView::createModelAndDelegate()
 {
     m_model = new teTagListModel(this);
-    m_delegate = new teTagDelegate(m_view);
-}
+    m_delegate = new teTagDelegate(this);
+    setModel(m_model);
+    setItemDelegate(m_delegate);
+    setSelectionMode(QAbstractItemView::ExtendedSelection);
+    setSelectionBehavior(QAbstractItemView::SelectRows);
+    setEditTriggers(QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed);
+    setUniformItemSizes(true);
+    setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
+    setContextMenuPolicy(Qt::CustomContextMenu);
+    setDragEnabled(true);
+    setAcceptDrops(true);
+    setDropIndicatorShown(true);
+    setDragDropMode(QAbstractItemView::InternalMove);
+    setDefaultDropAction(Qt::MoveAction);
+    setFrameShape(QFrame::NoFrame);
+    setMouseTracking(true);
+    viewport()->setMouseTracking(true);
+    viewport()->installEventFilter(this);
 
-void teTagListWidget::adoptView(teTagListView* view)
-{
-    m_view = view;
-    if(!m_view)
-        return;
-    m_view->setModel(m_model);
-    m_view->setItemDelegate(m_delegate);
-    m_view->setSelectionMode(QAbstractItemView::ExtendedSelection);
-    m_view->setSelectionBehavior(QAbstractItemView::SelectRows);
-    m_view->setEditTriggers(QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed);
-    m_view->setUniformItemSizes(true);
-    m_view->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    m_view->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
-    m_view->setContextMenuPolicy(Qt::CustomContextMenu);
-    m_view->setDragEnabled(true);
-    m_view->setAcceptDrops(true);
-    m_view->setDropIndicatorShown(true);
-    m_view->setDragDropMode(QAbstractItemView::InternalMove);
-    m_view->setDefaultDropAction(Qt::MoveAction);
-    m_view->setFrameShape(QFrame::NoFrame);
-    m_view->setMouseTracking(true);
-    m_view->viewport()->setMouseTracking(true);
-    m_view->viewport()->installEventFilter(this);
-
-    connect(m_view,&QListView::clicked,this,&teTagListWidget::onViewClicked);
-    connect(m_view,&QListView::doubleClicked,this,&teTagListWidget::onViewDoubleClicked);
-    connect(m_view,&QListView::customContextMenuRequested,this,&teTagListWidget::onViewContextMenu);
-    if(QItemSelectionModel* selection = m_view->selectionModel())
-        connect(selection,&QItemSelectionModel::currentChanged,this,&teTagListWidget::onViewCurrentChanged);
+    connect(this,&QListView::clicked,this,&teTagListView::onViewClicked);
+    connect(this,&QListView::doubleClicked,this,&teTagListView::onViewDoubleClicked);
+    connect(this,&QListView::customContextMenuRequested,this,&teTagListView::onViewContextMenu);
+    if(QItemSelectionModel* selection = selectionModel())
+        connect(selection,&QItemSelectionModel::currentChanged,this,&teTagListView::onViewCurrentChanged);
     connect(m_model,&QAbstractItemModel::modelAboutToBeReset,this,[this]{
         m_currentCoreBeforeReset = currentCore();
     });
-    connect(m_model,&QAbstractItemModel::modelReset,this,&teTagListWidget::onModelReset);
+    connect(m_model,&QAbstractItemModel::modelReset,this,&teTagListView::onModelReset);
     // An empty row left behind by the inline editor disappears.
     connect(m_delegate,&QAbstractItemDelegate::closeEditor,this,[this](QWidget*,QAbstractItemDelegate::EndEditHint){
-        finishRowEdit(m_view->currentIndex().row());
+        finishRowEdit(this->currentIndex().row());
     });
 
     // The base class built the menu; here the actions have to work on rows.
     connect(editAction,&QAction::triggered,this,[this]{ tagEditCore(currentCore()); });
-    connect(deleteAction,&QAction::triggered,this,&teTagListWidget::eraseSelectedRows);
+    connect(deleteAction,&QAction::triggered,this,&teTagListView::eraseSelectedRows);
     connect(insertAction,&QAction::triggered,this,[this]{ tagInsertAbove(true,nullptr); });
     connect(insertBelowAction,&QAction::triggered,this,[this]{ tagInsertBelow(true,nullptr); });
     connect(cutAction,&QAction::triggered,this,[this]{ cut(); });
@@ -1331,35 +1301,6 @@ bool teTagListView::dropRowsAt(const QPoint& viewportPos)
     return true;
 }
 
-tePictureFile* teTagListView::file() const
-{
-    return m_controller?m_controller->file:nullptr;
-}
-
-void teTagListView::setEditorList(teEditorList* in)
-{
-    if(m_controller)
-        m_controller->editorlist = in;
-}
-
-void teTagListView::loadFile(tePictureFile* f)
-{
-    if(m_controller)
-        m_controller->loadFile(f);
-}
-
-void teTagListView::clear()
-{
-    if(m_controller)
-        m_controller->clear();
-}
-
-void teTagListView::scrollToTop()
-{
-    if(m_controller)
-        m_controller->scrollToTop();
-}
-
 void teTagListView::sortRows(QVector<int>& rows)
 {
     std::sort(rows.begin(),rows.end());
@@ -1370,7 +1311,7 @@ void teTagListView::startDrag(Qt::DropActions supportedActions)
 {
     // Dragging a tag is no time for the popup: it hides as soon as the drag
     // starts (the user asked for exactly that).
-    if(auto* list = qobject_cast<teTagListWidget*>(parentWidget()))
+    if(auto* list = qobject_cast<teTagListView*>(parentWidget()))
         list->hideTagDisplay();
     // Deliberately not QListView::startDrag(): that one calls clearOrRemove()
     // when the drag ends with MoveAction, which removes the dragged rows a
@@ -1410,7 +1351,7 @@ void teTagListView::startDrag(Qt::DropActions supportedActions)
     drag->exec(supportedActions,defaultDropAction());
 }
 
-void teTagListWidget::onViewClicked(const QModelIndex& index)
+void teTagListView::onViewClicked(const QModelIndex& index)
 {
     // The popup opens on a click (and on the selection it makes), not on hover.
     if(!index.isValid()||!showing_list)
@@ -1421,20 +1362,20 @@ void teTagListWidget::onViewClicked(const QModelIndex& index)
     showTagDisplayCore(showing_list->shareAt(row));
 }
 
-void teTagListWidget::onViewDoubleClicked(const QModelIndex& index)
+void teTagListView::onViewDoubleClicked(const QModelIndex& index)
 {
     if(index.isValid())
         startEditingRow(index.row());
 }
 
-void teTagListWidget::onViewCurrentChanged(const QModelIndex& current,const QModelIndex& previous)
+void teTagListView::onViewCurrentChanged(const QModelIndex& current,const QModelIndex& previous)
 {
     Q_UNUSED(previous);
     if(current.isValid())
         m_pendingSelectionIndex=current.row();
 }
 
-void teTagListWidget::onModelReset()
+void teTagListView::onModelReset()
 {
     // Somebody changed the list behind the model's back (an editor inserted a
     // tag, a rename merged two tags). Rows were rebuilt, so the selection is
@@ -1447,13 +1388,13 @@ void teTagListWidget::onModelReset()
     m_currentCoreBeforeReset.reset();
 }
 
-void teTagListWidget::eraseSelectedRows()
+void teTagListView::eraseSelectedRows()
 {
     if(!m_model)
         return;
     tagErase(nullptr);      // "erase the selection", shared with the editors' path
 }
-void teTagListWidget::finishRowEdit(int row)
+void teTagListView::finishRowEdit(int row)
 {
     if(!m_model||row<0||row>=m_model->rowCount())
         return;
@@ -1466,19 +1407,19 @@ void teTagListWidget::finishRowEdit(int row)
     }
 }
 
-void teTagListWidget::onViewContextMenu(const QPoint& pos)
+void teTagListView::onViewContextMenu(const QPoint& pos)
 {
-    const QModelIndex index = m_view->indexAt(pos);
-    if(index.isValid()&&!m_view->selectionModel()->isSelected(index))
+    const QModelIndex index = this->indexAt(pos);
+    if(index.isValid()&&!this->selectionModel()->isSelected(index))
         setSelectCurrentCore(showing_list&&index.row()<int(showing_list->size())
                                  ?showing_list->shareAt(index.row())
                                  :nullptr);
-    menu->exec(m_view->viewport()->mapToGlobal(pos));
+    menu->exec(this->viewport()->mapToGlobal(pos));
 }
 
-bool teTagListWidget::eventFilter(QObject* watched,QEvent* event)
+bool teTagListView::eventFilter(QObject* watched,QEvent* event)
 {
-    if(m_view&&watched==m_view->viewport()){
+    if(this&&watched==this->viewport()){
         switch(event->type()){
         case QEvent::MouseMove:{
             // The popup follows the pointer from row to row while it is up; it is
@@ -1486,7 +1427,7 @@ bool teTagListWidget::eventFilter(QObject* watched,QEvent* event)
             if(!tagDisplay||!tagDisplay->isVisible())
                 break;
             auto* mouseEvent = static_cast<QMouseEvent*>(event);
-            const QModelIndex index = m_view->indexAt(mouseEvent->position().toPoint());
+            const QModelIndex index = this->indexAt(mouseEvent->position().toPoint());
             if(!index.isValid()){
                 hideTagDisplay();
                 break;
@@ -1507,7 +1448,7 @@ bool teTagListWidget::eventFilter(QObject* watched,QEvent* event)
         case QEvent::MouseButtonPress:{
             // A click on empty space below the tags closes the popup.
             auto* mouseEvent = static_cast<QMouseEvent*>(event);
-            if(!m_view->indexAt(mouseEvent->position().toPoint()).isValid())
+            if(!this->indexAt(mouseEvent->position().toPoint()).isValid())
                 hideTagDisplay();
             break;
         }

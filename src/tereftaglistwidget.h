@@ -30,9 +30,9 @@ bool teRefTagCmp(teRefTagWidget*a,teRefTagWidget*b);
 class teRefTagListWidget:public teTagListWidgetBase{
 public:
     std::map<teRefTagWidget*,teTagList*,bool(*)(teRefTagWidget*,teRefTagWidget*)>tags{teRefTagCmp};
-    teTagListWidget*parentTagListWidget=nullptr;
+    teTagListView*parentTagListWidget=nullptr;
     teRefTagListWidget(QWidget*parent):teTagListWidgetBase(12,parent){}
-    teRefTagListWidget(teTagListWidget*parentlist,QWidget*parent):teTagListWidgetBase(12,parent),parentTagListWidget(parentlist){};
+    teRefTagListWidget(teTagListView*parentlist,QWidget*parent):teTagListWidgetBase(12,parent),parentTagListWidget(parentlist){};
     ~teRefTagListWidget(){}
     void keyPressEvent(QKeyEvent *event) override;
     virtual int setSelectRange(teTagWidgetBase*in,bool ifclear=true)override;

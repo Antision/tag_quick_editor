@@ -4,7 +4,7 @@
 #include "tereftaglistwidget.h"
 #include"tetaglistwidget.h"
 
-struct teTagListWidget;
+struct teTagListWidgetBase;
 
 /**
  * @brief Recycles the tag/word widgets used by the tag lists and the editors.

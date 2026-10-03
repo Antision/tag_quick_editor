@@ -1,7 +1,7 @@
 #include "teeditor.h"
 #include "tetag.h"
 #include "teeditorcontrol.h"
-teEditor::teEditor(teTagListWidget*in_taglistwidget,const QString& name,QWidget *parent):QFrame(parent),name(name),taglistwidget(in_taglistwidget){
+teEditor::teEditor(teTagListView*in_taglistwidget,const QString& name,QWidget *parent):QFrame(parent),name(name),taglistwidget(in_taglistwidget){
     setObjectName(name);
 }
 
@@ -44,14 +44,14 @@ void teEditor::clear(){
     }
 }
 
-void teEditor::setTagListWidget(teTagListWidget *listwidget){
+void teEditor::setTagListWidget(teTagListView *listwidget){
     taglistwidget = listwidget;
     for(teEditorControl*ec:controls){
         ec->setTaglistwidget(listwidget);
     }
 }
 
-teEditor_standard::teEditor_standard(teTagListWidget*in_taglistwidget,const QString &name, QString *styleSheet, QWidget *parent):teEditor(in_taglistwidget,name,parent){
+teEditor_standard::teEditor_standard(teTagListView*in_taglistwidget,const QString &name, QString *styleSheet, QWidget *parent):teEditor(in_taglistwidget,name,parent){
     editor_switch->setObjectName("editor_switch");
     editor_switch->setText(name);
     editor_switch->setCheckable(true);

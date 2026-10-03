@@ -301,31 +301,39 @@ public:
 };
 
 /**
- * @brief QListView that reorders rows when one is dropped on another.
+ * @brief The tag list of one picture: a QListView that owns its tags.
  *
- * Qt's InternalMove would need mime data and a model that accepts drops; the
- * row move is expressed directly through teTagListModel::moveRows() instead,
- * which is also what the undo records expect.
+ * There is no wrapper widget and no separate controller any more. This class is
+ * what mainwindow.ui puts in the window, and it is also the thing the editors,
+ * the undo/redo actions and the magnified popup talk to: it holds the tag list,
+ * the model, the delegate, the selection (addressed by tag core), the context
+ * menu, the plain text window and the popup.
+ *
+ * The tags are drawn by teTagListModel + teTagDelegate, one row per tag and no
+ * widget per tag, which is what makes switching from one image to the next cheap.
+ *
+ * Qt's InternalMove would need mime data and a model that accepts drops; the row
+ * move is expressed directly through teTagListModel::moveRows() instead, which is
+ * also what the undo records expect.
  */
-class teTagListView : public QListView
+class teTagListView : public QListView, public teTagDisplayOwner, virtual public teObject
 {
     Q_OBJECT
 public:
-    /// Marker for "the controller builds this view for itself".
-    struct OwnedByController{};
-    /**
-     * @brief The view mainwindow.ui creates.
-     *
-     * It makes the tag list controller for itself and adopts it, so `taglist` in
-     * the .ui *is* the view that draws the tags. (Before, the controller made a
-     * second, private view and the one from the .ui stayed empty - which is why
-     * nothing was displayed.)
-     */
     explicit teTagListView(QWidget* parent=nullptr);
-    /// The controller's own view (this one does not build a controller).
-    teTagListView(OwnedByController,QWidget* parent);
-    /// The controller behind this view (nullptr for the controller's own view).
-    teTagListWidget* listWidget() const { return m_controller; }
+    ~teTagListView();
+
+    teTagList* showing_list=nullptr;///< the teTagList which is displaying
+    teEditorList* editorlist=nullptr;///< the EditorList connected with
+    /// The file whose caption is shown. Must be initialized: clear() reads it
+    /// (and calls into it) before loadFile() ever ran, and an uninitialized
+    /// pointer there made the first clear()/destruction crash at random.
+    tePictureFile* file=nullptr;
+    /// Plain text window for long-form tags.
+    teInputWidget* plaintextedit=nullptr;
+    /// The magnified popup.
+    teTagDisplayWidget* tagDisplay=nullptr;
+
     /**
      * @brief Moves the selected rows to where a drop at `viewportPos` would go.
      *
@@ -336,83 +344,22 @@ public:
      * @return false when there is nothing to move or the move changed nothing.
      */
     bool dropRowsAt(const QPoint& viewportPos);
-    /// The picture whose caption is shown (see teTagListWidget::file).
-    tePictureFile* file() const;
-    /// The editor list connected with this list.
-    void setEditorList(teEditorList* in);
-    /// Shows `f`'s caption.
-    void loadFile(tePictureFile* f);
-    /// Detaches the current list.
-    void clear();
-    /// Scrolls back to the top.
-    void scrollToTop();
-protected:
-    void dropEvent(QDropEvent* event) override;
-    /// Keys (F2/Ctrl+W/Del/...) belong to the controller when it adopted this view.
-    void keyPressEvent(QKeyEvent* event) override;
-    /// Draws its own drag pixmap and, more importantly, does not let Qt remove
-    /// the dragged rows a second time (see the comment in the implementation).
-    void startDrag(Qt::DropActions supportedActions) override;
-private:
-    static void sortRows(QVector<int>& rows);
-    /// The controller, when mainwindow.ui's view built one.
-    teTagListWidget* m_controller=nullptr;
-};
-
-/**
- * @brief The tag list of one picture.
- *
- * The tags are drawn by teTagListView + teTagListModel + teTagDelegate: one row
- * per tag and no widget per tag, which is what makes switching from one image
- * to the next cheap. Everything the rest of the program uses (loading a file,
- * inserting/erasing/editing a tag, the selection addressed by tag core) keeps
- * the same signature; only the internals changed.
- */
-class teTagListWidget : public QObject, public teTagDisplayOwner, virtual public teObject
-{
-    Q_OBJECT
-public:
-    teTagList* showing_list=nullptr;///< the teTagList which is displaying
-    teEditorList* editorlist=nullptr;///< the EditorList connected with
-    /// The file whose caption is shown. Must be initialized: clear() reads it
-    /// (and calls into it) before loadFile() ever ran, and an uninitialized
-    /// pointer there made the first clear()/destruction crash at random.
-    tePictureFile* file=nullptr;
-    /**
-     * @brief Drives the view mainwindow.ui created.
-     *
-     * This used to be a QWidget that hosted a private teTagListView. It is a
-     * QObject now: the view is the widget, this class is only the controller
-     * behind it (that is why it does not need the widget based tag list base
-     * class at all any more).
-     */
-    explicit teTagListWidget(teTagListView& view);
-    ~teTagListWidget();
-    size_t size()const;
-
-    /// The view that draws the tags (one row per tag).
-    teTagListView* view() const { return m_view; }
-    /// Plain text window for long-form tags.
-    teInputWidget* plaintextedit=nullptr;
-    /// The magnified popup.
-    teTagDisplayWidget* tagDisplay=nullptr;
-    /// The model behind the view.
-    teTagListModel* model() const { return m_model; }
+    /// The model behind the rows.
+    teTagListModel* tagModel() const { return m_model; }
     /// The delegate that draws and edits the rows.
     teTagDelegate* delegate() const { return m_delegate; }
+    size_t size()const;
     /// Tag of the current row, or nullptr.
     std::shared_ptr<teTag> currentCore() const;
-    /// Scrolls back to the top of the list.
-    void scrollToTop();
     /// Selects every row (Ctrl+A).
     void selectAllRows();
 
     void clear(teTagList* in=nullptr);
     void load(teTagList* newlist=nullptr);
+    void loadFile(tePictureFile*f);
     void onTagEdited(std::shared_ptr<teTag>tag);
     void undo();
     void redo();
-    void loadFile(tePictureFile*f);
     void tagErase(int index);
     void tagErase(std::shared_ptr<teTag> tag=nullptr);
     void tagEdit(std::shared_ptr<teTag>tag, QString text,int removeDuplicate=1,bool ifemit=true);
@@ -422,8 +369,6 @@ public:
     teTagWidgetBase* taginsert(int index,std::shared_ptr<teTag> in_tag,int removeDuplicate=1,bool select=true);
     void tagInsertAbove(bool edit=true,std::shared_ptr<teTag>newtag=nullptr,int removeDuplicate=1);
     void tagInsertBelow(bool edit=true,std::shared_ptr<teTag>newtag=nullptr,int removeDuplicate=1);
-    /// Keyboard shortcuts of the list; the view forwards its key events here.
-    void keyPressEvent(QKeyEvent *event);
     /// Long-form tags are edited in a plain text window.
     void onPlainTextEditStop(QString in_str);
     void onFileDeleted(tePictureFile*obj);
@@ -433,20 +378,22 @@ public:
     void cut();
     void paste();
 
-    // -- selection, addressed by tag core (the view owns the selection) --------
+    // -- selection, addressed by tag core --------------------------------------
     void setSelectCurrentCore(std::shared_ptr<teTag> core,bool ifclear=true);
     void setSelectCore(std::shared_ptr<teTag> core);
     int setUnselectCore(std::shared_ptr<teTag> core=nullptr);
     int setSelectRangeCore(std::shared_ptr<teTag> core,bool ifclear=true);
     bool isCoreSelected(std::shared_ptr<teTag> core) const;
     void ensureCoreVisible(std::shared_ptr<teTag> core);
+    /// Scrolls back to the top of the list.
+    void scrollToTop();
 
     // -- the magnified popup ---------------------------------------------------
-    /// The tag list this controller shows (used by the popup).
+    /// teTagDisplayOwner: the tag list currently shown.
     teTagList* shownList() const override { return showing_list; }
     /// teTagDisplayOwner: a click inside the view keeps the popup open.
     bool ownsWidget(QWidget* widget) const override {
-        return widget&&m_view&&(widget==m_view||m_view->isAncestorOf(widget));
+        return widget&&(widget==this||isAncestorOf(widget));
     }
     /// Right edge of the row showing `core`.
     QPoint tagDisplayAnchor(std::shared_ptr<teTag> core) const;
@@ -470,12 +417,17 @@ public slots:
 signals:
     void newlistloaded(teTagList*);
     void showinglistDestroyed();
+protected:
+    void dropEvent(QDropEvent* event) override;
+    void keyPressEvent(QKeyEvent* event) override;
+    /// Draws its own drag pixmap and, more importantly, does not let Qt remove
+    /// the dragged rows a second time (see the comment in the implementation).
+    void startDrag(Qt::DropActions supportedActions) override;
 private:
-    /// Creates the model and the delegate.
+    static void sortRows(QVector<int>& rows);
+    /// Creates the model, delegate, menu, plain text window and popup.
     void createModelAndDelegate();
-    /// Wires `view` up as this controller's view.
-    void adoptView(teTagListView* view);
-    /// Builds the context menu (it lives here: the view is only its parent).
+    /// Builds the context menu.
     void createMenu();
     /// Starts editing `row` (or opens the sentence window).
     void startEditingRow(int row);
@@ -487,10 +439,9 @@ private:
     void scheduleTagDisplayHide();
     void tagDisplayHideTick();
 
-    teTagListView* m_view=nullptr;
     teTagListModel* m_model=nullptr;
     teTagDelegate* m_delegate=nullptr;
-    /// Context menu (parented to the view) and its actions.
+    /// Context menu and its actions.
     QMenu* menu=nullptr;
     QAction *editAction=nullptr,*deleteAction=nullptr,*insertAction=nullptr,
             *insertBelowAction=nullptr,*cutAction=nullptr,*copyAction=nullptr,

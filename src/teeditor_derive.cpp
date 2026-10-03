@@ -87,7 +87,7 @@ QPushButton:checked:hover{
     background-color:rgba(60,130,235,255);
 }
 )");
-teEditor_custom::teEditor_custom(teTagListWidget*in_taglistwidget,QString&& name, QString* styleSheet, QWidget* parent):teEditor(in_taglistwidget,name, parent) {
+teEditor_custom::teEditor_custom(teTagListView*in_taglistwidget,QString&& name, QString* styleSheet, QWidget* parent):teEditor(in_taglistwidget,name, parent) {
     if(!styleSheet)
         setStyleSheet(teEditor_custom_style);
     QPushButton* newtagButton = new QPushButton("add custom tags");
@@ -215,7 +215,7 @@ background:transparent;
 QPushButton#editor_switch:checked{
 border:2px solid #008b46;
 })");
-teEditor_pretreat::teEditor_pretreat(teTagListWidget*in_taglistwidget,QString&& name, QString* styleSheet, QWidget* parent) :teEditor_standard(in_taglistwidget,name, &teEditor_pretreat_style, parent) {
+teEditor_pretreat::teEditor_pretreat(teTagListView*in_taglistwidget,QString&& name, QString* styleSheet, QWidget* parent) :teEditor_standard(in_taglistwidget,name, &teEditor_pretreat_style, parent) {
     QPushButton* girls_btn = new QPushButton;
     contentLayout->addWidget(girls_btn);
     QWidget* people_widget = new QWidget;
@@ -795,9 +795,9 @@ background:transparent;
 QPushButton#editor_switch:checked{
 border:2px solid #008b46;
 })");
-teEditor_hair_and_eyes::teEditor_hair_and_eyes(teTagListWidget*in_taglistwidget,QString &&name, QString *styleSheet, QWidget *parent):teEditor_standard(in_taglistwidget,name, &teEditor_hair_and_eyes_style, parent){
+teEditor_hair_and_eyes::teEditor_hair_and_eyes(teTagListView*in_taglistwidget,QString &&name, QString *styleSheet, QWidget *parent):teEditor_standard(in_taglistwidget,name, &teEditor_hair_and_eyes_style, parent){
     struct hair_and_eyes_color_list: teTagListControl{
-        hair_and_eyes_color_list(colorsWidget*in_onEdit_widget,teTagListWidget*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr)
+        hair_and_eyes_color_list(colorsWidget*in_onEdit_widget,teTagListView*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr)
             :teTagListControl(in_onEdit_widget,parentlist,parent,styleSheet,"color"){
             QPushButton*yellow_button=nullptr;
             auto&&color_buttons = ((colorsWidget*)onEdit_widget)->colors_buttongroup->buttons();
@@ -1314,7 +1314,7 @@ controls.push_back(two_side_up_cb);
 
 struct BangsList: teTagListControl{
     std::shared_ptr<teTag>editcore=nullptr;
-    BangsList(colorsWidget*in_onEdit_widget,teTagListWidget*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr)
+    BangsList(colorsWidget*in_onEdit_widget,teTagListView*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr)
         :teTagListControl(in_onEdit_widget,parentlist,parent,styleSheet,"bangs"){
         QPushButton*curtained_button=nullptr;
         auto&&bangs_buttons = ((colorsWidget*)onEdit_widget)->objectLayoutList[1].second->buttons();
@@ -1584,7 +1584,7 @@ bool looksLikeActionPhrase(const teTag& tag){
             return true;
     return false;
 }
-teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&name, QString *styleSheet, QWidget *parent):teEditor_standard(in_taglistwidget,name, &teEditor_clothes_style, parent){
+teEditor_clothes::teEditor_clothes(teTagListView*in_taglistwidget,QString &&name, QString *styleSheet, QWidget *parent):teEditor_standard(in_taglistwidget,name, &teEditor_clothes_style, parent){
     struct ClothesList: teTagListControl{
         std::shared_ptr<teTag> clothes_editing=nullptr;
         struct teClothes:public teObject{
@@ -1600,7 +1600,7 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
              * Every entry point checks this flag instead.
              */
             bool dead=false;
-            teTagListWidget*parentTagListWidget=nullptr;
+            teTagListView*parentTagListWidget=nullptr;
             std::shared_ptr<teTag>core=nullptr;
             QVector<teWord*>colors;
             QVector<teWord*>front_adjectives;
@@ -1608,7 +1608,7 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
             QVector<teWord*>back_adjectives;
             QVector<teWord*>exclusiveModifiers;
             QString type;
-            teClothes(std::shared_ptr<teTag>core,ClothesList*parent,teTagListWidget*in_parentTagListWidget):parentList(parent),parentTagListWidget(in_parentTagListWidget){
+            teClothes(std::shared_ptr<teTag>core,ClothesList*parent,teTagListView*in_parentTagListWidget):parentList(parent),parentTagListWidget(in_parentTagListWidget){
                 readCore(core);
                 core->teConnect(teCallbackType::edit,this,&teClothes::reReadClothes,core);
                 core->teConnect(teCallbackType::edit_with_layout,this,&teClothes::reReadClothes,core);
@@ -1955,7 +1955,7 @@ teEditor_clothes::teEditor_clothes(teTagListWidget*in_taglistwidget,QString &&na
             telog("[reReadClothes]:didn't find clothes object for input tag");
             return nullptr;
         }
-        ClothesList(colorsWidget*in_onEdit_widget,teTagListWidget*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr)
+        ClothesList(colorsWidget*in_onEdit_widget,teTagListView*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr)
             :teTagListControl(in_onEdit_widget,parentlist,parent,styleSheet,"clothes"){
             this->info=QStringLiteral("ClothesList");
             sc->setMinimumHeight(110);
@@ -2176,14 +2176,14 @@ background:transparent;
 QPushButton#editor_switch:checked{
 border:2px solid #008b46;
 })");
-teEditor_nsfw::teEditor_nsfw(teTagListWidget*in_taglistwidget,QString &&name, QString *styleSheet, QWidget *parent):teEditor_standard(in_taglistwidget,name, &teEditor_nsfw_style, parent){
+teEditor_nsfw::teEditor_nsfw(teTagListView*in_taglistwidget,QString &&name, QString *styleSheet, QWidget *parent):teEditor_standard(in_taglistwidget,name, &teEditor_nsfw_style, parent){
 
     static QSet<QString> object1 {qsl("cum"),qsl("erection"),qsl("tentacle"),qsl("egg"),qsl("slime"),qsl("worm"),qsl("insect")};
     static QSet<QString> bodyparts{qsl("pussy"),qsl("ass"),qsl("body"),qsl("face"),qsl("mouth"),qsl("breasts"),qsl("uterus"),qsl("clothes"),qsl("panties"),qsl("penis"),qsl("nipples"),qsl("urethra")};
     struct Object_list: teTagListControl{
         std::shared_ptr<teTag>editcore=nullptr;
 
-        Object_list(colorsWidget*in_onEdit_widget,teTagListWidget*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr)
+        Object_list(colorsWidget*in_onEdit_widget,teTagListView*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr)
             :teTagListControl(in_onEdit_widget,parentlist,parent,styleSheet,"object"){
             sc->setMinimumHeight(110);
         }

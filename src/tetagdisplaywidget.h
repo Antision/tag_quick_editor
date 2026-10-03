@@ -5,7 +5,7 @@
 class QFlowLayout;
 class QFlowLayoutReorderer;
 class teTagListWidgetBase;
-class teTagListWidget;
+class teTagListView;
 
 /**
  * @brief What teTagDisplayWidget needs from the list showing it.

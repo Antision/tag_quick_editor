@@ -12,15 +12,15 @@ class teEditor:public QFrame,public teObject{
 public:
     QString name;
     bool ifrun=true;
-    teEditor(teTagListWidget*in_taglistwidget,const QString& name,QWidget*parent=nullptr);
+    teEditor(teTagListView*in_taglistwidget,const QString& name,QWidget*parent=nullptr);
     QList<teEditorControl*>controls;
-    teTagListWidget*taglistwidget;
+    teTagListView*taglistwidget;
     teTagList*taglist=nullptr;
     virtual void reset();
     virtual bool read(std::shared_ptr<teTag>tag);
     virtual bool re_read(std::shared_ptr<teTag>tag);
     virtual void clear();
-    void setTagListWidget(teTagListWidget*listwidget);
+    void setTagListWidget(teTagListView*listwidget);
 };
 
 class teEditor_standard:public teEditor{
@@ -31,7 +31,7 @@ public:
     QHBoxLayout *titleLayout= new QHBoxLayout;
     QVBoxLayout *contentLayout = new QVBoxLayout;
     QVector<QWidget*>extraInterfaces;
-    teEditor_standard(teTagListWidget*in_taglistwidget,const QString& name,QString*styleSheet=nullptr,QWidget*parent=nullptr);
+    teEditor_standard(teTagListView*in_taglistwidget,const QString& name,QString*styleSheet=nullptr,QWidget*parent=nullptr);
     int showing_interface=0;
     virtual void showInterface(int index = 0);
     virtual void onSwitchToggled(bool state);
