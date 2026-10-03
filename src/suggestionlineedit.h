@@ -20,9 +20,18 @@ public:
     std::condition_variable_any lineEditUpdateMutexCV;
 
     suggestionLineEdit(QListWidget*suggestionBox,QWidget*parent=nullptr);
-    void hide(){
+    /**
+     * @brief Hides the suggestion box whenever the editor is hidden.
+     *
+     * QWidget::hide() is not virtual, so a hide() declared here would only be
+     * called when the pointer is a suggestionLineEdit - Qt hides the editor
+     * through a QWidget* when editing ends, which left the suggestion box
+     * floating on screen (even after switching pictures). hideEvent() is virtual
+     * and catches every path.
+     */
+    void hideEvent(QHideEvent* event) override {
         suggestionBox->hide();
-        QLineEdit::hide();
+        QLineEdit::hideEvent(event);
     }
     void moveSuggestionBox();
 

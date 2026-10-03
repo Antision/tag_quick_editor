@@ -304,6 +304,16 @@ class teTagListView : public QListView
     Q_OBJECT
 public:
     explicit teTagListView(QWidget* parent=nullptr):QListView(parent){}
+    /**
+     * @brief Moves the selected rows to where a drop at `viewportPos` would go.
+     *
+     * dropEvent() is only the plumbing around this; separating the two keeps the
+     * placement rule testable without a real drag (a synthetic QDropEvent sent to
+     * the viewport never reaches dropEvent()).
+     *
+     * @return false when there is nothing to move or the move changed nothing.
+     */
+    bool dropRowsAt(const QPoint& viewportPos);
 protected:
     void dropEvent(QDropEvent* event) override;
     /// Draws its own drag pixmap and, more importantly, does not let Qt remove

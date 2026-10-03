@@ -11,6 +11,20 @@ constexpr int kHorizontalMargin = 6;
 constexpr int kVerticalMargin = 4;
 constexpr int kGap = 6;          ///< distance to the tag the popup belongs to
 
+namespace {
+/// Scrolls `editor` so that its cursor sits in the middle of the viewport.
+void centerEditorCursor(QPlainTextEdit* editor)
+{
+    if(!editor)
+        return;
+    editor->centerCursor();                     // vertical part
+    QScrollBar* bar = editor->horizontalScrollBar();
+    // cursorRect() is in viewport coordinates, the scrollbar in content ones.
+    const int cursorInContent = editor->cursorRect().center().x()+bar->value();
+    bar->setValue(cursorInContent-editor->viewport()->width()/2);
+}
+}
+
 /// Opacity while the popup only follows the pointer: at full opacity it swallowed
 /// the clicks and wheel events meant for the list behind it.
 constexpr qreal kIdleOpacity = 0.3;
@@ -59,10 +73,13 @@ public:
 teTagDisplayWidget::teTagDisplayWidget(teTagListWidgetBase* owner)
     : teTagWidgetBase(), m_owner(owner)
 {
-    // A tool window: it floats above the main window, never takes focus and is
-    // not part of the window's z-order.
-    setWindowFlags(Qt::Tool|Qt::FramelessWindowHint|Qt::NoDropShadowWindowHint
-                   |Qt::WindowDoesNotAcceptFocus);
+    // A tool window: it floats above the main window, never takes focus by being
+    // shown and is not part of the window's z-order. It deliberately does *not*
+    // use Qt::WindowDoesNotAcceptFocus: that flag has to be removed and added
+    // again around editing, and changing a window flag re-parents the window,
+    // which hides the popup and every word in it. WA_ShowWithoutActivating keeps
+    // the focus where it is just as well.
+    setWindowFlags(Qt::Tool|Qt::FramelessWindowHint|Qt::NoDropShadowWindowHint);
     setAttribute(Qt::WA_ShowWithoutActivating);
     setObjectName(QStringLiteral("tagDisplay"));
     setFocusPolicy(Qt::StrongFocus);
@@ -146,13 +163,22 @@ void teTagDisplayWidget::load()
         word->setMaximumHeight(QWIDGETSIZE_MAX);       // undo the 27px tag-list cap
         word->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
         if (core->type == teTag::sentence) {
-            // A sentence cannot be reordered word by word, so it may as well wrap:
-            // without this a long sentence made the popup as wide as the text.
+            // A sentence cannot be reordered word by word, so it may as well wrap.
+            // A *fixed* width is what makes it work: with only min/max the flow
+            // layout still used the label's unwrapped sizeHint, so the popup grew
+            // to that width while the label stayed at the maximum - the text
+            // wrapped into the left half with the right half empty.
             word->setWordWrap(true);
-            word->setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Minimum);
-            word->setMaximumWidth(maxContentWidth() - 2*kHorizontalMargin);
+            word->setFixedWidth(maxContentWidth() - 2*kHorizontalMargin);
+            word->setAlignment(Qt::AlignLeft|Qt::AlignVCenter);
         }
-        word->show();
+        // While the inline editor is open it covers the popup: the words must not
+        // shine through below it (a wrapped tag would otherwise show its second
+        // and later lines next to the editor).
+        if (m_editor)
+            word->hide();
+        else
+            word->show();
         connect(word,&teWordWidgetBase::mouseDoubleClicked,this,[this](teWordWidgetBase* clicked){
             startEditing(clicked);
         });
@@ -236,6 +262,20 @@ void teTagDisplayWidget::setOpaque()
 
 bool teTagDisplayWidget::eventFilter(QObject* watched,QEvent* event)
 {
+    // Keys of the inline editor: Enter accepts, Escape cancels. A QPlainTextEdit
+    // would otherwise insert a newline.
+    if (m_editor&&watched==m_editor&&event->type()==QEvent::KeyPress){
+        const int key = static_cast<QKeyEvent*>(event)->key();
+        if (key==Qt::Key_Return||key==Qt::Key_Enter){
+            finishEditing(true);
+            return true;
+        }
+        if (key==Qt::Key_Escape){
+            finishEditing(false);
+            return true;
+        }
+        return QWidget::eventFilter(watched,event);
+    }
     if (event->type()!=QEvent::MouseButtonPress&&event->type()!=QEvent::Wheel)
         return QWidget::eventFilter(watched,event);
     const QPoint global = (event->type()==QEvent::MouseButtonPress)
@@ -394,23 +434,32 @@ void teTagDisplayWidget::startEditing(teWordWidgetBase* clickedWord)
         return;
     }
     setOpaque();                                // editing: do not dim the text
-    // The popup is created as a tool window that never takes the focus (so it
-    // does not steal it from the list). While its inline editor is open it has to
-    // accept the focus, otherwise the line edit has no caret and cannot be typed
-    // into - which is exactly what happened.
-    setAttribute(Qt::WA_ShowWithoutActivating,false);
-    setWindowFlag(Qt::WindowDoesNotAcceptFocus,false);
-    show();
+    // The editor needs the keyboard focus: the popup is shown without activating
+    // (that is what kept the focus in the list), so it asks for it explicitly now.
     activateWindow();
 
-    m_editor = new QLineEdit(this);
-    m_editor->setStyleSheet(QStringLiteral("QLineEdit{font:%1pt \"Segoe UI\";color:white;"
-                                           "background-color:#101010;border:1px solid #12b594;}")
-                                .arg(displayPointSize()));
-    m_editor->setText(*core);
-    m_editor->setGeometry(rect().adjusted(2,2,-2,-2));
-    m_editor->show();
-    m_editor->setFocus();
+    // A QPlainTextEdit, not a QLineEdit: QLineEdit always scrolls to the very
+    // right end of the text, so a word clicked late in a long tag ended up
+    // squeezed against the right border. centerCursor() puts it in the middle,
+    // which is what makes editing a long tag bearable.
+    auto* editor = new QPlainTextEdit(this);
+    m_editor = editor;
+    editor->setStyleSheet(QStringLiteral("QPlainTextEdit{font:%1pt \"Segoe UI\";color:white;"
+                                         "background-color:#101010;border:1px solid #12b594;}")
+                              .arg(displayPointSize()));
+    editor->setLineWrapMode(QPlainTextEdit::NoWrap);
+    editor->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    editor->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    editor->setFrameShape(QFrame::NoFrame);
+    editor->setPlainText(*core);
+    const QFontMetrics metrics(editor->font());
+    editor->setGeometry(QRect(rect().left()+2,rect().top()+2,
+                             std::max(40,rect().width()-4),metrics.height()+8));
+    editor->show();
+    editor->setFocus();
+    editor->installEventFilter(this);           // Enter accepts, Escape cancels
+    // The editor covers the whole popup, so the words go away while it is open.
+    hideWordWidgets();
 
     int index = -1;
     if (clickedWord && clickedWord->core) {
@@ -421,34 +470,40 @@ void teTagDisplayWidget::startEditing(teWordWidgetBase* clickedWord)
             }
         }
     }
-    if (index >= 0)
-        m_editor->setSelection(wordOffsetInText(index),clickedWord->core->text.size());
-    else
-        m_editor->selectAll();
-
-    connect(m_editor,&QLineEdit::returnPressed,this,[this]{ finishEditing(true); });
-    connect(m_editor,&QLineEdit::editingFinished,this,[this]{ finishEditing(true); });
+    QTextCursor cursor = editor->textCursor();
+    if (index >= 0) {
+        const int start = wordOffsetInText(index);
+        cursor.setPosition(start);
+        cursor.setPosition(start+clickedWord->core->text.size(),QTextCursor::KeepAnchor);
+    }else{
+        cursor.select(QTextCursor::Document);   // the whole tag
+    }
+    editor->setTextCursor(cursor);
+    // Put the clicked word in the middle of the view. centerCursor() only centers
+    // vertically (it is meant for typewriter scrolling), so the horizontal part is
+    // done on the scrollbar - and again on the next event loop turn, because the
+    // scrollbars only exist once the editor has been laid out.
+    centerEditorCursor(editor);
+    QTimer::singleShot(0,editor,[editor]{
+        centerEditorCursor(editor);
+    });
 }
 
 void teTagDisplayWidget::finishEditing(bool accept)
 {
     if (!m_editor)
         return;
-    QLineEdit* editor = m_editor;
+    QPlainTextEdit* editor = m_editor;
     m_editor = nullptr;                     // never re-enter through the signals
+    editor->removeEventFilter(this);
     editor->disconnect(this);
-    const QString text = editor->text();
+    const QString text = editor->toPlainText();
     editor->hide();
     editor->deleteLater();
+    showWordWidgets();                      // the words are back (editor is gone)
 
     if (accept && core && m_owner && text != static_cast<QString>(*core) && isCoreStillListed())
         m_owner->tagEdit(core,text);        // dedupe + undo + editors, all in one place
-
-    // Back to "never takes the focus", so the next click goes to the list.
-    setWindowFlag(Qt::WindowDoesNotAcceptFocus,true);
-    setAttribute(Qt::WA_ShowWithoutActivating,true);
-    if (isVisible())
-        show();
 }
 
 int teTagDisplayWidget::wordOffsetInText(int index) const
@@ -482,6 +537,18 @@ void teTagDisplayWidget::worddroped(teWordWidgetBase* in_word,int xpos)
     // Word order is maintained by the flow layout reorderer; the tag list's
     // geometry based reordering cannot work across wrapped lines.
     syncWordOrderFromLayout();
+}
+
+void teTagDisplayWidget::hideWordWidgets()
+{
+    for (teWordWidgetBase* word : findChildren<teWordWidgetBase*>())
+        word->hide();
+}
+
+void teTagDisplayWidget::showWordWidgets()
+{
+    for (teWordWidgetBase* word : findChildren<teWordWidgetBase*>())
+        word->show();
 }
 
 void teTagDisplayWidget::syncWordOrderFromLayout()

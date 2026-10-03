@@ -126,6 +126,14 @@ public:
     bool isEditingRow(int row) const {
         return m_activeEditor&&m_activeEditor->isVisible()&&m_editingRow==row;
     }
+    /// Ends editing right now: hides the editor - and with it the suggestion box,
+    /// see suggestionLineEdit::hideEvent - and forgets the row.
+    void stopEditing() const {
+        if(m_editor)
+            m_editor->hide();
+        m_editingRow=-1;
+        m_activeEditor=nullptr;
+    }
 
     void paint(QPainter* painter,const QStyleOptionViewItem& option,const QModelIndex& index) const override;
     QSize sizeHint(const QStyleOptionViewItem& option,const QModelIndex& index) const override;

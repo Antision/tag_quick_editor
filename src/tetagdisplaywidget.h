@@ -80,6 +80,10 @@ private:
     void placeNextTo(const QPoint& globalMousePos);
     /// Widest the popup (and a wrapped sentence word) may become.
     int maxContentWidth() const;
+    /// Hides the words while the inline editor covers the popup, and brings them
+    /// back when it closes.
+    void hideWordWidgets();
+    void showWordWidgets();
     /// Translucent while it only hangs next to the pointer (clicks and the wheel
     /// must reach the list behind it); opaque once it is being used.
     void showIdle();
@@ -91,7 +95,7 @@ private:
     bool m_watching=false;
     QFlowLayout* m_flow=nullptr;
     QFlowLayoutReorderer* m_wordReorderer=nullptr;
-    QLineEdit* m_editor=nullptr;
+    QPlainTextEdit* m_editor=nullptr;
     QPoint m_pressGlobal;
     int m_grabOffsetY=0;
     bool m_draggingTag=false;

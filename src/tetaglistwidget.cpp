@@ -351,18 +351,26 @@ int teTagListWidget::setSelectRange(teTagWidgetBase *in,bool ifclear){
 }
 
 QString teTagListWidget::getSelectText(){
-    QString result;
-    if(!m_model||!m_view)
-        return result;
-    QModelIndexList rows = m_view->selectionModel()->selectedRows();
-    std::sort(rows.begin(),rows.end(),[](const QModelIndex&a,const QModelIndex&b){return a.row()<b.row();});
-    if(rows.isEmpty()&&m_view->currentIndex().isValid())
-        rows.append(m_view->currentIndex());        // nothing selected: the current row
-    for(const QModelIndex& index:rows){
-        if(teTag* raw = index.data(teTagListModel::TagCoreRole).value<teTag*>())
-            result += static_cast<QString>(*raw)+"\n";
+    // The clipboard has to carry exactly what saving the caption would write:
+    // tags joined with ", ", sentences on their own line, brackets kept glued to
+    // their word. Joining the rows with newlines (as this used to do) loses all
+    // of that. The widget based list already uses the same serializer.
+    QVector<std::shared_ptr<teTag>> cores;
+    if(m_model&&m_view){
+        QModelIndexList rows = m_view->selectionModel()->selectedRows();
+        std::sort(rows.begin(),rows.end(),[](const QModelIndex&a,const QModelIndex&b){return a.row()<b.row();});
+        if(rows.isEmpty()&&m_view->currentIndex().isValid())
+            rows.append(m_view->currentIndex());    // nothing selected: the current row
+        cores.reserve(rows.size());
+        for(const QModelIndex& index:rows){
+            if(teTag* raw = index.data(teTagListModel::TagCoreRole).value<teTag*>())
+                if(showing_list)
+                    cores.push_back(showing_list->shareAt(index.row()));
+        }
     }
-    return result;
+    return serializePieces(cores.size(),[&](int i) -> std::shared_ptr<teTag> {
+        return cores[i];
+    },true);
 }
 
 bool teTagListWidgetBase::isSelected(teTagWidgetBase *in){
@@ -827,6 +835,11 @@ void teTagListWidget::loadFile(tePictureFile *f)
 
 void teTagListWidget::clear(teTagList *in){
     hideTagDisplay();
+    // Editing state of the view's inline editor belongs to the old list: end it,
+    // otherwise its suggestion box outlives the picture (the editor is hidden by
+    // Qt through a QWidget*, which used to leave the box on screen).
+    if(m_delegate)
+        m_delegate->stopEditing();
     if(lineedit->lineeditfocusflag){
         lineedit->stop();
     }
@@ -1137,30 +1150,34 @@ teTagListWidget::teTagListWidget(QWidget *parent)
 
 void teTagListView::dropEvent(QDropEvent* event)
 {
-    auto* tagModel = qobject_cast<teTagListModel*>(model());
-    if(!tagModel){
-        QListView::dropEvent(event);
+    if(!dropRowsAt(event->position().toPoint())){
+        event->ignore();
         return;
     }
+    event->accept();
+}
+
+bool teTagListView::dropRowsAt(const QPoint& viewportPos)
+{
+    auto* tagModel = qobject_cast<teTagListModel*>(model());
+    if(!tagModel)
+        return false;
     QVector<int> rows;
     for(const QModelIndex& index:selectionModel()->selectedRows())
         rows.append(index.row());
-    if(rows.isEmpty()){
-        event->ignore();
-        return;
-    }
-    // Bias the position by half a row, so dropping *on* a row works and a drop
-    // between two rows is unambiguous (same as the multi tag list).
+    if(rows.isEmpty())
+        return false;
+    // Bias the position by half a row: dropping above a row's middle inserts
+    // before it, below inserts after it. That is exactly the rule Qt uses to draw
+    // its drop indicator, so the drop lands where the line is drawn - including
+    // between two tags.
     auto* tagDelegate = qobject_cast<teTagDelegate*>(itemDelegate());
     const int rowHeight = tagDelegate?tagDelegate->rowHeight():30;
-    const QPoint pos(event->position().toPoint().x(),
-                     event->position().toPoint().y()+rowHeight/2);
+    const QPoint pos(viewportPos.x(),viewportPos.y()+rowHeight/2);
     const QModelIndex target = indexAt(pos);
     const int dropRow = target.isValid()?target.row():tagModel->rowCount();
-    if(!tagModel->moveTags(rows,dropRow)){
-        event->ignore();
-        return;
-    }
+    if(!tagModel->moveTags(rows,dropRow))
+        return false;
     // Keep the moved rows selected.
     sortRows(rows);
     selectionModel()->clearSelection();
@@ -1173,7 +1190,7 @@ void teTagListView::dropEvent(QDropEvent* event)
         selectionModel()->select(tagModel->index(first+i,0),
                                  QItemSelectionModel::Select|QItemSelectionModel::Rows);
     setCurrentIndex(tagModel->index(first,0));
-    event->accept();
+    return true;
 }
 
 void teTagListView::sortRows(QVector<int>& rows)

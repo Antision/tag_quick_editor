@@ -118,8 +118,11 @@ bool teTagListModel::setData(const QModelIndex& index,const QVariant& value,int 
 
 Qt::ItemFlags teTagListModel::flags(const QModelIndex& index) const
 {
+    // The invalid index stands for the list itself, and it has to accept drops:
+    // dropping *between* two tags is a drop on the parent, so returning
+    // NoItemFlags here made Qt refuse every drop that was not *onto* a tag.
     if(!index.isValid())
-        return Qt::NoItemFlags;
+        return Qt::ItemIsDropEnabled;
     return Qt::ItemIsSelectable|Qt::ItemIsEnabled|Qt::ItemIsEditable
            |Qt::ItemIsDragEnabled|Qt::ItemIsDropEnabled;
 }
