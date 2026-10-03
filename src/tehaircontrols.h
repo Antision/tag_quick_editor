@@ -233,17 +233,29 @@
                     if(*in_tag->words[i]==qsl("streaked"))
                         streaked_btn->setChecked(true);
                 connect(streaked_btn,&QPushButton::clicked,widget,[in_tag, streaked_btn, this](bool ifchecked){
+                    auto* editorTag=tagWidgetFor(in_tag);
                     if(ifchecked){
-                        if(in_tag->contains("streaked")){
-                            streaked_btn->setChecked(false);
-                            return;
-                        }
-                        if(auto* editorTag=tagWidgetFor(in_tag)) editorTag->insertWord(-2,qsl("streaked"));
+                        if(in_tag->contains(qsl("streaked")))
+                            return;                 // already there: never add a second one
+                        if(editorTag)
+                            editorTag->insertWord(-2,qsl("streaked"));
                     }else{
-                        int wordcount = in_tag->words.size();
-                        for(int i =0;i<wordcount;++i)
-                            if(*in_tag->words[i]==qsl("streaked"))
-                            {if(auto* editorTag=tagWidgetFor(in_tag)) editorTag->destroyWord(i);--i;--wordcount;}
+                        // Remove without signalling between the steps: every
+                        // destroyWord() re-enters this control, which rebuilds the
+                        // tag's words (same defect as the clothes "hair" button).
+                        bool removed=false;
+                        for(int i=in_tag->words.size()-1;i>=0;--i)
+                            if(*in_tag->words[i]==qsl("streaked")){
+                                if(editorTag)
+                                    editorTag->destroyWord(i,false);
+                                else{
+                                    delete in_tag->words[i];
+                                    in_tag->words.erase(in_tag->words.begin()+i);
+                                }
+                                removed=true;
+                            }
+                        if(removed)
+                            in_tag->edited_with_layout();
                     }
                     if(in_tag->retired)
                         taglistwidget->tagErase(in_tag);
@@ -257,17 +269,28 @@
                     if(*in_tag->words[i]==qsl("gradient"))
                         gradient_btn->setChecked(true);
                 connect(gradient_btn,&QPushButton::clicked,widget,[in_tag, this, gradient_btn](bool ifchecked){
+                    auto* editorTag=tagWidgetFor(in_tag);
                     if(ifchecked){
-                        if(in_tag->contains("gradient")){
-                            gradient_btn->setChecked(false);
-                            return;
-                        }
-                        if(auto* editorTag=tagWidgetFor(in_tag)) editorTag->insertWord(-2,qsl("gradient"));
+                        if(in_tag->contains(qsl("gradient")))
+                            return;                 // already there: never a second one
+                        if(editorTag)
+                            editorTag->insertWord(-2,qsl("gradient"));
                     }else{
-                        int wordcount = in_tag->words.size();
-                        for(int i =0;i<wordcount;++i)
-                            if(*in_tag->words[i]==qsl("gradient"))
-                            {if(auto* editorTag=tagWidgetFor(in_tag)) editorTag->destroyWord(i);--i;--wordcount;}
+                        // See the "streaked" button above: no signalling between the
+                        // removals, one announcement at the end.
+                        bool removed=false;
+                        for(int i=in_tag->words.size()-1;i>=0;--i)
+                            if(*in_tag->words[i]==qsl("gradient")){
+                                if(editorTag)
+                                    editorTag->destroyWord(i,false);
+                                else{
+                                    delete in_tag->words[i];
+                                    in_tag->words.erase(in_tag->words.begin()+i);
+                                }
+                                removed=true;
+                            }
+                        if(removed)
+                            in_tag->edited_with_layout();
                     }
                     if(in_tag->retired)
                         taglistwidget->tagErase(in_tag);

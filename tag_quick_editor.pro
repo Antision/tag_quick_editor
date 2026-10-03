@@ -59,6 +59,12 @@ HEADERS += \
     src/teeditor.h \
     src/teeditor_derive.h \
     src/teeditorcontrol.h \
+    src/teclothescontrol.h \
+    src/tefacecontrols.h \
+    src/tebodycontrols.h \
+    src/tehaircontrols.h \
+    src/temisccontrols.h \
+    src/teeditorhelpers.h \
     src/teeditorlist.h \
     src/teeditorlistpageview.h \
     src/teimagewidget.h \

@@ -663,6 +663,16 @@ public:
 
     /// Removes and destroys the tag at `id`. Out-of-range ids are ignored.
     void erase(int id);
+    /**
+     * @brief Takes the tag out of the list *without* announcing it.
+     *
+     * The undo step is recorded, but no signal and no callback runs, so the
+     * caller can finish its own structural change first and then call
+     * notifyErased(). See the comment in the implementation.
+     */
+    std::shared_ptr<teTag> takeErased(int id);
+    /// Announces an erase that takeErased() already performed.
+    void notifyErased(std::shared_ptr<teTag> core,int id,bool ifemit=true);
     void erase(std::shared_ptr<teTag>core){
         const int index = tags.indexOf(core);
         if(index<0){

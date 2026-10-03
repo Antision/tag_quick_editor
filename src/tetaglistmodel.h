@@ -1,6 +1,7 @@
 #ifndef TETAGLISTMODEL_H
 #define TETAGLISTMODEL_H
 #include "tetag.h"
+#include <functional>
 
 /**
  * @brief QAbstractListModel over a teTagList: one row per tag.
@@ -100,6 +101,39 @@ private:
     /// True while this model itself changes the list, so its own signals are not
     /// mistaken for an external change.
     bool m_selfMutation=false;
+    /**
+     * @brief Re-entrancy protection for structural changes.
+     *
+     * eraseTag()/insertTag() announce the change to the *editors* once the model
+     * is consistent again, and an editor (the clothes or hair control) may merge
+     * while doing so - which erases another tag. Such a nested structural change
+     * inside beginRemoveRows()/endRemoveRows() corrupts Qt's persistent index
+     * bookkeeping: it used to end in
+     * "Q_ASSERT_X(removed == 1, ...persistent model indexes corrupted)" as soon
+     * as a tag was deleted after a merge. The nested request is queued here and
+     * run by flushPendingMutations() once the outermost change has finished.
+     */
+    int m_mutationDepth=0;
+    bool m_pendingReset=false;
+    QVector<std::function<void()>> m_pendingMutations;
+    /**
+     * @brief RAII counter for one structural change.
+     *
+     * A nested class, so it can touch the counters above without widening the
+     * model's API. The outermost guard flushes whatever the change queued.
+     */
+    struct MutationGuard{
+        explicit MutationGuard(teTagListModel* model)
+            :m(model),nested(model->m_mutationDepth>0){ ++m->m_mutationDepth; }
+        ~MutationGuard(){
+            --m->m_mutationDepth;
+            if(!nested)
+                m->flushPendingMutations();
+        }
+        teTagListModel* m;
+        bool nested;
+    };
+    void flushPendingMutations();
     teTagList* m_list=nullptr;
 };
 

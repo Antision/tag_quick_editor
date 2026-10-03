@@ -150,6 +150,15 @@ int teTagListModel::insertTag(int row,std::shared_ptr<teTag> tag,int removeDupli
         return -1;
     if(tag->retired)
         return -1;
+    if(m_mutationDepth>0){
+        // A merge (or another structural change) asked for this while an outer
+        // change is still announcing itself: queue it, see m_mutationDepth.
+        m_pendingMutations.push_back([this,row,tag,removeDuplicate]{
+            insertTag(row,tag,removeDuplicate);
+        });
+        return 0;
+    }
+    MutationGuard guard(this);
     // Refuse before announcing anything: the old widget based code announced the
     // insertion first and then had to take it back.
     if(removeDuplicate==1&&m_list->remove_duplicate(tag,false))
@@ -181,11 +190,32 @@ bool teTagListModel::eraseTag(int row)
 {
     if(!m_list||row<0||row>=int(m_list->size()))
         return false;
+    if(m_mutationDepth>0){
+        // Same as insertTag(): run it once the outer change is consistent.
+        const std::shared_ptr<teTag> tag = m_list->shareAt(row);
+        m_pendingMutations.push_back([this,tag]{
+            if(!m_list||!tag)
+                return;
+            const int at = rowOf(tag.get());
+            if(at>=0)
+                eraseTag(at);
+        });
+        return true;
+    }
+    MutationGuard guard(this);
+    const std::shared_ptr<teTag> tag = m_list->shareAt(row);
     beginRemoveRows(QModelIndex(),row,row);
     m_selfMutation=true;
-    m_list->erase(row);
+    // Erase *without* the list announcing it (takeErased records the undo step
+    // only): the announcement runs the editors, and a merge there erases further
+    // tags. That is what corrupted the persistent indexes; notifyErased() below
+    // runs the editors once this removal is complete, and any nested request is
+    // queued (see m_mutationDepth).
+    m_list->takeErased(row);
     m_selfMutation=false;
     endRemoveRows();
+    if(tag)
+        m_list->notifyErased(tag,row,m_list->isTagsLoaded);
     return true;
 }
 
@@ -335,10 +365,38 @@ QMimeData* teTagListModel::mimeData(const QModelIndexList& indexes) const
 void teTagListModel::notifyExternalReorder(){
     if(!m_list)
         return;
+    if(m_mutationDepth>0){
+        // Reordering (or announcing a reset) inside somebody else's structural
+        // change would corrupt the view's bookkeeping just the same.
+        m_pendingReset=true;
+        return;
+    }
     // No signal tells us *how* the order changed, so announce a layout change;
     // it keeps the persistent indexes valid, unlike a reset.
     emit layoutAboutToBeChanged();
     emit layoutChanged();
+}
+
+void teTagListModel::flushPendingMutations()
+{
+    // Runs at depth 0, so a queued change is a normal one again. It may queue
+    // more work (a merge erases a tag, the editors react by merging again), so
+    // loop until quiet - with a bound, because a misbehaving editor must not hang
+    // the UI thread.
+    for(int round=0;round<32;++round){
+        if(m_pendingReset){
+            m_pendingReset=false;
+            beginResetModel();
+            endResetModel();
+        }
+        if(m_pendingMutations.isEmpty())
+            return;
+        const QVector<std::function<void()>> batch = m_pendingMutations;
+        m_pendingMutations.clear();
+        for(const std::function<void()>& call:batch)
+            call();
+    }
+    telog("[teTagListModel] pending structural changes did not settle (32 rounds)");
 }
 
 void teTagListModel::onListInserted(std::shared_ptr<teTag> tag)
@@ -346,6 +404,12 @@ void teTagListModel::onListInserted(std::shared_ptr<teTag> tag)
     Q_UNUSED(tag);
     if(m_selfMutation)
         return;
+    if(m_mutationDepth>0){
+        // An editor inserted a tag while another change is being announced: a
+        // reset here would corrupt that change. Do it once we are consistent.
+        m_pendingReset=true;
+        return;
+    }
     // Somebody inserted behind our back (editing a multi selection inserts the
     // tag into every selected image). The row already exists, so a proper
     // beginInsertRows() is not possible any more; a reset is the honest answer
@@ -359,6 +423,10 @@ void teTagListModel::onListErased(std::shared_ptr<teTag> tag)
     Q_UNUSED(tag);
     if(m_selfMutation)
         return;
+    if(m_mutationDepth>0){
+        m_pendingReset=true;
+        return;
+    }
     beginResetModel();
     endResetModel();
 }

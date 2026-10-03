@@ -22,7 +22,7 @@ bool is_shade(const QString& shade_word){
 }
 QStringList editorNames{qsl("custom"),qsl("pretreat"),qsl("hair and eyes"),qsl("clothes"),qsl("nsfw")};
 
-QPair<int,int> is_color(teTag& tag,int offset) {
+QPair<int,int> is_color(const teTag& tag,int offset) {
     int index;
     int size = tag.words.size();
     for (index = offset; index < size; ++index) {

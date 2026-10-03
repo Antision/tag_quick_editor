@@ -15,7 +15,9 @@ extern QSet<QString> all_colors;
 
 bool is_color(const QString& color_word);
 QStringList extract_colors(std::shared_ptr<teTag> tag);
-QPair<int,int> is_color(teTag& tag,int offset=0);
+/// The colour slot of a tag: (index of the first colour word, how many words it
+/// spans - a shade such as "light" in front of it belongs to the slot).
+QPair<int,int> is_color(const teTag& tag,int offset=0);
 
 /// Prepositions that turn a clothes tag into an action phrase.
 inline const QSet<QString> preposwords{

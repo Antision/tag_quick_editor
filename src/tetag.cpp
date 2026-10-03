@@ -298,17 +298,42 @@ bool teTagList::remove_duplicate(std::shared_ptr<teTag> tag, bool keepself)
     return ret;
 }
 
-void teTagList::erase(int id)
+std::shared_ptr<teTag> teTagList::takeErased(int id)
 {
     std::lock_guard<std::recursive_mutex> lg(tagsMt);
     if (id < 0 || id >= tags.size()) {
         telog(QString("[teTagList::erase] index %1 out of range (size %2)").arg(id).arg(tags.size()));
-        return;
+        return nullptr;
     }
     std::shared_ptr<teTag> core = tags.takeAt(id);
-    onTagErased(core, id, isTagsLoaded);
+    // The undo step is recorded now, but nothing is announced: the announcement
+    // (notifyErased) runs the editors, and an editor may merge - which erases
+    // further tags. That must not happen while a model sits between
+    // beginRemoveRows() and endRemoveRows(): a nested structural change there
+    // corrupts Qt's persistent indexes (the "persistent model indexes corrupted"
+    // assert). The model calls notifyErased() once it is consistent again.
+    onTagErased(core, id, false);
+    return core;
+}
+
+void teTagList::notifyErased(std::shared_ptr<teTag> core,int id,bool ifemit)
+{
+    Q_UNUSED(id);
+    if(!core)
+        return;
+    if(ifemit){
+        emit tagErased(core);
+        teemit(teCallbackType::edit);
+    }
     core->teDisconnect(this);
     core->teemit(teCallbackType::destroy, false);
+}
+
+void teTagList::erase(int id)
+{
+    std::shared_ptr<teTag> core = takeErased(id);
+    if(core)
+        notifyErased(core,id,isTagsLoaded);
 }
 
 int teTagList::edit(std::shared_ptr<teTag> core, QString text, int removeDuplicate, bool ifemit)

@@ -66,10 +66,10 @@ inline bool sameClothesType(const QString& a,const QString& b){
 }
 
 /// True when `type` is one of the generic words (which never survive a merge).
-bool isGenericClothesType(const QString& type){
+inline bool isGenericClothesType(const QString& type){
     return genericClothesTypes.contains(type);
 }
-std::multimap<QString, QString> prefix_back{
+inline std::multimap<QString, QString> prefix_back{
     {qsl("dress"),qsl("wedding")},
     {qsl("waist"),qsl("apron")},
     {qsl("bikini"),qsl("one-piece")},
@@ -78,7 +78,7 @@ std::multimap<QString, QString> prefix_back{
     {qsl(""),qsl("sleeveless")},
     { qsl("dress"),qsl("china") }
 };
-std::multimap<QString, QString> prefix_front{
+inline std::multimap<QString, QString> prefix_front{
     {qsl(""),qsl("torn")},
     {qsl(""),qsl("detached")},
     {qsl(""),qsl("unworn")},
@@ -86,7 +86,8 @@ std::multimap<QString, QString> prefix_front{
     {qsl(""),qsl("long")},
     {qsl(""),qsl("frilled")}
 };
-QVector<QSet<QString>> exclusiveModifierGroups{
+/// Groups of words that may not appear together in one clothes tag.
+inline QVector<QSet<QString>> exclusiveModifierGroups{
 
 };
 
@@ -103,6 +104,165 @@ inline bool looksLikeActionPhrase(const teTag& tag){
     const int last = tag.words.size()-1;
     for(int i=0;i<last;++i)
         if(preposwords.contains(tag.words[i]->text))
+            return true;
+    return false;
+}
+
+/**
+ * @brief Which part of a clothes tag a word is.
+ *
+ * The clothes editor spends most of its logic on this classification: a tag is
+ * "colours + front adjectives + adjectives + type", and the canonical order of
+ * those parts is what the editor rewrites a tag into.
+ */
+enum class ClothesRole { Colour, FrontAdjective, Adjective, BackAdjective, Type };
+
+/**
+ * @brief True when `adj` is listed for `type` (or for every type) in `map`.
+ *
+ * Pure lookup; the maps are prefix_front / prefix_back below.
+ */
+inline bool findInPrefixMap(const std::multimap<QString,QString>& map,
+                            const QString& type,const QString& adj){
+    auto range = map.equal_range(type);
+    for(auto it=range.first;it!=range.second;++it)
+        if(adj==it->second)
+            return true;
+    auto general = map.equal_range(qsl(""));
+    for(auto it=general.first;it!=general.second;++it)
+        if(adj==it->second)
+            return true;
+    return false;
+}
+
+/**
+ * @brief The role of word `index` of a clothes tag.
+ *
+ * This is the per word form: readCore() walks a tag word by word and calls this,
+ * so nothing is allocated on that path. classifyClothesWords() is the whole tag
+ * form used by the regression harness.
+ *
+ * prefix_back is honoured here (it was not, until the vocabulary owner asked for
+ * it: the lookup used to always query prefix_front, so words such as "wedding"
+ * or "one-piece" never reached back_adjectives and a tag like "wedding lace
+ * dress" kept its word order instead of being sorted to "lace wedding dress").
+ */
+inline ClothesRole clothesRoleAt(const teTag& tag,int index,const QString& type,
+                                 const QPair<int,int>& colorSlot){
+    if(index>=colorSlot.first&&index<colorSlot.first+colorSlot.second)
+        return ClothesRole::Colour;
+    if(index>=0&&index<tag.words.size()){
+        const QString& text = tag.words[index]->text;
+        if(findInPrefixMap(prefix_front,type,text))
+            return ClothesRole::FrontAdjective;
+        if(findInPrefixMap(prefix_back,type,text))
+            return ClothesRole::BackAdjective;
+    }
+    return ClothesRole::Adjective;
+}
+
+/**
+ * @brief The role of every word of `tag`, in tag order (last one is the type).
+ *
+ * Pure: it reads the tag and the prefix tables and nothing else, so the clothes
+ * rules can finally be checked in the regression harness - they used to be
+ * reachable only by opening the window and looking at it.
+ */
+inline QVector<ClothesRole> classifyClothesWords(const teTag& tag){
+    QVector<ClothesRole> roles;
+    if(tag.words.isEmpty())
+        return roles;
+    roles.reserve(tag.words.size());
+    const QString type = tag.words.back()->text;
+    const auto colorSlot = is_color(tag);
+    const int count = tag.words.size()-1;
+    for(int i=0;i<count;++i)
+        roles.push_back(clothesRoleAt(tag,i,type,colorSlot));
+    roles.push_back(ClothesRole::Type);
+    return roles;
+}
+
+/**
+ * @brief The tag text a clothes wrapper stands for.
+ *
+ * Pure: colours, front adjectives, adjectives, back adjectives, then the type.
+ * It used to be a method that read the wrapper's members, so nothing but the
+ * window could check what a wrapper would write back into a tag.
+ */
+inline QString clothesText(const QVector<teWord*>& colors,const QVector<teWord*>& front_adjectives,
+                           const QVector<teWord*>& adjectives,const QVector<teWord*>& back_adjectives,
+                           const QString& type){
+    QString final;
+    for(teWord*wd:colors)
+        final.append(wd->text + qsl(" "));
+    for(teWord*wd:front_adjectives)
+        final.append(wd->text + qsl(" "));
+    for(teWord*wd:adjectives)
+        final.append(wd->text + qsl(" "));
+    for(teWord*wd:back_adjectives)
+        final.append(wd->text + qsl(" "));
+    final.append(type);
+    return final;
+}
+
+/// Just the adjectives of a clothes tag, in the order the wrapper stores them.
+inline QStringList clothesAdjectives(const QVector<teWord*>& front_adjectives,
+                                     const QVector<teWord*>& adjectives,
+                                     const QVector<teWord*>& back_adjectives){
+    QStringList final;
+    for(teWord*wd:front_adjectives)
+        final.append(wd->text);
+    for(teWord*wd:adjectives)
+        final.append(wd->text);
+    for(teWord*wd:back_adjectives)
+        final.append(wd->text);
+    return final;
+}
+
+/**
+ * @brief True when `incoming` may be merged into a tag that looks like this.
+ *
+ * The garment has to be the same (sameClothesType handles the generic words) and
+ * the colours have to agree: "red dress" and "blue dress" stay apart, "red
+ * dress" and "red torn dress" merge. Pure, so the merge *rules* - which used to
+ * be reachable only by typing two tags into the window - can be checked.
+ */
+inline bool clothesMergeable(const QString& type,const QVector<teWord*>& colors,const teTag& incoming){
+    if(type.isEmpty()||incoming.words.isEmpty())
+        return false;
+    if(!sameClothesType(incoming.words.back()->text,type))
+        return false;
+    const auto [colorpos,colorcount] = is_color(incoming);
+    if(colorcount>0&&!colors.isEmpty()){
+        if(colorcount!=colors.count())
+            return false;
+        for(int i=0;i<colorcount;++i)
+            if(incoming.words[i+colorpos]->text!=colors[i]->text)
+                return false;
+    }
+    return true;
+}
+
+/// Words that make a clothes tag a *state* rather than a garment.
+inline const QSet<QString>& clothesStateModifiers(){
+    static const QSet<QString> words{
+        qsl("no"),qsl("without"),qsl("unworn"),qsl("open")
+    };
+    return words;
+}
+
+/**
+ * @brief True when the tag carries such a modifier.
+ *
+ * "no shoes", "top without sleeves", "unworn panties", "open jacket" describe a
+ * state, so they must not take part in a clothes merge in either direction - the
+ * same idea as the action phrases ("... through panties") that filter() keeps out
+ * of the control. Unlike those, these tags *are* clothes tags and stay editable;
+ * they are only excluded from merging.
+ */
+inline bool clothesHasStateModifier(const teTag& tag){
+    for(const teWord* word : tag.words)
+        if(word&&clothesStateModifiers().contains(word->text))
             return true;
     return false;
 }
@@ -197,8 +357,8 @@ public:
                     colors.clear();
                     front_adjectives.clear();
                     adjectives.clear();
-                    back_adjectives.clear();
-                    if(type!= *core->words.back()){
+                back_adjectives.clear();
+                        if(type!= *core->words.back()){
                         isTypeChanged=true;
                         auto it = parentList->all_clothes.find(this);
                         if(it!=parentList->all_clothes.end()){
@@ -222,69 +382,59 @@ public:
                 }
                 auto [colorpos,colorcount] = is_color(*in_core);
 
-                static auto findInMultimap = [](std::multimap<QString,QString>&map,QString& type,QString adj)->bool{
-                    auto range = prefix_front.equal_range(type);
-                    if(range.first!=range.second)
-                        for (auto it = range.first; it != range.second; ++it) {
-                            if (adj == it->second){
-                                return true;
-                            }
-                        }
-                    auto general_range = prefix_front.equal_range(qsl(""));
-                    if(general_range.first!=general_range.second)
-                        for (auto it = general_range.first; it != general_range.second; ++it) {
-                            if (adj == it->second){
-                                return true;
-                            }
-                        }
-                    return false;
-                };
                 static auto ifduplicate = [](QVector<teWord*>vec,QString str)->bool{
                     for(teWord*wc:vec)
                         if(wc->text==str)
                             return true;
                     return false;
                 };
+                // Which part of the tag each word is. This used to be three
+                // chained lookups right here, with the second one (back
+                // adjectives) unreachable because both queried prefix_front - see
+                // clothesRoleAt(), where the rule now lives and is testable. The
+                // per word call keeps this path allocation free.
+                const QPair<int,int> colorSlot(colorpos,colorcount);
                 int wordcountMinusOne = in_core->words.count()-1;
                 for(int i=0;i<wordcountMinusOne;++i){
-                    if(i>=colorpos&&i<colorpos+colorcount){
+                    switch(clothesRoleAt(*in_core,i,type,colorSlot)){
+                    case ClothesRole::Colour:
                         if(ifhascolor)continue;
                         if(isNewEntry||!ifduplicate(colors,in_core->words[i]->text)){
                             colors.push_back(in_core->words[i]);
                             if(!isNewEntry){
-                                teWord*takecore = in_core->takeWordAt(i,false);
-                                Q_UNUSED(takecore);
+                                in_core->takeWordAt(i,false);
                                 --i;--wordcountMinusOne;--colorpos;
                             }
                         }
-                    }
-                    else if(findInMultimap(prefix_front,type,in_core->words[i]->text)){
+                        break;
+                    case ClothesRole::FrontAdjective:
                         if(isNewEntry||!ifduplicate(front_adjectives,in_core->words[i]->text)){
                             front_adjectives.push_back(in_core->words[i]);
                             if(!isNewEntry){
-                                teWord*takecore = in_core->takeWordAt(i,false);
-                                Q_UNUSED(takecore);
+                                in_core->takeWordAt(i,false);
                                 --i;--wordcountMinusOne;--colorpos;
                             }
                         }
-                    }
-                    else if(findInMultimap(prefix_back,type,in_core->words[i]->text)){
+                        break;
+                    case ClothesRole::Adjective:
+                    case ClothesRole::Type:      // unreachable: i < words.size()-1
+                        if(isNewEntry||!ifduplicate(adjectives,in_core->words[i]->text)){
+                            adjectives.push_back(in_core->words[i]);
+                            if(!isNewEntry){
+                                in_core->takeWordAt(i,false);
+                                --i;--wordcountMinusOne;--colorpos;
+                            }
+                        }
+                        break;
+                    case ClothesRole::BackAdjective:
                         if(isNewEntry||!ifduplicate(back_adjectives,in_core->words[i]->text)){
                             back_adjectives.push_back(in_core->words[i]);
                             if(!isNewEntry){
-                                teWord*takecore = in_core->takeWordAt(i,false);
-                                Q_UNUSED(takecore);       // no widget for it: the list owns widgets
+                                in_core->takeWordAt(i,false);
                                 --i;--wordcountMinusOne;--colorpos;
                             }
                         }
-                    }
-                    else if(isNewEntry||!ifduplicate(adjectives,in_core->words[i]->text)){
-                        adjectives.push_back(in_core->words[i]);
-                        if(!isNewEntry){
-                            teWord*takecore = in_core->takeWordAt(i,false);
-                            Q_UNUSED(takecore);
-                            --i;--wordcountMinusOne;--colorpos;
-                        }
+                        break;
                     }
                 }
                 int wordindex=-1;
@@ -357,48 +507,25 @@ public:
                 core=nullptr;
             }
             QString text(){
-                QString final;
-                for(teWord*wd:colors){
-                    final.append(wd->text);
-                    final.append(qsl(" "));
-                }
-                for(teWord*wd:front_adjectives){
-                    final.append(wd->text);
-                    final.append(qsl(" "));
-                }
-                for(teWord*wd:adjectives){
-                    final.append(wd->text);
-                    final.append(qsl(" "));
-                }
-                for(teWord*wd:back_adjectives){
-                    final.append(wd->text);
-                    final.append(qsl(" "));
-                }
-                final.append(type);
-                return final;
+                return clothesText(colors,front_adjectives,adjectives,back_adjectives,type);
             }
             QStringList allAdjectives(){
-                QStringList final;
-                for(teWord*wd:front_adjectives)
-                    final.append(wd->text);
-                for(teWord*wd:adjectives)
-                    final.append(wd->text);
-                for(teWord*wd:back_adjectives)
-                    final.append(wd->text);
-                return final;
+                return clothesAdjectives(front_adjectives,adjectives,back_adjectives);
             }
 
             bool merge(std::shared_ptr<teTag>in_core){
                 if(dead)
                     return false;
-                if(!sameType(in_core))return false;
-                if(auto[cp,cc] = is_color(*in_core);cc>0&&!colors.empty()){
-                    if(cc!=colors.count())return false;
-                    for(int i = 0;i<cc;++i)
-                        if(in_core->words[i+cp]->text!=colors[i]->text)
-                            return false;
-                }
                 if(in_core==core)
+                    return false;
+                // A tag that describes a state ("no shoes", "unworn panties",
+                // "open jacket", "top without sleeves") neither absorbs another
+                // clothes tag nor is absorbed by one - in either direction.
+                if(clothesHasStateModifier(*in_core))
+                    return false;
+                if(core&&clothesHasStateModifier(*core))
+                    return false;
+                if(!clothesMergeable(type,colors,*in_core))
                     return false;
                 // The generic word is the one being absorbed, so the specific
                 // spelling of the incoming tag replaces it: with "underwear" in
@@ -564,13 +691,35 @@ public:
                     if(*in_tag->words[i]==qsl("hair"))
                         hairbow_btn->setChecked(true);
                 connect(hairbow_btn,&QPushButton::clicked,widget,[in_tag,this](bool ifchecked){
-                    if(ifchecked)
-                        if(auto* editorTag=tagWidgetFor(in_tag)) editorTag->insertWord(-2,qsl("hair"));
-                    else{
-                        int wordcount = in_tag->words.size();
-                        for(int i =0;i<wordcount;++i)
-                            if(*in_tag->words[i]==qsl("hair"))
-                            {if(auto* editorTag=tagWidgetFor(in_tag)) editorTag->destroyWord(i);--i;--wordcount;}
+                    auto* editorTag=tagWidgetFor(in_tag);
+                    if(ifchecked){
+                        // Never a second "hair": clicking again must not add another
+                        // word (it used to, so "hair" piled up).
+                        if(in_tag->contains(qsl("hair")))
+                            return;
+                        if(editorTag)
+                            editorTag->insertWord(-2,qsl("hair"));
+                    }else{
+                        // Every "hair" is removed *without* signalling in between.
+                        // Each destroyWord() re-enters this control through
+                        // edited_with_layout() -> reReadClothes() -> readCore(),
+                        // which rebuilds the tag's words - so the old loop walked a
+                        // vector that readCore() had already rewritten, and the word
+                        // either survived or came back. One announcement at the end
+                        // is enough, and it is what the control reacts to.
+                        bool removed=false;
+                        for(int i=in_tag->words.size()-1;i>=0;--i)
+                            if(*in_tag->words[i]==qsl("hair")){
+                                if(editorTag)
+                                    editorTag->destroyWord(i,false);
+                                else{
+                                    delete in_tag->words[i];
+                                    in_tag->words.erase(in_tag->words.begin()+i);
+                                }
+                                removed=true;
+                            }
+                        if(removed)
+                            in_tag->edited_with_layout();
                     }
                 },Qt::DirectConnection);
                 widget->insertExtraWidgets(this,hairbow_btn);
