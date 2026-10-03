@@ -491,7 +491,7 @@ void teWordWidgetBase::mouseMoveEvent(QMouseEvent *event) {
         if (!isDragging) {
             isDragging = true;
         }
-        if (isDragging) {
+        if (isDragging) {W
             move(mapToParent(QPoint{distance,0}));
         }
     }

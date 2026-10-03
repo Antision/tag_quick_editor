@@ -1091,18 +1091,64 @@ void teTagListWidget::onTagEdited(std::shared_ptr<teTag>tag){
 
 // ---------------------------------------------------------------- the view
 
+teTagListView::teTagListView(QWidget* parent)
+    : QListView(parent)
+{
+    // The view from mainwindow.ui is the display: it builds the controller that
+    // drives it. (The controller used to build a private view of its own, which
+    // left this one empty and showed nothing.)
+    m_controller = new teTagListWidget(*this);
+}
+
+teTagListView::teTagListView(OwnedByController,QWidget* parent)
+    : QListView(parent)
+{
+}
+
+void teTagListView::keyPressEvent(QKeyEvent* event)
+{
+    if(m_controller)
+        m_controller->keyPressEvent(event);     // F2, Ctrl+W, Del, ... live there
+    else
+        QListView::keyPressEvent(event);
+}
+
 teTagListWidget::teTagListWidget(QWidget *parent)
     : teTagListWidgetBase(15,parent)
 {
-    // The widget based scroll area is kept (widgetpool is initialized with its
-    // layout and the editors' lists still use it) but the tags are drawn by the
-    // view from now on.
+    // The widget based scroll area is kept (the editors' lists still use it) but
+    // the tags are drawn by the view from now on.
     if(sc)
         sc->hide();
 
+    createModelAndDelegate();
+    auto* ownView = new teTagListView(teTagListView::OwnedByController{},this);
+    if(wlayout)
+        wlayout->addWidget(ownView);
+    adoptView(ownView);
+}
+
+teTagListWidget::teTagListWidget(teTagListView& view)
+    : teTagListWidgetBase(15,nullptr)
+{
+    if(sc)
+        sc->hide();
+
+    createModelAndDelegate();
+    adoptView(&view);
+}
+
+void teTagListWidget::createModelAndDelegate()
+{
     m_model = new teTagListModel(this);
     m_delegate = new teTagDelegate(this);
-    m_view = new teTagListView(this);
+}
+
+void teTagListWidget::adoptView(teTagListView* view)
+{
+    m_view = view;
+    if(!m_view)
+        return;
     m_view->setModel(m_model);
     m_view->setItemDelegate(m_delegate);
     m_view->setSelectionMode(QAbstractItemView::ExtendedSelection);
@@ -1121,8 +1167,6 @@ teTagListWidget::teTagListWidget(QWidget *parent)
     m_view->setMouseTracking(true);
     m_view->viewport()->setMouseTracking(true);
     m_view->viewport()->installEventFilter(this);
-    if(wlayout)
-        wlayout->addWidget(m_view);
 
     connect(m_view,&QListView::clicked,this,&teTagListWidget::onViewClicked);
     connect(m_view,&QListView::doubleClicked,this,&teTagListWidget::onViewDoubleClicked);
@@ -1191,6 +1235,35 @@ bool teTagListView::dropRowsAt(const QPoint& viewportPos)
                                  QItemSelectionModel::Select|QItemSelectionModel::Rows);
     setCurrentIndex(tagModel->index(first,0));
     return true;
+}
+
+tePictureFile* teTagListView::file() const
+{
+    return m_controller?m_controller->file:nullptr;
+}
+
+void teTagListView::setEditorList(teEditorList* in)
+{
+    if(m_controller)
+        m_controller->editorlist = in;
+}
+
+void teTagListView::loadFile(tePictureFile* f)
+{
+    if(m_controller)
+        m_controller->loadFile(f);
+}
+
+void teTagListView::clear()
+{
+    if(m_controller)
+        m_controller->clear();
+}
+
+void teTagListView::scrollToTop()
+{
+    if(m_controller)
+        m_controller->scrollToTop();
 }
 
 void teTagListView::sortRows(QVector<int>& rows)

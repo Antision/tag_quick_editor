@@ -124,7 +124,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(ui->GlobalMultiTaglistView->model,&teSelectionTagModel::listModified,this,[this]{
         connect(ui->tagListTabWidget,&QTabWidget::currentChanged,ui->taglist,[this]{
-            tePictureFile* tmpPictureFile = ui->taglist->file;
+            tePictureFile* tmpPictureFile = ui->taglist->file();
             QItemSelection tmpSelection= picturefileListView->selectionModel()->selection();
             if(tmpSelection.count()==1&&
                 tmpPictureFile==qvariant_cast<tePictureFile*>(picturefileListView->model()->data(tmpSelection.indexes().first())))
@@ -249,11 +249,11 @@ MainWindow::MainWindow(QWidget *parent)
                 ui->tagListTabWidget->setCurrentIndex(0);
             },Qt::DirectConnection);
 
-    ui->taglist->editorlist = ui->editorlist;
-    ui->editorlist->tagListWidget = ui->taglist;
+    ui->taglist->setEditorList(ui->editorlist);
+    ui->editorlist->tagListWidget = ui->taglist->listWidget();
     global_window=this;
-    connect(ui->action_undo,&QAction::triggered,ui->taglist,&teTagListWidget::undo,Qt::DirectConnection);
-    connect(ui->action_redo,&QAction::triggered,ui->taglist,&teTagListWidget::redo,Qt::DirectConnection);
+    connect(ui->action_undo,&QAction::triggered,ui->taglist->listWidget(),&teTagListWidget::undo,Qt::DirectConnection);
+    connect(ui->action_redo,&QAction::triggered,ui->taglist->listWidget(),&teTagListWidget::redo,Qt::DirectConnection);
 
     QHBoxLayout* menulayout = new QHBoxLayout(ui->menuBar);
     QSpacerItem *menuspacer1 = new QSpacerItem(0,0,QSizePolicy::Expanding,QSizePolicy::Fixed);
@@ -298,20 +298,25 @@ QPushButton:hover{background-color:rgba(100,100,100,100);})"));
     close_btn->setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Expanding);
 
     QVector<teEditor*>allEditors{
-        new teEditor_custom{ui->taglist,QStringLiteral("custom")}
-        ,new teEditor_pretreat{ui->taglist,QStringLiteral("pretreat")}
-        ,new teEditor_hair_and_eyes{ui->taglist,QStringLiteral("hair and eyes")}
-        ,new teEditor_clothes{ui->taglist,QStringLiteral("clothes")}
-        ,new teEditor_nsfw{ui->taglist,QStringLiteral("nsfw")}
+        new teEditor_custom{ui->taglist->listWidget(),QStringLiteral("custom")}
+        ,new teEditor_pretreat{ui->taglist->listWidget(),QStringLiteral("pretreat")}
+        ,new teEditor_hair_and_eyes{ui->taglist->listWidget(),QStringLiteral("hair and eyes")}
+        ,new teEditor_clothes{ui->taglist->listWidget(),QStringLiteral("clothes")}
+        ,new teEditor_nsfw{ui->taglist->listWidget(),QStringLiteral("nsfw")}
     };
     extern int nsfwMode;
     if(nsfwMode<1)
         delete allEditors.takeLast();
     ui->editorlist->loadEditors(allEditors,&editorlistlayout);
 
-    ui->editorlist->connectTaglistWidget(ui->taglist);
-    widgetpool.initialize(ui->taglist,ui->taglist->layout);
-    widgetpool_ref.initialize(ui->taglist,ui->editorlist->layout);
+    ui->editorlist->connectTaglistWidget(ui->taglist->listWidget());
+    // The pool must know a parking parent even though the view draws rows with a
+    // delegate: a tag that has no widget yet can still be asked for one (the
+    // editors call ensureWidget()), and an uninitialized pool created those
+    // widgets parentless - a floating word widget on screen and a crash in
+    // teWordWidgetBase::mouseMoveEvent when it was moved.
+    widgetpool.initialize(ui->taglist->listWidget(),ui->taglist->listWidget()->layout);
+    widgetpool_ref.initialize(ui->taglist->listWidget(),ui->editorlist->layout);
 
     ui->actionAuto_Merge_Tags->setChecked(autoMerge);
 

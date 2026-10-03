@@ -138,17 +138,17 @@ background-color: rgb(27, 27, 27);
 	background-color: rgb(27, 27, 27);
 }
 
-QFrame{
+QListView{
 border:1px solid #4c399e;
 background-color: rgb(27, 27, 27);
 }
-QFrame:hover{
+QListView:hover{
     border-color: #6045d6;
 }
-QFrame:!hover{
+QListView:!hover{
     border-color: #4c399e;
 }
-QFrame[saving=&quot;true&quot;]{
+QListView[saving=&quot;true&quot;]{
     border-color: #0af581;
 }
 
@@ -232,20 +232,7 @@ QTabBar::tab:only-one {
          <number>1</number>
         </property>
         <item>
-         <widget class="teTagListWidget" name="taglist" native="true">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="minimumSize">
-           <size>
-            <width>30</width>
-            <height>30</height>
-           </size>
-          </property>
-         </widget>
+         <widget class="teTagListView" name="taglist"/>
         </item>
        </layout>
       </widget>
@@ -493,12 +480,6 @@ selection-background-color: rgb(70, 70, 70);
  </widget>
  <customwidgets>
   <customwidget>
-   <class>teTagListWidget</class>
-   <extends>QWidget</extends>
-   <header>tetaglistwidget.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
    <class>teEditorList</class>
    <extends>QWidget</extends>
    <header>teeditorlist.h</header>
@@ -513,6 +494,11 @@ selection-background-color: rgb(70, 70, 70);
    <class>teSelectionTagListView</class>
    <extends>QListView</extends>
    <header>teselectiontaglist.h</header>
+  </customwidget>
+  <customwidget>
+   <class>teTagListView</class>
+   <extends>QListView</extends>
+   <header>tetaglistwidget.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

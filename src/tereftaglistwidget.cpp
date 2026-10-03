@@ -311,10 +311,12 @@ void teRefTagListWidget::tagInsertBelow(bool edit, std::shared_ptr<teTag>newtag,
         telog("can't insert a reftag with nullptr tagcore");
         return;
     }
+    // ui->taglist is the view now; the controller behind it owns the tag list.
+    teTagListWidget* mainTagList = mwptr->ui->taglist->listWidget();
     if(select_current==nullptr){
-        taginsert(mwptr->ui->taglist->showing_list->size(),newtag,mwptr->ui->taglist->showing_list,removeDuplicate);
+        taginsert(mainTagList->showing_list->size(),newtag,mainTagList->showing_list,removeDuplicate);
     }else{
-        taginsert(findindex(select_current->core)+1,newtag,mwptr->ui->taglist->showing_list,removeDuplicate);
+        taginsert(findindex(select_current->core)+1,newtag,mainTagList->showing_list,removeDuplicate);
     }
     if(edit)
         teTagListWidgetBase::tagEdit();
@@ -348,7 +350,7 @@ teTagWidgetBase* teRefTagListWidget::taginsert(int index,std::shared_ptr<teTag>i
     else{
         telog("[teRefTagListWidget::taginsert]:No taglistwidget specified");
         MainWindow* mwptr = (MainWindow*)global_window;
-        return taginsert(index,in_tag,mwptr->ui->taglist->showing_list,select);
+        return taginsert(index,in_tag,mwptr->ui->taglist->listWidget()->showing_list,select);
     }
 }
 
@@ -365,7 +367,7 @@ void teRefTagListWidget::paste()
         telog("[teRefTagListWidget::taginsert]:No taglistwidget specified");
         MainWindow* mwptr = (MainWindow*)global_window;
         for (const auto& piece : pieces)
-            mwptr->ui->taglist->tagInsertAbove(false, std::make_shared<teTag>(piece.text, nullptr, piece.sentence), 2);
+            mwptr->ui->taglist->listWidget()->tagInsertAbove(false, std::make_shared<teTag>(piece.text, nullptr, piece.sentence), 2);
     }
 }
 

@@ -303,7 +303,21 @@ class teTagListView : public QListView
 {
     Q_OBJECT
 public:
-    explicit teTagListView(QWidget* parent=nullptr):QListView(parent){}
+    /// Marker for "the controller builds this view for itself".
+    struct OwnedByController{};
+    /**
+     * @brief The view mainwindow.ui creates.
+     *
+     * It makes the tag list controller for itself and adopts it, so `taglist` in
+     * the .ui *is* the view that draws the tags. (Before, the controller made a
+     * second, private view and the one from the .ui stayed empty - which is why
+     * nothing was displayed.)
+     */
+    explicit teTagListView(QWidget* parent=nullptr);
+    /// The controller's own view (this one does not build a controller).
+    teTagListView(OwnedByController,QWidget* parent);
+    /// The controller behind this view (nullptr for the controller's own view).
+    teTagListWidget* listWidget() const { return m_controller; }
     /**
      * @brief Moves the selected rows to where a drop at `viewportPos` would go.
      *
@@ -314,13 +328,27 @@ public:
      * @return false when there is nothing to move or the move changed nothing.
      */
     bool dropRowsAt(const QPoint& viewportPos);
+    /// The picture whose caption is shown (see teTagListWidget::file).
+    tePictureFile* file() const;
+    /// The editor list connected with this list.
+    void setEditorList(teEditorList* in);
+    /// Shows `f`'s caption.
+    void loadFile(tePictureFile* f);
+    /// Detaches the current list.
+    void clear();
+    /// Scrolls back to the top.
+    void scrollToTop();
 protected:
     void dropEvent(QDropEvent* event) override;
+    /// Keys (F2/Ctrl+W/Del/...) belong to the controller when it adopted this view.
+    void keyPressEvent(QKeyEvent* event) override;
     /// Draws its own drag pixmap and, more importantly, does not let Qt remove
     /// the dragged rows a second time (see the comment in the implementation).
     void startDrag(Qt::DropActions supportedActions) override;
 private:
     static void sortRows(QVector<int>& rows);
+    /// The controller, when mainwindow.ui's view built one.
+    teTagListWidget* m_controller=nullptr;
 };
 
 /**
@@ -342,7 +370,15 @@ public:
     /// (and calls into it) before loadFile() ever ran, and an uninitialized
     /// pointer there made the first clear()/destruction crash at random.
     tePictureFile* file=nullptr;
+    /// Builds its own view (used by the editors' tests and by nothing else).
     teTagListWidget(QWidget *parent = nullptr);
+    /**
+     * @brief Adopts the view mainwindow.ui created.
+     *
+     * The controller then drives that view instead of making one of its own, so
+     * `ui->taglist` is what the user sees. No second view exists in the app.
+     */
+    explicit teTagListWidget(teTagListView& view);
     ~teTagListWidget(){
         clear();
     }
@@ -410,6 +446,10 @@ signals:
     void newlistloaded(teTagList*);
     void showinglistDestroyed();
 private:
+    /// Creates the model and the delegate (shared by both constructors).
+    void createModelAndDelegate();
+    /// Wires `view` up as this controller's view (shared by both constructors).
+    void adoptView(teTagListView* view);
     /// Starts editing `row` (or opens the sentence window).
     void startEditingRow(int row);
     /// Erases every selected row.
