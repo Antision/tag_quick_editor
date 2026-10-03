@@ -76,6 +76,10 @@ teTagListWidgetBase::~teTagListWidgetBase(){
     delete tagDisplay;
 }
 
+void teTagListWidgetBase::tagDragged(teTagWidgetBase* tag,Qt::KeyboardModifiers modifiers){
+    tagdroped(tag,modifiers);
+}
+
 void teTagListWidgetBase::followTagDisplay(teTagWidgetBase* tag){
     if(!wantsTagDisplay())
         return;
@@ -342,12 +346,6 @@ QPoint teTagListWidget::tagDisplayAnchor(std::shared_ptr<teTag> core) const
         return QCursor::pos();
     // Right edge of the view, at the height of that row.
     return m_view->viewport()->mapToGlobal(QPoint(m_view->viewport()->width(),rect.center().y()));
-}
-
-int teTagListWidget::setSelectRange(teTagWidgetBase *in,bool ifclear){
-    // Everything in this list is addressed by tag core; the widget based
-    // implementation is only reachable from the editors' own tag lists.
-    return setSelectRangeCore(in?in->core:nullptr,ifclear);
 }
 
 QString teTagListWidget::getSelectText(){
@@ -660,11 +658,10 @@ void teTagListWidget::startEditingRow(int row)
         hideTagDisplay();
         // onPlainTextEditStop() (the confirm handler) needs to know which tag is
         // being edited; a row has no widget, so it is identified by its core.
-        editingTag=nullptr;
-        editingCore=showing_list?showing_list->shareAt(row):nullptr;
+        m_plainTextCore=showing_list?showing_list->shareAt(row):nullptr;
         plaintextedit->start(static_cast<QString>(*raw));
         plaintextedit->show();
-        connect(plaintextedit,&teInputWidget::stringSignal,this,&teTagListWidgetBase::onPlainTextEditStop,Qt::DirectConnection);
+        connect(plaintextedit,&teInputWidget::stringSignal,this,&teTagListWidget::onPlainTextEditStop,Qt::DirectConnection);
         connect(plaintextedit,&teInputWidget::cancelSignal,this,[this]{
             disconnect(plaintextedit,&teInputWidget::stringSignal,0,0);
             disconnect(plaintextedit,&teInputWidget::cancelSignal,0,0);
@@ -736,10 +733,10 @@ void teTagListWidget::keyPressEvent(QKeyEvent *event) {
         tagInsertAbove();
     } else if ((event->key() == Qt::Key_D && event->modifiers() == Qt::ControlModifier)||event->key() == Qt::Key_Delete) {
         tagErase();
-        setFocus();
+        if(m_view)
+            m_view->setFocus();
     } else if (event->key() == Qt::Key_Enter||event->key() == Qt::Key_Return) {
-        if(!lineedit->isVisible())
-            tagEditCore(currentCore());
+        tagEditCore(currentCore());
     } else if ((event->key() == Qt::Key_E && event->modifiers() == Qt::ControlModifier)||event->key() == Qt::Key_F2) {
         tagEditCore(currentCore());
     } else if (event->key() == Qt::Key_X && event->modifiers() == Qt::ControlModifier) {
@@ -749,7 +746,7 @@ void teTagListWidget::keyPressEvent(QKeyEvent *event) {
     } else if (event->key() == Qt::Key_V && event->modifiers() == Qt::ControlModifier) {
         paste();
     } else {
-        QWidget::keyPressEvent(event);
+        event->ignore();        // the view handles everything else
     }
 }
 
@@ -811,7 +808,7 @@ void teTagListWidget::load(teTagList*newlist){
         if(core)
             core->ifViewOwned=true;
     }
-    const int tmpSelectIndex=pendingSelectionIndex;
+    const int tmpSelectIndex=m_pendingSelectionIndex;
     m_model->setTagList(showing_list);
     emit newlistloaded(newlist);
 
@@ -840,10 +837,6 @@ void teTagListWidget::clear(teTagList *in){
     // Qt through a QWidget*, which used to leave the box on screen).
     if(m_delegate)
         m_delegate->stopEditing();
-    if(lineedit->lineeditfocusflag){
-        lineedit->stop();
-    }
-    lineedit->setParent(this);
     if(in==showing_list||in==nullptr){
         if(file){
             file->teDisconnect(this);
@@ -863,13 +856,6 @@ void teTagListWidget::clear(teTagList *in){
         showing_list=nullptr;
         m_currentCoreBeforeReset.reset();
     }
-}
-void teTagListWidget::tagdroped(teTagWidgetBase *in_tag,int modifiers){
-    // This list reorders through teTagListView/teTagListModel, so the widget
-    // based drop path is unreachable here. It is still implemented because the
-    // editors' tag lists share this base class.
-    Q_UNUSED(in_tag);
-    Q_UNUSED(modifiers);
 }
 void teTagListWidgetBase::connectTag(teTagWidgetBase*tagwidget){
     connect(tagwidget,&teTagWidgetBase::droped,this,&teTagListWidgetBase::tagdroped);
@@ -1113,35 +1099,143 @@ void teTagListView::keyPressEvent(QKeyEvent* event)
         QListView::keyPressEvent(event);
 }
 
-teTagListWidget::teTagListWidget(QWidget *parent)
-    : teTagListWidgetBase(15,parent)
+teTagListWidget::teTagListWidget(teTagListView& view)
+    : QObject(&view), m_view(&view)
 {
-    // The widget based scroll area is kept (the editors' lists still use it) but
-    // the tags are drawn by the view from now on.
-    if(sc)
-        sc->hide();
-
     createModelAndDelegate();
-    auto* ownView = new teTagListView(teTagListView::OwnedByController{},this);
-    if(wlayout)
-        wlayout->addWidget(ownView);
-    adoptView(ownView);
+    createMenu();
+    plaintextedit = new teInputWidget;
+    // Magnified popup: it appears when a tag is clicked, not after a hover delay,
+    // and stays while the pointer travels into it.
+    tagDisplay = new teTagDisplayWidget(this);
+    tagDisplayHideTimer = new QTimer(this);
+    tagDisplayHideTimer->setSingleShot(true);
+    connect(tagDisplayHideTimer,&QTimer::timeout,this,&teTagListWidget::tagDisplayHideTick);
+    connect(tagDisplay,&teTagDisplayWidget::pointerLeft,this,&teTagListWidget::scheduleTagDisplayHide);
+    adoptView(m_view);
 }
 
-teTagListWidget::teTagListWidget(teTagListView& view)
-    : teTagListWidgetBase(15,nullptr)
+teTagListWidget::~teTagListWidget()
 {
-    if(sc)
-        sc->hide();
+    clear();
+    delete plaintextedit;
+    plaintextedit = nullptr;
+}
 
-    createModelAndDelegate();
-    adoptView(&view);
+void teTagListWidget::createMenu()
+{
+    menu = new QMenu(m_view);
+    editAction = menu->addAction(QIcon(":/res/menu_edit.png"),"edit (F2/Ctrl+E)");
+    deleteAction = menu->addAction(QIcon(":/res/menu_remove.png"),"delete (Ctrl+D/del)");
+    insertAction = menu->addAction(QIcon(":/res/menu_add.png"),"insert above (Ctrl+W)");
+    insertBelowAction = menu->addAction(QIcon(":/res/menu_add.png"),"insert below");
+    cutAction = menu->addAction(QIcon(":/res/menu_cut.png"),"cut (Ctrl+X)");
+    copyAction = menu->addAction(QIcon(":/res/menu_copy.png"),"copy (Ctrl+C)");
+    pasteAction = menu->addAction(QIcon(":/res/menu_paste.png"),"paste (Ctrl+V)");
+    menu->setStyleSheet(
+        R"(QMenu {
+        background-color: transparent;
+        font: 14px "Segoe UI";
+        color:#8dfda7;
+        border-radius:3px;
+    }
+    QMenu::item {
+        background-color: rgb(27,29,37);
+        padding: 3px;
+        border-radius:2px;
+        margin: 0px;
+        border: 1px solid #8b9ac6;
+    }
+    QMenu::item:selected {background-color: #3d258f;}
+)");
+    menu->setAttribute(Qt::WA_TranslucentBackground);
+    menu->setWindowFlags(menu->windowFlags() | Qt::FramelessWindowHint);
+}
+
+void teTagListWidget::copy()
+{
+    QApplication::clipboard()->setText(getSelectText());
+}
+
+void teTagListWidget::cut()
+{
+    copy();
+    eraseSelectedRows();
+}
+
+void teTagListWidget::paste()
+{
+    const QString text = QApplication::clipboard()->text();
+    const auto pieces = splitTextToPieces(text);
+    for(const auto& piece : pieces)
+        tagInsertBelow(false,std::make_shared<teTag>(piece.text,nullptr,piece.sentence),2);
+}
+
+void teTagListWidget::onPlainTextEditStop(QString in_str)
+{
+    disconnect(plaintextedit,&teInputWidget::stringSignal,0,0);
+    disconnect(plaintextedit,&teInputWidget::cancelSignal,0,0);
+    plaintextedit->hide();
+    std::shared_ptr<teTag> core = m_plainTextCore;
+    m_plainTextCore.reset();
+    if(core)
+        tagEdit(core,in_str);
+}
+
+// -- the magnified popup -------------------------------------------------------
+
+void teTagListWidget::showTagDisplayCore(std::shared_ptr<teTag> core)
+{
+    if(!core||!tagDisplay)
+        return;
+    tagDisplay->showForCore(core,tagDisplayAnchor(core));
+}
+
+void teTagListWidget::followTagDisplayCore(std::shared_ptr<teTag> core)
+{
+    if(!tagDisplay||!tagDisplay->isVisible()||!core)
+        return;
+    if(tagDisplayHideTimer)
+        tagDisplayHideTimer->stop();
+    showTagDisplayCore(core);
+}
+
+void teTagListWidget::hideTagDisplay()
+{
+    if(tagDisplayHideTimer)
+        tagDisplayHideTimer->stop();
+    if(tagDisplay)
+        tagDisplay->hideDisplay();
+}
+
+bool teTagListWidget::handleTagDisplayEscape(QKeyEvent* event)
+{
+    if(event&&event->key()==Qt::Key_Escape&&tagDisplay&&tagDisplay->isVisible()){
+        hideTagDisplay();
+        return true;
+    }
+    return false;
+}
+
+void teTagListWidget::scheduleTagDisplayHide()
+{
+    if(!tagDisplay||!tagDisplay->isVisible()||!tagDisplayHideTimer)
+        return;
+    tagDisplayHideTimer->start(180);
+}
+
+void teTagListWidget::tagDisplayHideTick()
+{
+    const QPoint pos = QCursor::pos();
+    if(tagDisplay&&tagDisplay->isVisible()&&tagDisplay->frameGeometry().contains(pos))
+        return;                         // the pointer is inside the popup
+    hideTagDisplay();
 }
 
 void teTagListWidget::createModelAndDelegate()
 {
     m_model = new teTagListModel(this);
-    m_delegate = new teTagDelegate(this);
+    m_delegate = new teTagDelegate(m_view);
 }
 
 void teTagListWidget::adoptView(teTagListView* view)
@@ -1337,7 +1431,7 @@ void teTagListWidget::onViewCurrentChanged(const QModelIndex& current,const QMod
 {
     Q_UNUSED(previous);
     if(current.isValid())
-        pendingSelectionIndex=current.row();
+        m_pendingSelectionIndex=current.row();
 }
 
 void teTagListWidget::onModelReset()
@@ -1421,5 +1515,5 @@ bool teTagListWidget::eventFilter(QObject* watched,QEvent* event)
             break;
         }
     }
-    return teTagListWidgetBase::eventFilter(watched,event);
+    return QObject::eventFilter(watched,event);
 }

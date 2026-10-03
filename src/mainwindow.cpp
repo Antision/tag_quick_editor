@@ -310,13 +310,11 @@ QPushButton:hover{background-color:rgba(100,100,100,100);})"));
     ui->editorlist->loadEditors(allEditors,&editorlistlayout);
 
     ui->editorlist->connectTaglistWidget(ui->taglist->listWidget());
-    // The pool must know a parking parent even though the view draws rows with a
-    // delegate: a tag that has no widget yet can still be asked for one (the
-    // editors call ensureWidget()), and an uninitialized pool created those
-    // widgets parentless - a floating word widget on screen and a crash in
-    // teWordWidgetBase::mouseMoveEvent when it was moved.
-    widgetpool.initialize(ui->taglist->listWidget(),ui->taglist->listWidget()->layout);
-    widgetpool_ref.initialize(ui->taglist->listWidget(),ui->editorlist->layout);
+    // The pool gets the view as its parking parent (the view is the widget; the
+    // controller is a plain QObject now). It no longer needs a layout: pooled
+    // widgets are parked on the parent until they are shown again.
+    widgetpool.initialize(ui->taglist,nullptr);
+    widgetpool_ref.initialize(ui->taglist,ui->editorlist->layout);
 
     ui->actionAuto_Merge_Tags->setChecked(autoMerge);
 

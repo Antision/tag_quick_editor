@@ -491,11 +491,15 @@ void teWordWidgetBase::mouseMoveEvent(QMouseEvent *event) {
         if (!isDragging) {
             isDragging = true;
         }
-        if (isDragging) {W
+        if (isDragging) {
             move(mapToParent(QPoint{distance,0}));
         }
     }
-    return ((teTagWidgetBase*)parent())->mouseMoveEvent(event);
+    // Only a tag may own a word: the cast used to be unconditional, so a word
+    // whose parent was gone (a pooled widget that was never re-parented) crashed
+    // here instead of doing nothing.
+    if (auto* tagParent = qobject_cast<teTagWidgetBase*>(parent()))
+        tagParent->mouseMoveEvent(event);
 }
 
 void teWordWidgetBase::mouseReleaseEvent(QMouseEvent *event) {

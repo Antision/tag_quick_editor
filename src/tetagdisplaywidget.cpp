@@ -70,7 +70,7 @@ public:
 
 }
 
-teTagDisplayWidget::teTagDisplayWidget(teTagListWidgetBase* owner)
+teTagDisplayWidget::teTagDisplayWidget(teTagDisplayOwner* owner)
     : teTagWidgetBase(), m_owner(owner)
 {
     // A tool window: it floats above the main window, never takes focus by being
@@ -298,7 +298,7 @@ bool teTagDisplayWidget::eventFilter(QObject* watched,QEvent* event)
     QWidget* under = QApplication::widgetAt(global);
     if (!under)
         return QWidget::eventFilter(watched,event);     // cannot tell where it landed
-    if (m_owner&&(under==m_owner||m_owner->isAncestorOf(under)))
+    if (m_owner&&m_owner->ownsWidget(under))
         return QWidget::eventFilter(watched,event);     // a click in the tag list
     hideDisplay();
     return QWidget::eventFilter(watched,event);
@@ -452,7 +452,7 @@ void teTagDisplayWidget::mouseReleaseEvent(QMouseEvent* event)
         teTagWidgetBase* source = m_source;
         hideDisplay();                  // destroys nothing the reorder needs
         // Same entry point the tag itself uses when it is dropped.
-        m_owner->tagdroped(source,event->modifiers());
+        m_owner->tagDragged(source,event->modifiers());
     }
 }
 
@@ -634,7 +634,7 @@ void teTagDisplayWidget::syncWordOrderFromLayout()
     core->words = ordered;
 
     std::shared_ptr<teTag> tag = core;
-    teTagListWidgetBase* owner = m_owner;
+    teTagDisplayOwner* owner = m_owner;
     if (!owner)
         return;
     const QString text = static_cast<QString>(*core);

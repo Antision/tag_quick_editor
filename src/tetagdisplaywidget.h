@@ -5,6 +5,39 @@
 class QFlowLayout;
 class QFlowLayoutReorderer;
 class teTagListWidgetBase;
+class teTagListWidget;
+
+/**
+ * @brief What teTagDisplayWidget needs from the list showing it.
+ *
+ * The popup used to know teTagListWidgetBase, which forced the controller of the
+ * model/view list (a plain QObject) to inherit that widget class just to be able
+ * to show a popup. This interface is the whole dependency: whichever list shows
+ * the popup implements these five methods.
+ */
+class teTagDisplayOwner {
+public:
+    virtual ~teTagDisplayOwner()=default;
+    /// The tag list currently shown (used to check whether a tag still exists).
+    virtual teTagList* shownList() const = 0;
+    /// Selects the tag the popup belongs to.
+    virtual void setSelectCurrentCore(std::shared_ptr<teTag> core,bool ifclear=true) = 0;
+    /// Edits a tag that has no widget of its own.
+    virtual void tagEditCore(std::shared_ptr<teTag> core) = 0;
+    /// Replaces the text of a tag.
+    virtual void tagEdit(std::shared_ptr<teTag> tag,QString text,int removeDuplicate=1,bool ifemit=true) = 0;
+    /// Hides the popup.
+    virtual void hideTagDisplay() = 0;
+    /// True when `widget` belongs to the list (a click inside the list keeps the
+    /// popup open, a click anywhere else closes it).
+    virtual bool ownsWidget(QWidget* widget) const = 0;
+    /// The popup body was dragged. Only a list whose tags have widgets can move a
+    /// tag that way, so the default does nothing.
+    virtual void tagDragged(teTagWidgetBase* tag,Qt::KeyboardModifiers modifiers){
+        Q_UNUSED(tag);
+        Q_UNUSED(modifiers);
+    }
+};
 
 /**
  * @brief Floating, magnified view of the tag the pointer currently rests on.
@@ -27,7 +60,7 @@ class teTagDisplayWidget : public teTagWidgetBase
 {
     Q_OBJECT
 public:
-    explicit teTagDisplayWidget(teTagListWidgetBase* owner);
+    explicit teTagDisplayWidget(teTagDisplayOwner* owner);
     ~teTagDisplayWidget();
 
     /// Makes the popup show `source` and places it next to `globalMousePos`.
@@ -96,7 +129,7 @@ private:
     void showIdle();
     void setOpaque();
 
-    teTagListWidgetBase* m_owner=nullptr;
+    teTagDisplayOwner* m_owner=nullptr;
     teTagWidgetBase* m_source=nullptr;
     /// True while this widget filters the application's events (popup is up).
     bool m_watching=false;

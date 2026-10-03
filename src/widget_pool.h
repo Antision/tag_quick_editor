@@ -39,7 +39,7 @@ struct teTagListWidget;
 template<typename TagType,typename WordType,size_t total_tags_count,size_t total_words_count>
 requires (std::derived_from<TagType,teTagWidgetBase>&&std::derived_from<WordType,teWordWidgetBase>)
 struct WidgetPool:public teObject{
-    teTagListWidgetBase* parent=nullptr;///< Initialization widget; also the fallback parking parent
+    QWidget* parent=nullptr;///< Initialization widget; also the fallback parking parent
     QBoxLayout* parent_layout=nullptr;///< Layout the widgets will be shown in
 
     WidgetPool(){}
@@ -61,7 +61,7 @@ struct WidgetPool:public teObject{
      *
      * No widget is created here; the pool grows on demand.
      */
-    void initialize(teTagListWidgetBase*in_parent,QBoxLayout*in_layout){
+    void initialize(QWidget* in_parent,QBoxLayout* in_layout){
         parent = in_parent;
         parent_layout = in_layout;
     }
