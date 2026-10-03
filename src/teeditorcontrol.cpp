@@ -4,9 +4,9 @@
 
 bool teEditorControl::re_read(std::shared_ptr<teTag>tag){
     if(!filter(tag)){
-        if(tag->type==teTag::deleteTag){
+        if(tag->retired){
             if(taglistwidget)
-                taglistwidget->tagErase(tag);
+                taglistwidget->retire(tag);
             return true;
         }
         unlink(tag);
@@ -16,17 +16,17 @@ bool teEditorControl::re_read(std::shared_ptr<teTag>tag){
 
 bool teEditorControl::read(std::shared_ptr<teTag>tag){
     const bool iffilt = filter(tag);
-    if(tag->type==teTag::deleteTag){
+    if(tag->retired){
         if(taglistwidget)
-            taglistwidget->tagErase(tag);
+            taglistwidget->retire(tag);
         return true;
     }
     if(iffilt){
         tag->ensureWidget();
         link(tag);
-        if(tag->type==teTag::deleteTag){
+        if(tag->retired){
             if(taglistwidget)
-                taglistwidget->tagErase(tag);
+                taglistwidget->retire(tag);
             return true;
         }
     }
@@ -119,7 +119,7 @@ void teTagComboBox::onIndexChanged(int index){
         std::shared_ptr<teTag> tag = *it;
         QString tagString = static_cast<QString>(*tag);
         if (!stringlist.contains(tagString)) {
-            taglistwidget->tagErase(tag);
+            taglistwidget->retire(tag);
         }
     }
     for (const QString& tagstring : stringlist) {
@@ -493,8 +493,8 @@ bool teTagCheckBoxPlus::read(std::shared_ptr<teTag>tag){
             onStateChanged(true);
         }
     }
-    if(tag->type==teTag::deleteTag){
-        taglistwidget->tagErase(tag);
+    if(tag->retired){
+        taglistwidget->retire(tag);
         return true;
     }
     return false;
@@ -507,9 +507,9 @@ bool teTagCheckBoxPlus::re_read(std::shared_ptr<teTag>tag, int taggroup){
     else if(taggroup==2&&!filter2(tag)){
         unlink2(tag);
     }
-    if(tag->type==teTag::deleteTag){
+    if(tag->retired){
         if(taglistwidget)
-            taglistwidget->tagErase(tag);
+            taglistwidget->retire(tag);
         return true;
     }
     return false;

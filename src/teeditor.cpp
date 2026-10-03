@@ -19,7 +19,7 @@ bool teEditor::read(std::shared_ptr<teTag>tag){
     return false;
 }
 bool teEditor::re_read(std::shared_ptr<teTag>tag){
-    if(tag->type==teTag::deleteTag)
+    if(tag->retired)
         return true;
     tag->ensureWidget();
     for(teEditorControl*ctrl_ptr:controls){
@@ -27,7 +27,7 @@ bool teEditor::re_read(std::shared_ptr<teTag>tag){
             if(ctrl_ptr->read(tag)){
                 return true;
             }
-        }else if(tag->type==teTag::deleteTag){
+        }else if(tag->retired){
             return true;
         }
     }

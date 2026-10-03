@@ -121,9 +121,6 @@ void teObject::teemit(teCallbackType calltype, bool autodelete)
         if (cb->connected)
             (*cb)();
     }
-
-    if (autodelete && calltype != ready_destroy && calltype != destroy)
-        checkDeleteLater();
 }
 
 void teObject::onDestroy()
@@ -152,11 +149,6 @@ void teObject::onDestroy()
     teDisconnect(nullptr);
 }
 
-void teObject::checkDeleteLater()
-{
-    if (deleteLaterFlag)
-        delete this;
-}
 
 teObject::~teObject()
 {

@@ -61,146 +61,11 @@ teTagListWidgetBase::teTagListWidgetBase(int wordsize,QWidget *parent): QWidget{
 )");
     menu->setAttribute(Qt::WA_TranslucentBackground);
     menu->setWindowFlags(menu->windowFlags() | Qt::FramelessWindowHint);
-
-    // Magnified popup. It appears when a tag is clicked (or picked in a list),
-    // not after a hover delay, and stays while the pointer travels into it.
-    tagDisplay = new teTagDisplayWidget(this);
-    tagDisplayHideTimer = new QTimer(this);
-    tagDisplayHideTimer->setSingleShot(true);
-    connect(tagDisplayHideTimer,&QTimer::timeout,this,&teTagListWidgetBase::tagDisplayHideTick);
-    connect(tagDisplay,&teTagDisplayWidget::pointerLeft,this,&teTagListWidgetBase::scheduleTagDisplayHide);
 }
 
 teTagListWidgetBase::~teTagListWidgetBase(){
     delete plaintextedit;
-    delete tagDisplay;
 }
-
-void teTagListWidgetBase::tagDragged(teTagWidgetBase* tag,Qt::KeyboardModifiers modifiers){
-    tagdroped(tag,modifiers);
-}
-
-void teTagListWidgetBase::followTagDisplay(teTagWidgetBase* tag){
-    if(!wantsTagDisplay())
-        return;
-    // While the popup is up it follows the pointer from one tag to the next; it
-    // is not what makes it appear (that is a click, see showTagDisplay()).
-    if(!tagDisplay||!tagDisplay->isVisible())
-        return;
-    if(tagDisplayHideTimer)
-        tagDisplayHideTimer->stop();
-    showTagDisplay(tag);
-}
-
-void teTagListWidgetBase::followTagDisplayCore(std::shared_ptr<teTag> core){
-    if(!tagDisplay||!tagDisplay->isVisible()||!core)
-        return;
-    if(tagDisplayHideTimer)
-        tagDisplayHideTimer->stop();
-    showTagDisplayCore(core);
-}
-
-bool teTagListWidgetBase::handleTagDisplayEscape(QKeyEvent* event){
-    if(event&&event->key()==Qt::Key_Escape&&tagDisplay&&tagDisplay->isVisible()){
-        hideTagDisplay();
-        return true;
-    }
-    return false;
-}
-
-void teTagListWidgetBase::showTagDisplay(teTagWidgetBase* tag){
-    if(!tag||!tag->core||!tagDisplay)
-        return;
-    // The popup sits to the right of the tag it belongs to.
-    const QPoint anchor = tag->mapToGlobal(QPoint(tag->width(),tag->height()/2));
-    tagDisplay->showFor(tag,anchor);
-}
-
-void teTagListWidgetBase::showTagDisplayCore(std::shared_ptr<teTag> core){
-    if(!core||!tagDisplay)
-        return;
-    tagDisplay->showForCore(core,tagDisplayAnchor(core));
-}
-
-QPoint teTagListWidgetBase::tagDisplayAnchor(std::shared_ptr<teTag> core) const
-{
-    // Widget based list: right edge of the widget showing that tag.
-    if(teTagWidgetBase* tag = widgetForCore(core))
-        return tag->mapToGlobal(QPoint(tag->width(),tag->height()/2));
-    return QCursor::pos();
-}
-
-void teTagListWidgetBase::hideTagDisplay(){
-    if(tagDisplayHideTimer)
-        tagDisplayHideTimer->stop();
-    pendingDisplayTag = nullptr;
-    pendingDisplayCore.reset();
-    if(tagDisplay)
-        tagDisplay->hideDisplay();
-}
-
-void teTagListWidgetBase::scheduleTagDisplayHide(){
-    if(!tagDisplay||!tagDisplay->isVisible())
-        return;
-    tagDisplayHideTimer->start(180);
-}
-
-void teTagListWidgetBase::tagDisplayHideTick(){
-    const QPoint pos = QCursor::pos();
-    if(tagDisplay&&tagDisplay->isVisible()&&tagDisplay->frameGeometry().contains(pos))
-        return;                         // the pointer is inside the popup
-    // Enter/Leave for a parent/child pair arrives in an order that depends on
-    // the platform, so rather than trusting the last event, look at what is
-    // actually under the pointer.
-    if(QWidget* under = QApplication::widgetAt(pos)){
-        teTagWidgetBase* tag = qobject_cast<teTagWidgetBase*>(under);
-        if(!tag){
-            if(auto* word = qobject_cast<teWordWidgetBase*>(under))
-                tag = qobject_cast<teTagWidgetBase*>(word->parentWidget());
-        }
-        if(tag&&isAncestorOf(tag)){
-            showTagDisplay(tag);        // still over a tag of this list
-            return;
-        }
-    }
-    hideTagDisplay();
-}
-
-bool teTagListWidgetBase::eventFilter(QObject* watched,QEvent* event){
-    // The filter is installed on the tags *and* on their words: moving from a
-    // tag onto one of its words sends a Leave event to the tag, which must not
-    // be mistaken for "the pointer left the tag".
-    teTagWidgetBase* tag = qobject_cast<teTagWidgetBase*>(watched);
-    if(!tag){
-        if(auto* word = qobject_cast<teWordWidgetBase*>(watched))
-            tag = qobject_cast<teTagWidgetBase*>(word->parentWidget());
-    }
-    if(!tag)
-        return QWidget::eventFilter(watched,event);
-    switch(event->type()){
-    case QEvent::Enter:
-        followTagDisplay(tag);          // only while the popup is already up
-        break;
-    case QEvent::Leave:
-        scheduleTagDisplayHide();
-        break;
-    default:
-        break;
-    }
-    return false;
-}
-
-void teTagListWidgetBase::installTagDisplayFilters(teTagWidgetBase* tag){
-    if(!wantsTagDisplay())
-        return;
-    if(!tag)
-        return;
-    tag->installEventFilter(this);
-    const QList<teWordWidgetBase*> words = tag->findChildren<teWordWidgetBase*>();
-    for(teWordWidgetBase* word : words)
-        word->installEventFilter(this);
-}
-
 
 size_t teTagListView::size() const{
     if(showing_list)
@@ -439,7 +304,6 @@ void teTagListWidgetBase::ensureCoreVisible(std::shared_ptr<teTag> core){
 }
 
 void teTagListWidgetBase::tagEdit(teTagWidgetBase *tag, teWordWidgetBase *inw){
-    hideTagDisplay();
     editingTag = tag;
     if(!tag||!tag->core)
         return;                             // unknown tag: nothing to edit
@@ -576,8 +440,7 @@ int teTagListWidgetBase::setUnselect(teTagWidgetBase *in){
 }
 
 
-void teTagListView::tagErase(int index){
-    hideTagDisplay();
+void teTagListView::tagErase(int index){    hideTagDisplay();
     if(!showing_list||!m_model||index<0||index>=int(showing_list->size())){
         telog(QString("[teTagListView::tagErase] index %1 out of range").arg(index));
         return;
@@ -639,6 +502,13 @@ void teTagListView::tagErase(std::shared_ptr<teTag>tag){
     scrollToTop();
 }
 
+
+void teTagListView::retire(std::shared_ptr<teTag> tag)
+{
+    // The tag list owns the tags, so it owns retirement; this only forwards.
+    if(showing_list)
+        showing_list->retire(tag);
+}
 
 void teTagListView::tagEdit(std::shared_ptr<teTag>tag, QString text,int removeDuplicate,bool ifemit){
     if(!showing_list)
@@ -805,8 +675,15 @@ void teTagListView::load(teTagList*newlist){
     // only thing that has to happen is telling the editors that asking for a
     // widget would be pointless.
     for(const std::shared_ptr<teTag>& core:*showing_list){
-        if(core)
-            core->ifViewOwned=true;
+        if(!core)
+            continue;
+        core->ifViewOwned=true;
+        // The words carry the flag too: teWord::load() has to refuse as well, or
+        // a control that scans the tag builds a widget per word (that is where the
+        // loose "striped" / "side-tie" widgets over the list came from).
+        for(teWord* word : core->words)
+            if(word)
+                word->ifViewOwned=true;
     }
     const int tmpSelectIndex=m_pendingSelectionIndex;
     m_model->setTagList(showing_list);
@@ -846,8 +723,12 @@ void teTagListView::clear(teTagList *in){
             m_model->setTagList(nullptr);
         if(showing_list){
             for(const std::shared_ptr<teTag>& core:*showing_list){
-                if(core)
-                    core->ifViewOwned=false;      // the editors may want widgets again
+                if(!core)
+                    continue;
+                core->ifViewOwned=false;      // the editors may want widgets again
+                for(teWord* word : core->words)
+                    if(word)
+                        word->ifViewOwned=false;
             }
             disconnect(showing_list,0,this,0);
             // Deliberately no teTagList::unload(): this list never loaded widgets,
@@ -863,7 +744,6 @@ void teTagListWidgetBase::connectTag(teTagWidgetBase*tagwidget){
     connect(tagwidget,&teTagWidgetBase::leftButtonPress,this,&teTagListWidgetBase::onTagLeftButtonClicked);
     connect(tagwidget,&teTagWidgetBase::mouseDoubleClicked,this,static_cast<void(teTagListWidgetBase::*)(teTagWidgetBase*,teWordWidgetBase*)>(&teTagListWidgetBase::tagEdit),Qt::DirectConnection);
     // Drives the magnified hover view.
-    installTagDisplayFilters(tagwidget);
 }
 
 void teTagListWidgetBase::disconnectTag(teTagWidgetBase *tagwidget){
@@ -1062,8 +942,6 @@ void teTagListWidgetBase::onTagLeftButtonClicked(teTagWidgetBase *tag, QPoint po
     // Clicking a tag is what opens the magnified popup (it used to appear after
     // hovering for a while, which got in the way of clicking and scrolling). The
     // widget based lists do not want it at all.
-    if(wantsTagDisplay())
-        showTagDisplay(tag);
 }
 
 void teTagListView::onTagEdited(std::shared_ptr<teTag>tag){

@@ -335,7 +335,7 @@ int teTagList::edit(std::shared_ptr<teTag> core, QString text, int removeDuplica
     }
 
     onTagEdited(core, ifemit);
-    return core->type == teTag::deleteTag ? -1 : 0;
+    return core->retired ? -1 : 0;
 }
 
 int teTagList::edit(int index, QString text, int removeDuplicate, bool ifemit)
@@ -358,8 +358,10 @@ int teTagList::insert(int pos, std::shared_ptr<teTag> tag, int removeDuplicate, 
         return -1;
     if (removeDuplicate == 1 && remove_duplicate(tag, false))
         return -1;
-    if (tag->type == teTag::deleteTag)
-        return -1;
+    // Undo of an erase puts the tag back: it is alive again, so the retirement
+    // marker has to go with it (a tag that sits in the list while marked would be
+    // removed by the next purge, and its editors would let go of it).
+    tag->retired = false;
 
     connectTag(tag);
     {
@@ -372,7 +374,7 @@ int teTagList::insert(int pos, std::shared_ptr<teTag> tag, int removeDuplicate, 
 
     // Announce the insertion *after* the list is consistent; the old code
     // emitted before inserting, so a slot that inspected the list saw the tag
-    // missing (and a rejected deleteTag was announced as well).
+    // missing (and a rejected insertion was announced as well).
     onTagInserted(tag, pos, ifSendSignal);
     return 0;
 }
@@ -537,6 +539,11 @@ teTag::teTag(teTag &&in):words(std::move(in.words)),widget(in.widget){
 }
 
 void teTag::load(){
+    // A model/view list draws this tag itself: building the widget here put a
+    // pooled tag widget (parked under the view) on top of the list, which is what
+    // the editor controls triggered when they called load() on a new tag.
+    if(ifViewOwned)
+        return;
     if(widget==nullptr)
         widget = (teTagWidget*)widgetpool.getTag(shared_from_this());
     else
@@ -707,6 +714,11 @@ void teTag::unload(){
         w->unload();
 }
 teWordWidget* teWord::load(){
+    // Same as teTag::load(): no widget for a word the view draws itself. The
+    // clothes control scans a tag and asked every word for its widget, which is
+    // where the loose "striped" / "side-tie" widgets came from.
+    if(ifViewOwned)
+        return nullptr;
     if(!widget)
         widget = widgetpool.getWord(this);
     return widget;

@@ -148,7 +148,7 @@ int teTagListModel::insertTag(int row,std::shared_ptr<teTag> tag,int removeDupli
 {
     if(!m_list||!tag)
         return -1;
-    if(tag->type==teTag::deleteTag)
+    if(tag->retired)
         return -1;
     // Refuse before announcing anything: the old widget based code announced the
     // insertion first and then had to take it back.

@@ -21,7 +21,7 @@ class teInputWidget;
 /**
  * @brief Widget for displaying and managing teTagList
  */
-class teTagListWidgetBase : public QWidget, public teTagDisplayOwner, virtual public teObject
+class teTagListWidgetBase : public QWidget, virtual public teObject
 {
     Q_OBJECT
 public:
@@ -46,46 +46,8 @@ public:
 
     QMenu* menu = new QMenu(this);///< Context menu for right-click operations
 
-    // -- magnified popup ------------------------------------------------------
-    teTagDisplayWidget* tagDisplay=nullptr;///< floating magnified tag
-    QTimer* tagDisplayHideTimer=nullptr;///< grace period while moving into the popup
-    QPointer<teTagWidgetBase> pendingDisplayTag;
-    std::shared_ptr<teTag> pendingDisplayCore;///< ditto, for the model/view list
-    /// The popup follows the pointer while it is up (a click is what opens it).
-    void followTagDisplay(teTagWidgetBase* tag);
-    /// Same, for a tag that is drawn by a delegate and has no widget.
-    void followTagDisplayCore(std::shared_ptr<teTag> core);
-    void scheduleTagDisplayHide();
-    void showTagDisplay(teTagWidgetBase* tag);
-    /// Same, for a tag that is drawn by a delegate and has no widget.
-    void showTagDisplayCore(std::shared_ptr<teTag> core);
-    void hideTagDisplay();
-    /**
-     * @brief Global point the popup is placed next to.
-     *
-     * The widget based list uses the right edge of the tag's widget; a model/view
-     * list overrides this with the right edge of the row, which is what the user
-     * asked for ("at the right border of the tag list view").
-     */
-    virtual QPoint tagDisplayAnchor(std::shared_ptr<teTag> core) const;
-    /// Hides the popup when the key was Escape; true when it did.
-    bool handleTagDisplayEscape(QKeyEvent* event);
-    void tagDisplayHideTick();
-    /// Installs the hover filter on a tag and on the words it already owns.
-    void installTagDisplayFilters(teTagWidgetBase* tag);
-    /**
-     * @brief True when this list wants the magnified popup.
-     *
-     * Only the model/view list does: a row cannot be dragged word by word or
-     * edited word by word, which is the whole reason the popup exists. The widget
-     * based lists (the editors' tag lists) drag words and open the inline editor
-     * on the tag itself, so the popup would only get in their way.
-     */
-    virtual bool wantsTagDisplay() const { return false; }
     /// The list this widget currently shows (nullptr when it shows nothing).
     virtual teTagList* shownList() const { return nullptr; }
-    /// Hides the popup when the cursor really left it (buttons, editors, ...).
-    bool eventFilter(QObject* watched,QEvent* event) override;
 
     // Style enums for different tag states
     teTagWidgetBase::teTagStyle normal_style_enum = teTagWidgetBase::teTagStyle::normal;///< Normal state style
@@ -140,13 +102,6 @@ public slots:
      * for the widget based implementation; a model/view based implementation
      * only has to override them to work on rows instead.
      */
-    /// teTagDisplayOwner: a click inside the list keeps the popup open.
-    bool ownsWidget(QWidget* widget) const override {
-        return widget&&(widget==this||isAncestorOf(widget));
-    }
-    /// teTagDisplayOwner: dragging the popup body moves the tag it belongs to.
-    void tagDragged(teTagWidgetBase* tag,Qt::KeyboardModifiers modifiers) override;
-
     /// The widget currently representing `core` in this list, or nullptr.
     teTagWidgetBase* widgetForCore(const std::shared_ptr<teTag>& core) const;
     virtual void setSelectCurrentCore(std::shared_ptr<teTag> core,bool ifclear=true);
@@ -362,6 +317,12 @@ public:
     void redo();
     void tagErase(int index);
     void tagErase(std::shared_ptr<teTag> tag=nullptr);
+    /**
+     * @brief The one way to say "this tag is going away" (see teTagList::retire).
+     *
+     * Marks the tag and erases it from the list in one step.
+     */
+    void retire(std::shared_ptr<teTag> tag);
     void tagEdit(std::shared_ptr<teTag>tag, QString text,int removeDuplicate=1,bool ifemit=true);
     void tagEditCore(std::shared_ptr<teTag> core);
     /// Inserts a tag as a row. Returns nullptr: this list has no tag widgets, the

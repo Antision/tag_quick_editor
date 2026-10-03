@@ -751,7 +751,7 @@ struct Breast_Buttongroup :teTagButtonGroup {
                 if (linked && !linked->words.empty()
                     && linked->words.begin() != linked->words.end()
                     && (*linked->words.begin())->text != qsl("breasts")) {
-                    tag->type = teTag::deleteTag;
+                    tag->retired=true;
                     breasts_ptr.reset();
                     return false;
                 }
@@ -822,7 +822,7 @@ teEditor_hair_and_eyes::teEditor_hair_and_eyes(teTagListView*in_taglistwidget,QS
         bool filter(std::shared_ptr<teTag>in_tag)override{
             if(hairtag_types.contains(in_tag))
                 on_hairtag_edited(in_tag);
-            if(in_tag->type==teTag::deleteTag)
+            if(in_tag->retired)
                 return false;
             if(in_tag->words.empty())return false;
             QString&&lastword=*in_tag->words.back();
@@ -880,7 +880,7 @@ teEditor_hair_and_eyes::teEditor_hair_and_eyes(teTagListView*in_taglistwidget,QS
                     continue;
                 if(!hairtag_types.contains(candidate)) continue;
                 if(candidate==new_tag)continue;
-                if(candidate->type==teTag::deleteTag)continue;
+                if(candidate->retired)continue;
 
                 if(can_merge(candidate,hairtag_types[candidate], new_tag,type)){
                     return candidate;
@@ -945,7 +945,7 @@ teEditor_hair_and_eyes::teEditor_hair_and_eyes(teTagListView*in_taglistwidget,QS
                 hairtag_types[edited_tag]=still_valid;
             std::shared_ptr<teTag> new_target = find_merge_target(edited_tag,still_valid);
             if(new_target) {
-                edited_tag->type=teTag::deleteTag;
+                edited_tag->retired=true;
                 perform_merge(new_target, edited_tag,still_valid);
             }
         }
@@ -993,7 +993,7 @@ teEditor_hair_and_eyes::teEditor_hair_and_eyes(teTagListView*in_taglistwidget,QS
                 std::shared_ptr<teTag> target_tag = find_merge_target(in_tag,new_type);
 
                 if(target_tag) {
-                    in_tag->type=teTag::deleteTag;
+                    in_tag->retired=true;
                     perform_merge(target_tag,in_tag,new_type);
                     return;
                 } else {
@@ -1036,7 +1036,7 @@ teEditor_hair_and_eyes::teEditor_hair_and_eyes(teTagListView*in_taglistwidget,QS
                             if(*in_tag->words[i]==qsl("streaked"))
                             {if(auto* editorTag=tagWidgetFor(in_tag)) editorTag->destroyWord(i);--i;--wordcount;}
                     }
-                    if(in_tag->type==teTag::deleteTag)
+                    if(in_tag->retired)
                         taglistwidget->tagErase(in_tag);
                 },Qt::DirectConnection);
                 widget->insertExtraWidgets(this,streaked_btn);
@@ -1060,7 +1060,7 @@ teEditor_hair_and_eyes::teEditor_hair_and_eyes(teTagListView*in_taglistwidget,QS
                             if(*in_tag->words[i]==qsl("gradient"))
                             {if(auto* editorTag=tagWidgetFor(in_tag)) editorTag->destroyWord(i);--i;--wordcount;}
                     }
-                    if(in_tag->type==teTag::deleteTag)
+                    if(in_tag->retired)
                         taglistwidget->tagErase(in_tag);
                 },Qt::DirectConnection);
                 widget->insertExtraWidgets(this,gradient_btn);
@@ -1248,7 +1248,7 @@ struct ponytail_buttongroup :teTagButtonGroup {
         if(*tag->words.back()==QString("twintails")){
             if(twintailsTag&&twintailsTag!=tag){
                 getPrefix(tag,kindOfTwintails);
-                tag->type=teTag::deleteTag;
+                tag->retired=true;
                 taglistwidget->tagErase(tag);
                 setTagTextFromBoolArray(twintailsTag,kindOfTwintails);
             }else if(!twintailsTag){
@@ -1262,7 +1262,7 @@ struct ponytail_buttongroup :teTagButtonGroup {
         }else if(*tag->words.back()==QString("ponytail")){
             if(ponytailTag&&ponytailTag!=tag){
                 getPrefix(tag,kindOfPonytail);
-                tag->type=teTag::deleteTag;
+                tag->retired=true;
                 taglistwidget->tagErase(tag);
                 setTagTextFromBoolArray(ponytailTag,kindOfPonytail);
             }else if(!ponytailTag){
@@ -1276,7 +1276,7 @@ struct ponytail_buttongroup :teTagButtonGroup {
         }
         refreshState();
 
-        return tag->type==teTag::deleteTag;
+        return tag->retired;
     }
     void clear()override{
         clearTailMemeory(pony);
@@ -1432,7 +1432,7 @@ struct HairLength_Buttongroup :teTagButtonGroup {
                         very_long_hair_ptr=nullptr;
                     }
                     if(very_long_hair_ptr){
-                        tag->type=teTag::deleteTag;
+                        tag->retired=true;
                         long_hair_ptr=nullptr;
                         return false;
                     }
@@ -1626,7 +1626,7 @@ teEditor_clothes::teEditor_clothes(teTagListView*in_taglistwidget,QString &&name
                 if(dead)
                     return;
                 if(tag==parentList->clothes_editing)return;
-                if(tag->type==teTag::deleteTag)
+                if(tag->retired)
                     return;
                 teClothes*tagClothes = nullptr;
                 if(tagClothes=parentList->findClothes(tag);!tagClothes){
@@ -1642,7 +1642,7 @@ teEditor_clothes::teEditor_clothes(teTagListView*in_taglistwidget,QString &&name
                     if(clz==this||clz->dead||!parentList->all_clothes.count(clz))
                         continue;
                     if(clz->merge(tag)){
-                        tag->type=teTag::deleteTag;
+                        tag->retired=true;
                         parentTagListWidget->tagErase(tag);
                         parentList->retire(tagClothes);
                         return;
@@ -1820,7 +1820,7 @@ teEditor_clothes::teEditor_clothes(teTagListView*in_taglistwidget,QString &&name
                 parentList->clothes_editing = nullptr;
                 if(in_core&&in_core!=core){
                     parentList->clothes_editing = in_core;
-                    in_core->type=teTag::deleteTag;
+                    in_core->retired=true;
                     in_core->edited_with_layout();
                     if(!dead)
                         parentList->clothes_editing=nullptr;
@@ -1994,7 +1994,7 @@ teEditor_clothes::teEditor_clothes(teTagListView*in_taglistwidget,QString &&name
                             if(clothes->dead||!all_clothes.count(clothes))
                                 continue;
                             if(clothes->merge(in_tag)){
-                                in_tag->type=teTag::deleteTag;
+                                in_tag->retired=true;
                                 return false;
                             }
                         }
@@ -2131,7 +2131,7 @@ bool filter(std::shared_ptr<teTag>in)override{
     if(words.back()->text!=qsl("ears"))return false;
     if(words.front()->text==qsl("animal")){
         if(explicit_ear){
-            in->type=teTag::deleteTag;
+            in->retired=true;
             animal_ears_ptr=nullptr;
             return false;
         }

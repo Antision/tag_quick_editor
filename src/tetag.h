@@ -11,6 +11,15 @@ class teWord:public teObject{
 public:
     QString text;
     teWordWidget*widget=nullptr;
+    /**
+     * @brief True while a model/view based tag list shows this word.
+     *
+     * Such a list draws its rows through a delegate, so load() must not build a
+     * widget for the word: the pooled widget ended up parked under the view and
+     * was visible (and draggable) on top of the tag list. Set together with the
+     * tag's own flag by teTagListView::load().
+     */
+    bool ifViewOwned=false;
     teWord(){}
     teWord(const QString& input_string){
         text=input_string;
@@ -167,8 +176,7 @@ public:
     enum teTagType{
         tag=0,
         sentence,
-        other,
-        deleteTag
+        other
     };
 
     QList<teWord*> words;
@@ -213,6 +221,17 @@ public:
      * belongs to exactly one tag list, so a single flag is enough.
      */
     bool ifViewOwned=false;
+    /**
+     * @brief "This tag is on its way out."
+     *
+     * The editors merge one tag into another ("underwear" into "panties") and the
+     * merged-away tag has to disappear. That used to be expressed by writing
+     * teTag::deleteTag into `type`, i.e. the tag's *kind* was abused as a deletion
+     * signal, and every layer then had to test for it again. It is an explicit
+     * flag now, and teTagList::retire() is the one place that sets it and erases
+     * the tag from its list.
+     */
+    bool retired=false;
     /**
      * @brief Makes sure the tag is displayed, i.e. that it owns a widget.
      *
@@ -576,10 +595,13 @@ public:
      * thread safe.
      */
     std::recursive_mutex tagsMt;
-
     /// While this is > 0 modifications are not pushed onto the undo stack.
     /// Prefer ChangeSuppressor over touching it directly.
     int signalSuppression=0;
+    /// Tags marked for removal by retire() and not erased yet.
+    std::vector<std::shared_ptr<teTag>> pendingRetire;
+    /// While > 0 retire() only queues (see RetireDeferrer).
+    int retireDeferDepth=0;
 
     /// RAII guard suppressing undo recording for its lifetime.
     struct ChangeSuppressor{
@@ -707,11 +729,67 @@ public:
         }
         erase(index);
     }
+    /**
+     * @brief The single way to say "this tag is going away".
+     *
+     * Marks the tag (teTag::retired) and erases it, so the two steps cannot drift
+     * apart: a tag that is marked but not erased stayed in the list, and one that
+     * is erased without being marked came back through the editor that owned it.
+     * Every hardcoded `type = teTag::deleteTag` site is meant to call this.
+     *
+     * While a RetireDeferrer is alive the erase is only queued: removing a tag
+     * from inside the loop that is reading the list pulled the ground out from
+     * under the editor that was still working on it (that is why the old code
+     * marked the tag and erased it after the loop).
+     */
+    void retire(std::shared_ptr<teTag> tag){
+        if(!tag)
+            return;
+        // Idempotent on purpose: a control may have marked the tag itself (a merge
+        // marks the tag it absorbed from inside filter()), and the caller that
+        // walks the list afterwards must be able to hand it over again.
+        tag->retired=true;
+        if(tags.indexOf(tag)<0)
+            return;                             // already erased
+        if(std::find(pendingRetire.begin(),pendingRetire.end(),tag)==pendingRetire.end())
+            pendingRetire.push_back(tag);
+        if(retireDeferDepth==0)
+            purgeRetired();
+    }
+    /// Erases every queued tag. Called by retire() and by RetireDeferrer.
+    void purgeRetired(){
+        // The erases below run the editors' callbacks, which may retire more tags:
+        // work off a copy and loop until nothing is left.
+        while(!pendingRetire.empty()){
+            const std::vector<std::shared_ptr<teTag>> batch = pendingRetire;
+            pendingRetire.clear();
+            for(const std::shared_ptr<teTag>& tag : batch){
+                const int pos = tags.indexOf(tag);
+                if(pos>=0)
+                    erase(pos);
+            }
+        }
+    }
+    /// True when the tag is marked as going away (or is already gone).
+    static bool isRetired(const std::shared_ptr<teTag>& tag){
+        return !tag||tag->retired;
+    }
+    /// Queues retire() for its lifetime and flushes once at the end.
+    struct RetireDeferrer{
+        teTagList* list;
+        explicit RetireDeferrer(teTagList* in) : list(in){ if(list) ++list->retireDeferDepth; }
+        ~RetireDeferrer(){
+            if(list&&--list->retireDeferDepth==0)
+                list->purgeRetired();
+        }
+        RetireDeferrer(const RetireDeferrer&)=delete;
+        RetireDeferrer& operator=(const RetireDeferrer&)=delete;
+    };
 
     /// Renames `core` (or the tag at `index`).
     /// `removeDuplicate == 1` merges: an existing tag with the same text is
     /// erased so the list never ends up with two identical tags.
-    /// Returns -1 when the tag turned into a deleteTag marker, 0 otherwise.
+    /// Returns -1 when the tag was absorbed (see teTagList::retire), 0 otherwise.
     int edit(std::shared_ptr<teTag>core,QString text,int removeDuplicate=1,bool ifemit=true);
     int edit(int index,QString text,int removeDuplicate=1,bool ifemit=true);
 

@@ -152,6 +152,9 @@ void teEditorList::readList(teTagList *input_taglist){
     unloadList();
     if(input_taglist)
         connectedList = input_taglist;
+    // Tags absorbed below are erased when this goes out of scope, not while the
+    // editors are still reading the list.
+    teTagList::RetireDeferrer retireDeferrer(connectedList);
     connect(connectedList,&teTagList::tagInserted,this,&teEditorList::onNewTagInserted,Qt::DirectConnection);
     connect(connectedList,&teTagList::tagEdited,this,&teEditorList::onTagEdited,Qt::DirectConnection);
     int tagsize=connectedList->size();
@@ -161,16 +164,22 @@ void teEditorList::readList(teTagList *input_taglist){
         if(co->type!=teTag::tag)
             continue;
         for(teEditor*e:editorlist){
-            if(e->read(co)){
-                co->type=teTag::deleteTag;
+            // e->read() returning true means "a control absorbed this tag" (it was
+            // merged into another one). Removing it is the list's job, and this is
+            // the only place that decides it - it used to be a deleteTag marker in
+            // the tag's own type field that four layers each had to re-check.
+            if(e->read(co)&&connectedList){
+                connectedList->retire(co);
                 break;
             }
         }
     }
-    temtaglist = connectedList->getTags();
-    for(std::shared_ptr<teTag> co:temtaglist){
-        if(co->type==teTag::deleteTag)
-            tagListWidget->tagErase(co);
+    // A control may also have marked a tag while reading without reporting it
+    // (a merge marks the tag it absorbed from inside filter()), so hand every
+    // marked tag over as well. Both paths end in teTagList::retire().
+    for(const std::shared_ptr<teTag>& co : connectedList->getTags()){
+        if(co->retired)
+            connectedList->retire(co);
     }
 }
 

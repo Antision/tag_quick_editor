@@ -62,9 +62,6 @@ public:
     /// Disconnects everything and runs pending `destroy` callbacks. Idempotent.
     void onDestroy();
 
-    void checkDeleteLater();
-    void deleteLater() { deleteLaterFlag = true; }
-    bool ifDeleteLater() const { return deleteLaterFlag; }
 
     template<typename OBJT, typename T, typename RET, typename... Args, typename... ArgTypes>
         requires std::derived_from<OBJT, T>
@@ -86,7 +83,6 @@ private:
     /// Caller must hold teCallbackMutex().
     void teDisconnectExceptLocked(int keepType);
 
-    std::atomic<bool> deleteLaterFlag{false};
     std::atomic<bool> onDestroyCalled{false};
 };
 
