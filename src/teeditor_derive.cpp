@@ -1233,11 +1233,12 @@ struct ponytail_buttongroup :teTagButtonGroup {
         // is what edited_with_layout() below makes them do.
         if(teTagWidgetBase* editorTag = tagWidgetFor(in_tag)){
             if(editorTag->ownsWordWidgets()){
-                for(teWord* wc : in_tag->words) if(wc && !wc->widget) wc->load();
-                for(int i = 0;i<in_tag->words.size();++i)
-                    if(in_tag->words[i]->widget)
-                        editorTag->layout->insertWidget(editorTag->layout->count()-2,
-                                                        in_tag->words[i]->widget);
+                // The tag widget owns its word widgets, so ask it for them instead
+                // of reaching into the core (a word has no widget table any more).
+                for(teWord* wc : in_tag->words){
+                    if(teWordWidgetBase* wordWidget = editorTag->ensureWordWidgetFor(wc))
+                        editorTag->layout->insertWidget(editorTag->layout->count()-2,wordWidget);
+                }
             }
         }
         in_tag->edited_with_layout();

@@ -10,16 +10,6 @@ class obj_callback_function_base;
 class teWord:public teObject{
 public:
     QString text;
-    teWordWidget*widget=nullptr;
-    /**
-     * @brief True while a model/view based tag list shows this word.
-     *
-     * Such a list draws its rows through a delegate, so load() must not build a
-     * widget for the word: the pooled widget ended up parked under the view and
-     * was visible (and draggable) on top of the tag list. Set together with the
-     * tag's own flag by teTagListView::load().
-     */
-    bool ifViewOwned=false;
     teWord(){}
     teWord(const QString& input_string){
         text=input_string;
@@ -30,8 +20,6 @@ public:
     teWord(const teWord& in_core){
         text = in_core.text;
     }
-    teWordWidget* load();
-    void unload();
     bool operator==(const teWord& in) const{
         return text == in.text;
     }
@@ -111,10 +99,7 @@ public:
         return *core;
     }
     virtual ~teWordWidgetBase(){
-        if(core!=nullptr){
-            core->widget=nullptr;
-            core=nullptr;
-        }
+        core=nullptr;       // the tag widget owns its word widgets, not the core
     }
 signals:
     void mouseDoubleClicked(teWordWidgetBase*);
@@ -129,23 +114,18 @@ public:
     }
     teWordWidget(const QString& input_string,QWidget* parent=nullptr):teWordWidgetBase(input_string,parent){
         core=new teWord(input_string);
-        core->widget=this;
     }
     teWordWidget(QString&& input_string,QWidget* parent=nullptr):teWordWidget(input_string,parent){
         core=new teWord(std::move(input_string));
-        core->widget=this;
     }
     teWordWidget(teWord&in):teWordWidgetBase(in){
-        in.widget=this;
     }
     teWordWidget(const teWordWidgetBase&in):teWordWidgetBase(in){
-        core->widget=this;
     }
 
     teWordWidget(teWordWidgetBase&&in)=delete;
     virtual void readCore(teWord*in)override{
         teWordWidgetBase::readCore(in);
-        in->widget=this;
     }
 
 };
@@ -178,15 +158,9 @@ public:
     /**
      * @brief The widget that shows this tag, if any.
      *
-     * The type used to be teTag (the widget of the single image tag list). That
-     * list draws its tags through a delegate now and owns no widget per tag, so
-     * the only widget a tag has is the one an editor created for it - hence the
-     * common base class. Everything the editors call through this pointer
-     * (setText, insertWord, destroyWord, disconnectWord, layout) is a teTagWidgetBase
-     * member.
+     * Gone: widgets belong to the list that shows them (teTagListWidgetBase keeps
+     * the table). A tag is data plus signals; nothing here knows about widgets.
      */
-
-    teTagWidgetBase* widget=nullptr;
     int weight=99;
     teTagType type = tag;
     teTag(){
@@ -196,7 +170,7 @@ public:
         if(iftmp)info=QStringLiteral("tmp tagcore");
     }
     teTag(const QList<teWord*>in,teTagWidgetBase*child=nullptr);
-    teTag(QList<teWord*>&&in,teTagWidgetBase*child=nullptr):words(std::move(in)),widget(child){}
+    teTag(QList<teWord*>&&in,teTagWidgetBase*child=nullptr):words(std::move(in)){Q_UNUSED(child);}
     teTag(const QString &str,teTagWidgetBase*child=nullptr, bool forceSentence=false);
     teTag(const char* str,teTagWidgetBase*child=nullptr, bool forceSentence=false);
     teTag(const teTag&in):weight(in.weight),type(in.type){
@@ -205,16 +179,6 @@ public:
             words.push_back(new teWord{*wc});
     }
     teTag(teTag&&in);
-    void load();
-    void unload();
-    /**
-     * @brief True while a model/view based tag list shows this tag.
-     *
-     * Such a list draws its rows through a delegate and owns no widget per tag,
-     * so ensureWidget() must not build the widgets the model replaced. A core
-     * belongs to exactly one tag list, so a single flag is enough.
-     */
-    bool ifViewOwned=false;
     /**
      * @brief "This tag is on its way out."
      *
@@ -336,10 +300,8 @@ public:
     teWord* takeWordAt(int index,bool ifSendSignal=true){
         while(index<0)index += core->words.size();
         teWord* wc = core->words.takeAt(index);
-        if(wc->widget){
-            wc->widget->teDisconnect(this);
-            QApplication::disconnect(wc->widget,0,this,0);
-        }
+        // The word widget is this tag widget's child; the layout that holds it is
+        // rebuilt from the core by edited_with_layout() below.
         if(ifSendSignal)
             core->edited_with_layout();
         return wc;
@@ -353,9 +315,7 @@ public:
         // tag lists rebuild their words from the core, which is what
         // edited_with_layout() below makes them do.
         if(ownsWordWidgets()){
-            wordcore->load();
-            layout->insertWidget(index,wordcore->widget);
-            connectWord(wordcore->widget);
+            ensureWordWidgetFor(wordcore,index);
         }
         if(ifSendSignal)core->edited_with_layout();
     }
@@ -363,11 +323,9 @@ public:
         while(index<0)index += core->words.size()+1;
         core->words.insert(index,inwc);
         if(ownsWordWidgets()){
-            if(!inwc->widget)
-                inwc->load();
-            layout->insertWidget(index,inwc->widget);
-            if(ifconnect)
-                connectWord(inwc->widget);
+            teWordWidgetBase* built = ensureWordWidgetFor(inwc,index);
+            if(!ifconnect&&built)
+                disconnect(built,0,this,0);
         }
         if(ifSendSignal)core->edited_with_layout();
     }
@@ -378,6 +336,24 @@ public:
      * itself, and the editors' tag lists build their words from the tag core.
      */
     virtual bool ownsWordWidgets() const { return true; }
+    /**
+     * @brief The widget showing `core` among this tag's children, or nullptr.
+     *
+     * The tag widget owns its word widgets (they are its layout's children), so
+     * this - not teWord::widget - is where "which widget shows this word" is
+     * answered. teWord is data plus signals.
+     */
+    teWordWidgetBase* wordWidgetFor(teWord* core) const {
+        if(!core)
+            return nullptr;
+        for(teWordWidgetBase* word : findChildren<teWordWidgetBase*>())
+            if(word->core==core)
+                return word;
+        return nullptr;
+    }
+    /// Same, but builds the widget (and connects it) when there is none yet.
+    /// Defined in tetag.cpp: the widget pool is declared after this class.
+    teWordWidgetBase* ensureWordWidgetFor(teWord* core,int layoutIndex=-1);
     void connectWord(teWordWidgetBase*inw){
         connect(inw,&teWordWidgetBase::droped,this,&teTagWidgetBase::worddroped);
         connect(inw,&teWordWidgetBase::mouseDoubleClicked,this,[this](teWordWidgetBase*inw){
@@ -399,11 +375,11 @@ public:
     }
     void disconnectWord(teWordWidgetBase*inw=nullptr){
         if(!inw){
-            for(teWord*wc:core->words)
-                if(wc->widget){
-                    disconnect(wc->widget,0,this,0);
-                    wc->teDisconnect(this);
-                }
+            for(teWordWidgetBase* word : findChildren<teWordWidgetBase*>()){
+                disconnect(word,0,this,0);
+                if(word->core)
+                    word->core->teDisconnect(this);
+            }
         }else{
             disconnect(inw,0,this,0);
             inw->teDisconnect(this);
@@ -562,7 +538,6 @@ class teTagList:public QObject,public teObject{
 public:
     teTagList(){};
     bool isTagsLoaded=false;
-    bool isWidgetLoaded=false;
     bool isSaved=true;
     teTagList(const teTagList& in):
         tags(in.tags){}
@@ -634,20 +609,6 @@ public:
             emit tagInserted(tag);
             teemit(teCallbackType::edit);
         }
-    }
-    void load(){
-        if(isWidgetLoaded)return;
-        for(std::shared_ptr<teTag> tag:tags){
-            tag->load();
-        }
-        isWidgetLoaded=true;
-    }
-    void unload(){
-        if(!isWidgetLoaded)return;
-        for(std::shared_ptr<teTag> tag:tags){
-            tag->unload();
-        }
-        isWidgetLoaded=false;
     }
     void clear(){
         std::lock_guard<std::recursive_mutex> lg(tagsMt);

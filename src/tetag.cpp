@@ -3,19 +3,14 @@
 teTagWidget::teTagWidget(const QString &str,QWidget*parent):
     teTagWidgetBase(std::make_shared<teTag>(str),parent)
 {
-    core->widget=this;
     load();
     setStyle(teTagWidget::normal);
 }
 
 void teTagWidget::readCore(std::shared_ptr<teTag>in_core){
-    if((core!=nullptr)&&core!=in_core){
-        core->widget=nullptr;
-    }
     core = in_core;
     in_core->teConnect(teCallbackType::edit,this,&teTagWidget::load);
     in_core->teConnect(teCallbackType::edit_with_layout,this,&teTagWidget::load);
-    in_core->widget=this;
 
     if(in_core->type==teTag::sentence)
         setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Fixed);
@@ -23,10 +18,6 @@ void teTagWidget::readCore(std::shared_ptr<teTag>in_core){
 }
 
 teTagWidget::teTagWidget(std::shared_ptr<teTag>incore,QWidget*parent):teTagWidgetBase(incore,parent){
-    if(incore->widget&&incore->widget!=this){
-        widgetpool.give_back(incore->widget);
-    }
-    incore->widget=this;
     load();
     setStyle(teTagWidget::normal);
 }
@@ -46,6 +37,19 @@ void teTagWidgetBase::takeWordWidgets(){
     for(int i=0;i<layoutItemCount-1;++i){
         layout->takeAt(0);
     }
+}
+
+teWordWidgetBase* teTagWidgetBase::ensureWordWidgetFor(teWord* core,int layoutIndex)
+{
+    if(!core)
+        return nullptr;
+    if(teWordWidgetBase* existing = wordWidgetFor(core))
+        return existing;
+    teWordWidgetBase* built = widgetpool.getWord(core);
+    if(layout)
+        layout->insertWidget(layoutIndex<0?layout->count()-1:layoutIndex,built);
+    connectWord(built);
+    return built;
 }
 
 void teTagWidgetBase::initialize(){
@@ -85,10 +89,7 @@ teTagWidgetBase::~teTagWidgetBase(){
     for(teWordWidgetBase*word:findChildren<teWordWidgetBase*>()){
         word->setParent(this->parentWidget());
     }
-    if(core!=nullptr){
-        core->widget=nullptr;
-        core.reset();
-    }
+    core.reset();               // the list owns the widget table, not the tag
 }
 
 teTagWidgetBase& teTagWidgetBase::operator=(const QString& input_string){
@@ -209,7 +210,7 @@ void teTagWidgetBase::worddroped(teWordWidgetBase *in_word, int xpos){
     int in_id=-1;
     int i=0;
     for(;i<wordcount;++i){
-        teWordWidgetBase*wordptr = core->words[i]->widget;
+        teWordWidgetBase*wordptr = wordWidgetFor(core->words[i]);
         if(wordptr!=in_word){
             if(xpos < wordptr->x()+wordptr->width()){
                 break;
@@ -217,7 +218,7 @@ void teTagWidgetBase::worddroped(teWordWidgetBase *in_word, int xpos){
         }else{
             in_id=i;
             for(i=wordcount-1;i>in_id;--i){
-                wordptr = core->words[i]->widget;
+                wordptr = wordWidgetFor(core->words[i]);
                 if(xpos > wordptr->x()){
                     ++i;
                     goto words_loop_end;
@@ -230,7 +231,7 @@ void teTagWidgetBase::worddroped(teWordWidgetBase *in_word, int xpos){
 words_loop_end:
     if(in_id==-1){
         in_id = i+1;
-        while(in_word!=core->words[in_id]->widget){
+        while(in_word!=wordWidgetFor(core->words[in_id])){
             ++in_id;
         }
     }else --i;
@@ -306,7 +307,6 @@ void teTagList::erase(int id)
     }
     std::shared_ptr<teTag> core = tags.takeAt(id);
     onTagErased(core, id, isTagsLoaded);
-    core->unload();
     core->teDisconnect(this);
     core->teemit(teCallbackType::destroy, false);
 }
@@ -516,38 +516,26 @@ void teWordWidgetBase::mouseDoubleClickEvent(QMouseEvent *event){
     emit mouseDoubleClicked(this);
 }
 
-teTag::teTag(const QList<teWord *> in, teTagWidgetBase *child):widget(child){
+teTag::teTag(const QList<teWord *> in, teTagWidgetBase *child){
+    Q_UNUSED(child);
     for(teWord*w:in)
         words.push_back(new teWord(w->text));
 }
 
-teTag::teTag(const QString &str, teTagWidgetBase *child, bool forceSentence):widget(child){
+teTag::teTag(const QString &str, teTagWidgetBase *child, bool forceSentence){
+    Q_UNUSED(child);
     // The flag used to be dropped here, so a tag built as a sentence came out as
     // a plain tag and was then edited in the wrong window.
     read(str,true,forceSentence);
 }
 
-teTag::teTag(const char *str, teTagWidgetBase *child, bool forceSentence):widget(child){
+teTag::teTag(const char *str, teTagWidgetBase *child, bool forceSentence){
+    Q_UNUSED(child);
     read(QString(str),true,forceSentence);
 }
 
-teTag::teTag(teTag &&in):words(std::move(in.words)),widget(in.widget){
+teTag::teTag(teTag &&in):words(std::move(in.words)){
     info=in.info;
-    if(in.widget!=nullptr)
-        in.widget->core.reset();
-    in.widget=nullptr;
-}
-
-void teTag::load(){
-    // A model/view list draws this tag itself: building the widget here put a
-    // pooled tag widget (parked under the view) on top of the list, which is what
-    // the editor controls triggered when they called load() on a new tag.
-    if(ifViewOwned)
-        return;
-    if(widget==nullptr)
-        widget = (teTagWidget*)widgetpool.getTag(shared_from_this());
-    else
-        widget->load();
 }
 
 teTag &teTag::operator=(const teTag &in){
@@ -578,11 +566,8 @@ void teTag::read(const QString &str, bool ifclear, bool forceSentence)
         words.push_back(new teWord(text));
         type = sentence;
 
-        if (widget)
-            widget->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
-
         if (ifclear)
-            edited();
+            edited_with_layout();
         return;
     }
 
@@ -591,11 +576,8 @@ void teTag::read(const QString &str, bool ifclear, bool forceSentence)
         words.push_back(new teWord(text));
         type = sentence;
 
-        if (widget)
-            widget->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
-
         if (ifclear)
-            edited();
+            edited_with_layout();
         return;
     }
 
@@ -636,11 +618,9 @@ void teTag::read(const QString &str, bool ifclear, bool forceSentence)
 teWord *teTag::takeWordAt(int index, bool ifSendSignal){
     while(index<0)index += words.size();
     teWord* wc = words.takeAt(index);
-    if(wc->widget){
-        wc->widget->teDisconnect();
-        if(this->widget)
-            QApplication::disconnect(wc->widget,0,this->widget,0);
-    }
+    // The word widget (if the list that shows this tag owns one) is rebuilt from
+    // the core by the edited_with_layout() below, so nothing has to be unplugged
+    // here any more: the tag does not know about widgets at all.
     if(ifSendSignal)
         edited_with_layout();
     return wc;
@@ -702,36 +682,11 @@ teTag::operator QString() const
 teTag::~teTag(){
     onDestroy();
     clear();
-    unload();
 }
 
-void teTag::unload(){
-    if(widget!=nullptr){
-        widgetpool.give_back(widget);
-        widget=nullptr;
-    }
-    for(teWord*w:words)
-        w->unload();
-}
-teWordWidget* teWord::load(){
-    // Same as teTag::load(): no widget for a word the view draws itself. The
-    // clothes control scans a tag and asked every word for its widget, which is
-    // where the loose "striped" / "side-tie" widgets came from.
-    if(ifViewOwned)
-        return nullptr;
-    if(!widget)
-        widget = widgetpool.getWord(this);
-    return widget;
-}
-
-void teWord::unload(){
-    if(widget!=nullptr){
-        widgetpool.give_back(widget);
-        widget=nullptr;
-    }
-}
 teWord::~teWord(){
-    unload();
+    // Nothing to release: the tag widget owns its word widgets (they are its
+    // layout's children), so a word is data plus signals.
 }
 
 QString teTag_normalStyle(QStringLiteral(R"(

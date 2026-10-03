@@ -64,6 +64,10 @@ public:
     std::set<teTagWidgetBase*> select;///< Set of selected tags (excluding current)
 
     QMenu* menu = new QMenu(this);///< Context menu for right-click operations
+    /// Widgets this list owns, by tag (see registerWidgetFor). This is the table
+    /// that replaces teTag::widget: a QPointer so a widget recycled by the pool
+    /// cannot leave a dangling entry behind.
+    QHash<teTag*,QPointer<teTagWidgetBase>> m_widgets;
 
     /// The list this widget currently shows (nullptr when it shows nothing).
     virtual teTagList* shownList() const { return nullptr; }
@@ -123,6 +127,15 @@ public slots:
      */
     /// The widget currently representing `core` in this list, or nullptr.
     teTagWidgetBase* widgetForCore(const std::shared_ptr<teTag>& core) const;
+    /**
+     * @brief The list's own widget table.
+     *
+     * This is what replaces `teTag::widget` (step 3b): widgets belong to the list
+     * that shows them. teTagListView never fills it, which is why a view based
+     * list can never hand out - or leak - a tag widget.
+     */
+    void registerWidgetFor(std::shared_ptr<teTag> core,teTagWidgetBase* widget);
+    void unregisterWidgetFor(std::shared_ptr<teTag> core);
     /// teTagListHost: the list's entry point for "the widget of this tag".
     teTagWidgetBase* ensureWidgetFor(std::shared_ptr<teTag> core) override;
     /// teTagListHost: gives the widget of `core` back to the pool.
@@ -332,6 +345,12 @@ public:
      * the editors' own widget based one. Nothing can leak a widget onto these
      * rows, and no "is this tag view owned" flag is needed to prevent it.
      */
+    /// The widget showing `core` in this list, or nullptr. A view based list draws
+    /// rows and has no widget per tag, so this is where "there is none" is decided.
+    teTagWidgetBase* widgetForCore(const std::shared_ptr<teTag>& core) const {
+        Q_UNUSED(core);
+        return nullptr;
+    }
     teTagWidgetBase* ensureWidgetFor(std::shared_ptr<teTag> core) override {
         Q_UNUSED(core);
         return nullptr;
@@ -432,9 +451,6 @@ private:
     void startEditingRow(int row);
     /// Erases every selected row.
     void eraseSelectedRows();
-    /// Takes a tag over as a row: no widget of its own, whatever it built before
-    /// it was inserted (see the comment in the implementation).
-    void adoptAsRow(std::shared_ptr<teTag> tag);
     /// Drops a row that was left empty by the inline editor.
     void finishRowEdit(int row);
     /// Scrolls the popup away when the pointer left it (grace period).

@@ -246,9 +246,10 @@ teTagWidgetBase* teTagListWidgetBase::widgetForCore(const std::shared_ptr<teTag>
 {
     if(!core)
         return nullptr;
-    // Fast path: the tag list is the owner of a core's widget.
-    if(core->widget)
-        return core->widget;
+    // The list's own registry: widgets belong to the list that shows them, so this
+    // table - not teTag::widget - is what answers "which widget shows this tag".
+    if(teTagWidgetBase* registered = m_widgets.value(core.get(),nullptr))
+        return registered;
     // Slow path: a core may be shown by a widget that never registered itself
     // (that is how the editors' teRefTag works).
     if(!layout)
@@ -262,25 +263,39 @@ teTagWidgetBase* teTagListWidgetBase::widgetForCore(const std::shared_ptr<teTag>
     return nullptr;
 }
 
+void teTagListWidgetBase::registerWidgetFor(std::shared_ptr<teTag> core,teTagWidgetBase* widget)
+{
+    if(core)
+        m_widgets.insert(core.get(),widget);
+}
+
+void teTagListWidgetBase::unregisterWidgetFor(std::shared_ptr<teTag> core)
+{
+    if(core)
+        m_widgets.remove(core.get());
+}
+
 teTagWidgetBase* teTagListWidgetBase::ensureWidgetFor(std::shared_ptr<teTag> core)
 {
     if(!core)
         return nullptr;
     if(teTagWidgetBase* existing = widgetForCore(core))
         return existing;
-    // Step 1 of decoupling tag and widget: the *list* is the entry point for "give
-    // me the widget of this tag". The body still asks the tag to build it (the pool
-    // lives there today); the next step moves that call here and the tag stops
-    // knowing about widgets at all.
-    core->load();
-    return widgetForCore(core);
+    // The widget pool belongs to the list that shows the widgets, not to the tag:
+    // this is the call that used to be teTag::load() (core->widget = pool.getTag()).
+    auto* built = widgetpool.getTag(core);
+    registerWidgetFor(core,built);
+    return built;
 }
 
 void teTagListWidgetBase::releaseWidgetFor(std::shared_ptr<teTag> core)
 {
     if(!core)
         return;
-    core->unload();                 // ditto: the pool side moves here next
+    if(teTagWidgetBase* widget = widgetForCore(core)){
+        unregisterWidgetFor(core);
+        widgetpool.give_back(widget);           // used to be teTag::unload()
+    }
 }
 
 void teTagListWidgetBase::setSelectCurrentCore(std::shared_ptr<teTag> core,bool ifclear){
@@ -344,7 +359,7 @@ void teTagListWidgetBase::tagEdit(teTagWidgetBase *tag, teWordWidgetBase *inw){
         QString tagtext="";
         if(inw!=nullptr){
             for(teWord*&word:tag->core->words){
-                if(inw!=(teWordWidgetBase*)word->widget){
+                if(inw!=tag->wordWidgetFor(word)){
                     maxsize+=word->text.size()+1;
                 }else{
                     begin=maxsize;
@@ -359,7 +374,8 @@ void teTagListWidgetBase::tagEdit(teTagWidgetBase *tag, teWordWidgetBase *inw){
         }
         tagtext.reserve(maxsize);
         for(teWord*&word:tag->core->words){
-            word->widget->hide();
+            if(teWordWidgetBase* wordWidget = tag->wordWidgetFor(word))
+                wordWidget->hide();
             tagtext.append(word->text);
             tagtext.append(' ');
         }
@@ -573,26 +589,6 @@ void teTagListView::tagEditCore(std::shared_ptr<teTag> core)
         startEditingRow(row);
 }
 
-void teTagListView::adoptAsRow(std::shared_ptr<teTag> tag)
-{
-    if(!tag)
-        return;
-    // The editors build a real widget for a tag they are about to insert (the
-    // controls call load() on it, and some of them ask every word for its widget
-    // before the tag ever reaches this list). This list draws rows itself, so that
-    // widget has to go: it was parked under the view and stayed visible - and
-    // draggable - on top of the tag list. Doing it here catches every insertion
-    // path, however late the flag is set.
-    tag->ifViewOwned=true;
-    for(teWord* word : tag->words){
-        if(!word)
-            continue;
-        word->ifViewOwned=true;
-        word->unload();
-    }
-    tag->unload();
-}
-
 void teTagListView::tagInsertAbove(bool edit,std::shared_ptr<teTag>newtag,int removeDuplicate){
     if(!showing_list||!m_model)
         return;
@@ -600,7 +596,6 @@ void teTagListView::tagInsertAbove(bool edit,std::shared_ptr<teTag>newtag,int re
         newtag=std::make_shared<teTag>();
         removeDuplicate=2;
     }
-    adoptAsRow(newtag);
     const int current = this->currentIndex().isValid()?this->currentIndex().row():-1;
     const int row = current<0?0:current;
     if(m_model->insertTag(row,newtag,removeDuplicate)<0)
@@ -623,7 +618,6 @@ void teTagListView::tagInsertBelow(bool edit,std::shared_ptr<teTag>newtag,int re
         newtag=std::make_shared<teTag>();
         removeDuplicate=2;
     }
-    adoptAsRow(newtag);
     const int current = this->currentIndex().isValid()?this->currentIndex().row():-1;
     const int row = current<0?m_model->rowCount():current+1;
     if(m_model->insertTag(row,newtag,removeDuplicate)<0)
@@ -714,20 +708,9 @@ void teTagListView::load(teTagList*newlist){
     if(!showing_list)
         return;
     // No teTagList::load() here any more: that is what built one widget per tag
-    // (and the word widgets below it). The view draws the tags itself, so the
-    // only thing that has to happen is telling the editors that asking for a
-    // widget would be pointless.
-    for(const std::shared_ptr<teTag>& core:*showing_list){
-        if(!core)
-            continue;
-        core->ifViewOwned=true;
-        // The words carry the flag too: teWord::load() has to refuse as well, or
-        // a control that scans the tag builds a widget per word (that is where the
-        // loose "striped" / "side-tie" widgets over the list came from).
-        for(teWord* word : core->words)
-            if(word)
-                word->ifViewOwned=true;
-    }
+    // Neither the tags nor their words have a widget table any more: widgets
+    // belong to the list that shows them (teTagListWidgetBase keeps the table) and
+    // this list shows rows, so there is nothing to flag or unload here.
     const int tmpSelectIndex=m_pendingSelectionIndex;
     m_model->setTagList(showing_list);
     emit newlistloaded(newlist);
@@ -765,17 +748,9 @@ void teTagListView::clear(teTagList *in){
         if(m_model)
             m_model->setTagList(nullptr);
         if(showing_list){
-            for(const std::shared_ptr<teTag>& core:*showing_list){
-                if(!core)
-                    continue;
-                core->ifViewOwned=false;      // the editors may want widgets again
-                for(teWord* word : core->words)
-                    if(word)
-                        word->ifViewOwned=false;
-            }
+            // No flag to clear any more: widgets belong to the list that shows
+            // them, and this one never had any.
             disconnect(showing_list,0,this,0);
-            // Deliberately no teTagList::unload(): this list never loaded widgets,
-            // and the pooled widgets belong to the editors' tag lists.
         }
         showing_list=nullptr;
         m_currentCoreBeforeReset.reset();
@@ -798,7 +773,6 @@ teTagWidgetBase* teTagListView::taginsert(int index, std::shared_ptr<teTag>in_ta
         return nullptr;
     while(index<0)
         index+=int(showing_list->size())+1;
-    adoptAsRow(in_tag);                 // this list never builds a widget for it
     const int row = m_model->insertTag(index,in_tag,removeDuplicate);
     if(row<0){
         // The tag was never part of the list, so nothing may be recorded on the

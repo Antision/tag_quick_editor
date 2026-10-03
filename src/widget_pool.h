@@ -106,9 +106,7 @@ struct WidgetPool:public teObject{
             QObject::disconnect(in_word,nullptr,owner,nullptr);
         }
         in_word->teDisconnect();
-        // Never leave the core pointing at a widget that is about to be reused.
-        if(in_word->core && static_cast<teWordWidgetBase*>(in_word->core->widget) == in_word)
-            in_word->core->widget = nullptr;
+        // The word is not told anything: the tag widget owns its word widgets.
         if(auto* typed = dynamic_cast<WordType*>(in_word)){
             if(typed->inWidgetPool)
                 return;                 // already parked: a second give_back is a no-op
@@ -148,9 +146,9 @@ struct WidgetPool:public teObject{
         in_tag->clearWordWidgets();     // dispatches to the matching pool
         in_tag->clearExtraWidgets();
         in_tag->teDisconnect();
-        // Never leave the core pointing at a widget that is about to be reused.
-        if(in_tag->core && static_cast<teTagWidgetBase*>(in_tag->core->widget) == in_tag)
-            in_tag->core->widget = nullptr;
+        // The tag is not told anything here: widgets belong to the list that shows
+        // them (it unregisters the widget in releaseWidgetFor()), so a recycled
+        // widget must not write into the tag any more.
         in_tag->reset();                // the tag no longer owns a core
         if(auto* typed = dynamic_cast<TagType*>(in_tag)){
             if(typed->inWidgetPool)
