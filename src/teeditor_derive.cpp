@@ -287,8 +287,7 @@ teEditor_pretreat::teEditor_pretreat(teTagListView*in_taglistwidget,QString&& na
             }
             if (linked_tags.empty()) {
                 std::shared_ptr<teTag>newtagcore = std::make_shared<teTag>(newTagText);
-                newtagcore->load();
-                link(newtagcore);
+                    link(newtagcore);
                 taglistwidget->tagInsertAbove(false, newtagcore);
             }else{
                 while(linked_tags.size()>1)
@@ -411,7 +410,6 @@ void onClicked(int id)override{
 
     if(buttons[id]->isChecked()){
         std::shared_ptr<teTag>newtagcore =std::make_shared<teTag>(FinalStr);
-        newtagcore->load();
         link(newtagcore);
         taglistwidget->tagInsertAbove(false, newtagcore);
     }else{

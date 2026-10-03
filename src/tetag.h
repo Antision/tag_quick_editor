@@ -32,12 +32,6 @@ public:
     }
     teWordWidget* load();
     void unload();
-    /// Makes sure the word is displayed, i.e. that it owns a widget.
-    /// See teTagCore::ensureWidget().
-    void ensureWidget(){
-        if(!widget)
-            load();
-    }
     bool operator==(const teWord& in) const{
         return text == in.text;
     }
@@ -232,19 +226,6 @@ public:
      * the tag from its list.
      */
     bool retired=false;
-    /**
-     * @brief Makes sure the tag is displayed, i.e. that it owns a widget.
-     *
-     * This is the single place that has to change when a tag list stops owning
-     * a widget per tag (a model/view based list shows tags through a delegate
-     * instead), which is why the callers no longer test `widget` themselves.
-     */
-    void ensureWidget(){
-        if(ifViewOwned)
-            return;
-        if(!widget)
-            load();
-    }
     void read(const QString &str,bool ifclear=true, bool forceSentence=false);
     teWord* takeWordAt(int index,bool ifSendSignal=true);
     QList<teWord*>::iterator begin(){

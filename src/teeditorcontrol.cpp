@@ -225,7 +225,6 @@ void teTagButtonGroup::onClicked(int id){
         final_string.chop(1);
         if(linked_tags.empty()){
             std::shared_ptr<teTag>newtagcore = std::make_shared<teTag>(final_string);
-            newtagcore->load();
             link(newtagcore);
             taglistwidget->tagInsertAbove(false, newtagcore);
         }else{
@@ -371,7 +370,6 @@ void teTagLineedit::onEditingFinished(){
     else tagstr.append(label->text());
     if (linked_tags.empty()) {
         std::shared_ptr<teTag>newtagcore = std::make_shared<teTag>(tagstr);
-        newtagcore->load();
         link(newtagcore);
         taglistwidget->tagInsertAbove(false, newtagcore);
     }else

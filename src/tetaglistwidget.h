@@ -19,9 +19,28 @@ class teTagList;
 class teInputWidget;
 
 /**
+ * @brief What "a tag list" is, as far as the code holding tags is concerned.
+ *
+ * Widgets belong to the list that shows them, not to the tag. The widget based
+ * list (the editors' tag lists) implements this with real widgets; the view based
+ * list implements it as a no-op, because a row drawn by a delegate has no widget
+ * per tag. That is what makes "a widget leaking onto the view" structurally
+ * impossible instead of something a flag has to prevent.
+ */
+class teTagListHost {
+public:
+    virtual ~teTagListHost()=default;
+    /// The widget showing `core` in this list, building it on demand. nullptr when
+    /// this list does not show widgets at all.
+    virtual teTagWidgetBase* ensureWidgetFor(std::shared_ptr<teTag> core) = 0;
+    /// Gives the widget of `core` back to the pool.
+    virtual void releaseWidgetFor(std::shared_ptr<teTag> core) = 0;
+};
+
+/**
  * @brief Widget for displaying and managing teTagList
  */
-class teTagListWidgetBase : public QWidget, virtual public teObject
+class teTagListWidgetBase : public QWidget, public teTagListHost, virtual public teObject
 {
     Q_OBJECT
 public:
@@ -104,17 +123,10 @@ public slots:
      */
     /// The widget currently representing `core` in this list, or nullptr.
     teTagWidgetBase* widgetForCore(const std::shared_ptr<teTag>& core) const;
-    /**
-     * @brief The list's entry point for "give me the widget of this tag".
-     *
-     * Widgets belong to the list that shows them, not to the tag: this is where
-     * that ownership is established. teTagListView() overrides both with a no-op
-     * (a model/view list has no widget per tag), which is what makes a widget
-     * leaking onto the view structurally impossible instead of a flag to test.
-     */
-    virtual teTagWidgetBase* ensureWidgetFor(std::shared_ptr<teTag> core);
-    /// Gives the widget of `core` back (it is going away or is not shown here).
-    virtual void releaseWidgetFor(std::shared_ptr<teTag> core);
+    /// teTagListHost: the list's entry point for "the widget of this tag".
+    teTagWidgetBase* ensureWidgetFor(std::shared_ptr<teTag> core) override;
+    /// teTagListHost: gives the widget of `core` back to the pool.
+    void releaseWidgetFor(std::shared_ptr<teTag> core) override;
     virtual void setSelectCurrentCore(std::shared_ptr<teTag> core,bool ifclear=true);
     virtual void setSelectCore(std::shared_ptr<teTag> core);
     virtual int setUnselectCore(std::shared_ptr<teTag> core=nullptr);
@@ -282,7 +294,7 @@ public:
  * move is expressed directly through teTagListModel::moveRows() instead, which is
  * also what the undo records expect.
  */
-class teTagListView : public QListView, public teTagDisplayOwner, virtual public teObject
+class teTagListView : public QListView, public teTagDisplayOwner, public teTagListHost, virtual public teObject
 {
     Q_OBJECT
 public:
@@ -320,11 +332,11 @@ public:
      * the editors' own widget based one. Nothing can leak a widget onto these
      * rows, and no "is this tag view owned" flag is needed to prevent it.
      */
-    teTagWidgetBase* ensureWidgetFor(std::shared_ptr<teTag> core) {
+    teTagWidgetBase* ensureWidgetFor(std::shared_ptr<teTag> core) override {
         Q_UNUSED(core);
         return nullptr;
     }
-    void releaseWidgetFor(std::shared_ptr<teTag> core) {
+    void releaseWidgetFor(std::shared_ptr<teTag> core) override {
         Q_UNUSED(core);
     }
     /// The delegate that draws and edits the rows.
