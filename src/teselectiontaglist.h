@@ -2,6 +2,8 @@
 #define TESELECTIONTAGLIST_H
 #include <QListView>
 #include <QStandardItemModel>
+#include <QElapsedTimer>
+#include <functional>
 #include "qstyleditemdelegate.h"
 #include "teeditor.h"
 #include "teeditorlist.h"
@@ -97,6 +99,23 @@ public:
     teSelectionTag* findMultiTag(const QString& in_text,teSelectionTag* exclude=nullptr) const;
     void linkNewTagcore(std::shared_ptr<teTag>in_core,teTagList*in_list);
 
+    /**
+     * @brief Reorders the rows by text, in dictionary order.
+     *
+     * Row order only: a multi tag is a *view* of the tags the selected images
+     * carry, so reordering this list never reorders - nor otherwise touches -
+     * the tag list of any single picture. The view is notified with a model
+     * reset, which is the one notification that stays correct for an arbitrary
+     * permutation of the rows.
+     */
+    void sortByText();
+    /**
+     * @brief Reorders the rows by how many images carry the tag, most used
+     * first; ties fall back to dictionary order. Row order only, see
+     * sortByText().
+     */
+    void sortByOccurrence();
+
     /// Inserts a placeholder row and starts editing it (used by "insert above").
     teSelectionTag* tagInsert(int row, std::shared_ptr<teTag>in_tag=nullptr,bool select=true);
     teSelectionTag* tagInsert(int row,const QString&text,bool select);
@@ -144,6 +163,11 @@ public:
     void tagDestroy();
     void clear();
     bool removeRows(int row, int count=1, const QModelIndex &parent = QModelIndex()) override;
+
+private:
+    /// Reorders `tags` with `less` and tells the view about it. Neither the
+    /// links nor any picture's tag list are involved.
+    void sortTags(const std::function<bool(teSelectionTag*,teSelectionTag*)>& less);
 
 signals:
     void listModified();
@@ -206,6 +230,25 @@ public:
     void paste(const QModelIndex& index);
 
     void keyPressEvent(QKeyEvent *event);
+
+    /**
+     * @brief Characters typed since the last pause - the type-to-search buffer.
+     *
+     * Kept here (and not in the model) because it belongs to the view: the same
+     * list may be shown by another view tomorrow and neither should inherit the
+     * other's half typed word.
+     */
+    QString typeSearchText;
+    /// When the last search key arrived; the buffer is dropped again once the
+    /// keys stop coming for longer than the keyboard input interval.
+    QElapsedTimer typeSearchTime;
+    /**
+     * @brief Moves the current row to the tag starting with what has been typed.
+     *
+     * The first matching row from the current one onwards (wrapping) takes the
+     * selection, so typing "solo" walks the list like Qt's own search does.
+     */
+    void typeSearch(const QString& text);
 private slots:
     void showContextMenu(const QPoint &pos);
 };

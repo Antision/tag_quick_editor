@@ -1012,3 +1012,22 @@ bool is_image_file(const std::filesystem::path &file) {
            || lower == ".webp" || lower == ".jfif"
            || lower == ".tif" || lower == ".tiff";
 }
+
+void MainWindow::on_sortByLexButton_clicked()
+{
+    // The multi tag list only *shows* the tags the selected pictures carry; a
+    // multi tag holds links to the per picture tags, never copies of them. So
+    // reordering its rows cannot reorder - or otherwise touch - the tag list of
+    // any single picture.
+    if(ui->GlobalMultiTaglistView->model)
+        ui->GlobalMultiTaglistView->model->sortByText();
+}
+
+
+void MainWindow::on_sortByOccurrenceButton_clicked()
+{
+    // Most carried tag first; ties fall back to dictionary order. See
+    // on_sortByLexButton_clicked() on why this stays a pure row reorder.
+    if(ui->GlobalMultiTaglistView->model)
+        ui->GlobalMultiTaglistView->model->sortByOccurrence();
+}

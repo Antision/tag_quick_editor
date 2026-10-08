@@ -109,6 +109,9 @@ public slots:
     /// Runs autoSaveSec after the last change; safely on the GUI thread.
     void autoSaveTick();
     void showLogWindow();
+private slots:
+    void on_sortByLexButton_clicked();
+    void on_sortByOccurrenceButton_clicked();
 };
 
 #endif // MAINWINDOW_H

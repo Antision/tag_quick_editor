@@ -14,6 +14,14 @@ void moveLinkedTags(teSelectionTag*from,teSelectionTag*to){
     from->linked_tags.clear();
 }
 
+/// Dictionary order for the multi tag rows. Case insensitive with a case
+/// sensitive tie break, so equal letters in different case cannot make the
+/// result depend on the order the rows happened to be in.
+bool tagTextLess(teSelectionTag*a,teSelectionTag*b){
+    const int cmp=QString::compare(a->text,b->text,Qt::CaseInsensitive);
+    return cmp!=0?cmp<0:a->text<b->text;
+}
+
 }
 
 void teSelectionTagModel::linkTagList(teTagList *in_list){
@@ -102,6 +110,37 @@ void teSelectionTagModel::linkNewTagcore(std::shared_ptr<teTag> in_core, teTagLi
     bool isNewEntry = false;
     teSelectionTag* find_mt = getMultiTag(*in_core, isNewEntry);
     find_mt->link(in_core,in_list);
+}
+
+void teSelectionTagModel::sortTags(const std::function<bool(teSelectionTag*,teSelectionTag*)>& less){
+    if(tags.size()<2)
+        return;
+    // A reset is the honest notification here. The rows are permuted behind the
+    // view's back, and unlike a moveRows()/layoutChanged() dance a reset cannot
+    // leave a stale index pointing at a row that now holds another tag. The
+    // price is the selection, which is what the multi tag list is happy to give
+    // up for a sort anyway (it is a browse list; sorting is not an edit).
+    beginResetModel();
+    std::stable_sort(tags.begin(),tags.end(),less);
+    endResetModel();
+}
+
+void teSelectionTagModel::sortByText(){
+    sortTags([](teSelectionTag*a,teSelectionTag*b){return tagTextLess(a,b);});
+}
+
+void teSelectionTagModel::sortByOccurrence(){
+    // "Occurrence" is how often the tag shows up in the current selection, which
+    // is exactly the number of tag cores the multi tag is linked to (the number
+    // the delegate paints on the right hand side of the row). Most used first;
+    // ties fall back to dictionary order so the result is deterministic.
+    sortTags([](teSelectionTag*a,teSelectionTag*b){
+        const std::size_t left=a->linked_tags.size();
+        const std::size_t right=b->linked_tags.size();
+        if(left!=right)
+            return left>right;
+        return tagTextLess(a,b);
+    });
 }
 
 teSelectionTag *teSelectionTagModel::tagInsert(int row, std::shared_ptr<teTag> in_tag, bool select){
@@ -270,6 +309,11 @@ void teSelectionTagModel::loadFiles(QList<tePictureFile *> in_filelist, bool ifc
             findCore->link(tc,&taglist);
         }
     }
+    // The rows are built in the order the files happened to be read, which is no
+    // order a human can work with. The multi tag list always sorted itself as
+    // soon as a load finished; doing it here also covers the incremental load
+    // (a few files added to a list that is already populated).
+    sortByText();
     if(listview&&!tags.isEmpty())
         listview->scrollTo(index(0,0));
 }
@@ -785,7 +829,73 @@ void teSelectionTagListView::keyPressEvent(QKeyEvent *event) {
         if(auto selections = selectionModel()->selectedRows();!selections.empty())
             paste(selections.back());
     } else {
-        QWidget::keyPressEvent(event);
+        // A plain printable key is a search, not a command: it moves the
+        // selection to the tag whose text starts with what is being typed. Only
+        // Ctrl/Alt/Meta combinations fall through (to the window, so that its
+        // shortcuts keep working).
+        const QString typed = event->text();
+        const bool plainText = (event->modifiers() & (Qt::ControlModifier|Qt::AltModifier|Qt::MetaModifier)) == 0;
+        if(plainText && !typed.isEmpty() && typed.at(0).isPrint()){
+            typeSearch(typed);
+            event->accept();
+        } else {
+            QWidget::keyPressEvent(event);
+        }
+    }
+}
+
+void teSelectionTagListView::typeSearch(const QString &text){
+    if(!model || model->tags.isEmpty())
+        return;
+
+    // Qt's own search rule: the typed characters only accumulate while they keep
+    // coming; a pause longer than the keyboard input interval starts a new
+    // search, so a fresh word does not get glued onto the previous one.
+    bool freshSearch = true;
+    if(typeSearchTime.isValid()){
+        if(typeSearchTime.restart() <= QApplication::keyboardInputInterval())
+            freshSearch = false;
+    } else {
+        typeSearchTime.start();
+    }
+    if(freshSearch || typeSearchText.isEmpty())
+        typeSearchText = text;
+    else
+        typeSearchText += text;
+    if(typeSearchText.isEmpty())
+        return;
+
+    // Typing the same letter over and over cycles through the matches instead of
+    // being stuck on the first one (again, what Qt's views do).
+    bool sameKey = typeSearchText.size() > 1;
+    if(sameKey){
+        for(const QChar c : typeSearchText){
+            if(c != typeSearchText.at(0)){
+                sameKey = false;
+                break;
+            }
+        }
+    }
+
+    const int count = int(model->tags.size());
+    const QModelIndex current = selectionModel()->currentIndex();
+    // Start at the current row, stepping past it when the search is new (or is
+    // cycling) so the row already selected is not offered as its own match.
+    int startRow = 0;
+    if(current.isValid()){
+        startRow = current.row();
+        if(freshSearch || sameKey)
+            startRow = (startRow + 1) % count;
+    }
+
+    for(int offset=0;offset<count;++offset){
+        const int row = (startRow + offset) % count;
+        if(!model->tags[row]->text.startsWith(typeSearchText,Qt::CaseInsensitive))
+            continue;
+        const QModelIndex rowIndex = model->index(row,0);
+        selectionModel()->setCurrentIndex(rowIndex,QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);
+        scrollTo(rowIndex,QAbstractItemView::PositionAtCenter);
+        break;
     }
 }
 

@@ -17,6 +17,17 @@
    <string notr="true">QMainWindow{
     border-radius: 10px;             /*四角圆角的直径*/
     border:1px solid rgb(27,27,27);
+}
+QWidget{
+	color:white;
+}
+QPushButton{
+    border: 1px solid #2c5ea9;
+    background-color:transparent;
+    padding: 0px;
+}
+QPushButton:hover{
+    border: 1px solid #3071d1;
 }</string>
   </property>
   <widget class="QWidget" name="centralwidget">
@@ -216,7 +227,7 @@ QTabBar::tab:only-one {
 </string>
       </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="selectList_tab">
        <property name="sizePolicy">
@@ -267,19 +278,40 @@ QTabBar::tab:only-one {
          <number>0</number>
         </property>
         <property name="leftMargin">
-         <number>1</number>
+         <number>0</number>
         </property>
         <property name="topMargin">
-         <number>1</number>
+         <number>0</number>
         </property>
         <property name="rightMargin">
-         <number>1</number>
+         <number>0</number>
         </property>
         <property name="bottomMargin">
-         <number>1</number>
+         <number>0</number>
         </property>
         <item>
          <widget class="teSelectionTagListView" name="GlobalMultiTaglistView"/>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="sortButtonLayout">
+          <property name="spacing">
+           <number>1</number>
+          </property>
+          <item>
+           <widget class="QPushButton" name="sortByLexButton">
+            <property name="text">
+             <string>Sort by lex</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="sortByOccurrenceButton">
+            <property name="text">
+             <string>Sort by occurrence</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
         </item>
        </layout>
       </widget>
