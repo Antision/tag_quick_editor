@@ -1,6 +1,7 @@
 #ifndef TETAGLISTMODEL_H
 #define TETAGLISTMODEL_H
 #include "tetag.h"
+#include <QAbstractItemView>
 #include <functional>
 
 /**
@@ -171,6 +172,23 @@ public:
 
     void paint(QPainter* painter,const QStyleOptionViewItem& option,const QModelIndex& index) const override;
     QSize sizeHint(const QStyleOptionViewItem& option,const QModelIndex& index) const override;
+
+    /**
+     * @brief Swallows the hover "help" event, i.e. shows no tooltip.
+     *
+     * Qt answers a ToolTip event by asking the delegate for help, and
+     * QStyledItemDelegate falls back on the item text, so every tag grew a small
+     * light grey box (the default QToolTip look, on top of this dark window)
+     * repeating the very text the row already shows. Reporting the event as
+     * handled without showing anything is how a delegate says "no tooltip";
+     * removing the model's Qt::ToolTipRole alone would not be enough, because
+     * the fallback would still fire whenever the row's text is too wide to fit.
+     */
+    bool helpEvent(QHelpEvent* event,QAbstractItemView* view,
+                   const QStyleOptionViewItem& option,const QModelIndex& index) override {
+        Q_UNUSED(event); Q_UNUSED(view); Q_UNUSED(option); Q_UNUSED(index);
+        return true;
+    }
 
     QWidget* createEditor(QWidget* parent,const QStyleOptionViewItem& option,const QModelIndex& index) const override;
     void setEditorData(QWidget* editor,const QModelIndex& index) const override;

@@ -42,11 +42,43 @@ public:
     teWordWidgetBase(QString&& input_string,QWidget* parent=nullptr):
         QLabel(input_string,parent)
     {initialize();}
-    teWordWidgetBase(teWord&in):QLabel(in.text),core(&in)
-    {initialize();}
-    teWordWidgetBase(const teWordWidgetBase&in):QLabel(in.core->text),core(in.core)
-    {initialize();}
+    teWordWidgetBase(teWord&in):QLabel(in.text)
+    {initialize();attachWord(&in);}
+    teWordWidgetBase(const teWordWidgetBase&in):
+        QLabel(in.core?in.core->text:QString())
+    {initialize();attachWord(in.core);}
     teWordWidgetBase(teWordWidgetBase&&in)=delete;
+    /**
+     * @brief Makes this widget show `in` without ever keeping a stale pointer.
+     *
+     * A word widget used to hold a bare pointer, and a tag widget walks its word
+     * widgets and dereferences exactly those pointers (disconnectWord() and
+     * wordWidgetFor()). Words do die while their widgets are still around - a
+     * tag re-read, the duplicate a merge drops, or the word list of a tag that
+     * is cleared when the picture changes - and that dangling teWord is what
+     * made the clothes editor crash while switching images.
+     *
+     * Listening to the word's destruction is what turns "core is a pointer that
+     * may be stale" into "core is either null or alive", the invariant every one
+     * of those call sites already assumes.
+     */
+    void attachWord(teWord* in){
+        if(core!=in&&core)
+            core->teDisconnect(this);       // show only one word at a time
+        core=in;
+        if(!core)
+            return;
+        // Re-armed every time, not only when the word changes: disconnectWord()
+        // and give_back() both strip this connection, and the widget is then
+        // handed out again for the very same word. Only this callback is
+        // replaced, so the connections a specialised widget made for itself
+        // (teRefWordWidget listens for `edit`) survive a re-arm.
+        core->teDisconnect(this,teCallbackType::destroy);
+        core->teConnect(teCallbackType::destroy,this,&teWordWidgetBase::onWordDestroyed);
+    }
+    /// The word this widget showed is gone: forget it instead of keeping a
+    /// pointer into freed memory (see attachWord()).
+    void onWordDestroyed(){ core=nullptr; }
     virtual void setText(const QString&text){
         if(!core)telog("[teRefWord::setText]:no core specified for this refword");
         core->text=text;
@@ -113,10 +145,10 @@ public:
 
     }
     teWordWidget(const QString& input_string,QWidget* parent=nullptr):teWordWidgetBase(input_string,parent){
-        core=new teWord(input_string);
+        attachWord(new teWord(input_string));
     }
     teWordWidget(QString&& input_string,QWidget* parent=nullptr):teWordWidget(input_string,parent){
-        core=new teWord(std::move(input_string));
+        attachWord(new teWord(std::move(input_string)));
     }
     teWordWidget(teWord&in):teWordWidgetBase(in){
     }
@@ -402,6 +434,21 @@ public:
             disconnect(inw,0,this,0);
             inw->teDisconnect(this);
         }
+    }
+    /**
+     * @brief Makes every word widget of this tag forget `in`.
+     *
+     * Must be called before a word is deleted while a widget may still be
+     * showing it: disconnectWord() only drops the *connections*, so a widget
+     * that was disconnected keeps the (soon to be dangling) pointer. Used by the
+     * clothes editor, which drops the duplicate of a merged word.
+     */
+    void forgetWord(teWord* in){
+        if(!in)
+            return;
+        for(teWordWidgetBase* word : findChildren<teWordWidgetBase*>())
+            if(word->core==in)
+                word->attachWord(nullptr);
     }
     virtual void load()=0;
     void mousePressEvent(QMouseEvent *event) override;

@@ -4,6 +4,7 @@
 #include "tesignalwidget.h"
 #include "tetaglistmodel.h"
 #include "tetagdisplaywidget.h"    // teTagDisplayOwner: what the popup needs
+#include "type_search.h"
 extern QStringList ClipBoard;
 
 extern QString liststyle;
@@ -438,6 +439,9 @@ signals:
 protected:
     void dropEvent(QDropEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
+    /// Moves the current row to the tag starting with what has been typed.
+    /// Shared with the multi tag list, see type_search.h.
+    void typeSearch(const QString& text);
     /// Draws its own drag pixmap and, more importantly, does not let Qt remove
     /// the dragged rows a second time (see the comment in the implementation).
     void startDrag(Qt::DropActions supportedActions) override;
@@ -473,6 +477,8 @@ private:
     int m_pendingSelectionIndex=-1;
     /// Core being edited in the plain text window (a row has no widget to ask).
     std::shared_ptr<teTag> m_plainTextCore;
+    /// Type-to-search state (see type_search.h).
+    teTypeSearch typeSearchState;
 };
 
 #endif // TETAGLISTWIDGET_H

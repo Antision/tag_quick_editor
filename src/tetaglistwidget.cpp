@@ -652,9 +652,25 @@ void teTagListView::keyPressEvent(QKeyEvent *event) {
         copy();
     } else if (event->key() == Qt::Key_V && event->modifiers() == Qt::ControlModifier) {
         paste();
+    } else if (teTypeSearch::isSearchKey(event)) {
+        // A plain printable key searches the list: typing "solo" walks the rows
+        // to the tag that starts with it. Qt's own search cannot be reached from
+        // here (this override never calls the base class), so it is done by hand.
+        typeSearch(event->text());
+        event->accept();
     } else {
         event->ignore();        // the view handles everything else
     }
+}
+
+void teTagListView::typeSearch(const QString &text){
+    teTagListModel* list = tagModel();
+    if(!list)
+        return;
+    typeSearchState.search(this,list->rowCount(),currentIndex().row(),[list](int row){
+        teTag* tag = list->tagAt(row);
+        return tag?static_cast<QString>(*tag):QString();
+    },text);
 }
 
 void teTagListView::onFileDeleted(tePictureFile *obj){
@@ -704,6 +720,10 @@ void teTagListWidgetBase::paste()
 
 void teTagListView::load(teTagList*newlist){
     hideTagDisplay();
+    // Half typed word of the previous list: a new list must not be searched with
+    // the old list's prefix (switching pictures by mouse and typing again within
+    // the keyboard input interval would otherwise match the wrong rows).
+    typeSearchState.reset();
     showing_list=newlist;
     if(!showing_list)
         return;

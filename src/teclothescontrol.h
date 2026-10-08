@@ -463,6 +463,14 @@ public:
                         for(QVector<teWord*>& wordList:wordListList)
                             for(teWord*wc:wordList){
                                 if(seen[*wc]){
+                                    // The dropped duplicate is deleted, so the
+                                    // widget showing it has to let go first:
+                                    // disconnectWord() only removed the
+                                    // *connections*, and a widget that keeps a
+                                    // pointer to a deleted word is what crashed
+                                    // disconnectWord() the next time it ran.
+                                    if(hasWidget)
+                                        tagWidget->forgetWord(wc);
                                     delete wc;
                                     continue;
                                 }

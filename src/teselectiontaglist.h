@@ -2,13 +2,13 @@
 #define TESELECTIONTAGLIST_H
 #include <QListView>
 #include <QStandardItemModel>
-#include <QElapsedTimer>
 #include <functional>
 #include "qstyleditemdelegate.h"
 #include "teeditor.h"
 #include "teeditorlist.h"
 #include "tepicturefile.h"
 #include "tetag.h"
+#include "type_search.h"
 
 struct teSelectionTagModel;
 
@@ -231,23 +231,10 @@ public:
 
     void keyPressEvent(QKeyEvent *event);
 
-    /**
-     * @brief Characters typed since the last pause - the type-to-search buffer.
-     *
-     * Kept here (and not in the model) because it belongs to the view: the same
-     * list may be shown by another view tomorrow and neither should inherit the
-     * other's half typed word.
-     */
-    QString typeSearchText;
-    /// When the last search key arrived; the buffer is dropped again once the
-    /// keys stop coming for longer than the keyboard input interval.
-    QElapsedTimer typeSearchTime;
-    /**
-     * @brief Moves the current row to the tag starting with what has been typed.
-     *
-     * The first matching row from the current one onwards (wrapping) takes the
-     * selection, so typing "solo" walks the list like Qt's own search does.
-     */
+    /// Type-to-search state; the per-image tag list needs the same behaviour, so
+    /// the algorithm lives in one place (type_search.h).
+    teTypeSearch typeSearchState;
+    /// Moves the current row to the tag starting with what has been typed.
     void typeSearch(const QString& text);
 private slots:
     void showContextMenu(const QPoint &pos);

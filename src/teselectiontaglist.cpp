@@ -636,6 +636,11 @@ teSelectionTagListView::teSelectionTagListView(QWidget *parent) : QListView(pare
     initializeMenu();
     setContextMenuPolicy(Qt::CustomContextMenu);
     setStyleSheet(liststyle.arg(0));
+    // The multi tag list is reloaded through its model (loadFiles(), the sort
+    // buttons, an edit that merges rows), so a half typed search word has to be
+    // dropped whenever the rows are rebuilt - otherwise the next key would be
+    // matched against a prefix that belongs to the previous content.
+    connect(model,&QAbstractItemModel::modelReset,this,[this]{typeSearchState.reset();});
     connect(this, &QWidget::customContextMenuRequested, this, &teSelectionTagListView::showContextMenu);
 }
 
@@ -833,10 +838,8 @@ void teSelectionTagListView::keyPressEvent(QKeyEvent *event) {
         // selection to the tag whose text starts with what is being typed. Only
         // Ctrl/Alt/Meta combinations fall through (to the window, so that its
         // shortcuts keep working).
-        const QString typed = event->text();
-        const bool plainText = (event->modifiers() & (Qt::ControlModifier|Qt::AltModifier|Qt::MetaModifier)) == 0;
-        if(plainText && !typed.isEmpty() && typed.at(0).isPrint()){
-            typeSearch(typed);
+        if(teTypeSearch::isSearchKey(event)){
+            typeSearch(event->text());
             event->accept();
         } else {
             QWidget::keyPressEvent(event);
@@ -845,58 +848,10 @@ void teSelectionTagListView::keyPressEvent(QKeyEvent *event) {
 }
 
 void teSelectionTagListView::typeSearch(const QString &text){
-    if(!model || model->tags.isEmpty())
+    if(!model)
         return;
-
-    // Qt's own search rule: the typed characters only accumulate while they keep
-    // coming; a pause longer than the keyboard input interval starts a new
-    // search, so a fresh word does not get glued onto the previous one.
-    bool freshSearch = true;
-    if(typeSearchTime.isValid()){
-        if(typeSearchTime.restart() <= QApplication::keyboardInputInterval())
-            freshSearch = false;
-    } else {
-        typeSearchTime.start();
-    }
-    if(freshSearch || typeSearchText.isEmpty())
-        typeSearchText = text;
-    else
-        typeSearchText += text;
-    if(typeSearchText.isEmpty())
-        return;
-
-    // Typing the same letter over and over cycles through the matches instead of
-    // being stuck on the first one (again, what Qt's views do).
-    bool sameKey = typeSearchText.size() > 1;
-    if(sameKey){
-        for(const QChar c : typeSearchText){
-            if(c != typeSearchText.at(0)){
-                sameKey = false;
-                break;
-            }
-        }
-    }
-
-    const int count = int(model->tags.size());
-    const QModelIndex current = selectionModel()->currentIndex();
-    // Start at the current row, stepping past it when the search is new (or is
-    // cycling) so the row already selected is not offered as its own match.
-    int startRow = 0;
-    if(current.isValid()){
-        startRow = current.row();
-        if(freshSearch || sameKey)
-            startRow = (startRow + 1) % count;
-    }
-
-    for(int offset=0;offset<count;++offset){
-        const int row = (startRow + offset) % count;
-        if(!model->tags[row]->text.startsWith(typeSearchText,Qt::CaseInsensitive))
-            continue;
-        const QModelIndex rowIndex = model->index(row,0);
-        selectionModel()->setCurrentIndex(rowIndex,QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);
-        scrollTo(rowIndex,QAbstractItemView::PositionAtCenter);
-        break;
-    }
+    typeSearchState.search(this,int(model->tags.size()),currentIndex().row(),
+                           [this](int row){return model->tags[row]->text;},text);
 }
 
 void teSelectionTagListView::showContextMenu(const QPoint &pos) {

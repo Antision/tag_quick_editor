@@ -43,8 +43,12 @@ teWordWidgetBase* teTagWidgetBase::ensureWordWidgetFor(teWord* core,int layoutIn
 {
     if(!core)
         return nullptr;
-    if(teWordWidgetBase* existing = wordWidgetFor(core))
+    if(teWordWidgetBase* existing = wordWidgetFor(core)){
+        // Reused rather than rebuilt: re-arm the "forget me if I die" callback,
+        // because disconnectWord() stripped it (see teWordWidgetBase::attachWord).
+        existing->attachWord(core);
         return existing;
+    }
     teWordWidgetBase* built = widgetpool.getWord(core);
     if(layout)
         layout->insertWidget(layoutIndex<0?layout->count()-1:layoutIndex,built);
@@ -490,7 +494,9 @@ teWordWidgetBase:!hover{
 }
 
 void teWordWidgetBase::readCore(teWord *in){
-    core=in;
+    // attachWord() - not a plain assignment - so the widget also forgets `in`
+    // again if the word is deleted while it is still being shown; see tetag.h.
+    attachWord(in);
     QLabel::setText(*in);
 }
 

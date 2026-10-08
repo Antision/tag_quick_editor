@@ -78,6 +78,7 @@ HEADERS += \
     src/tetagdisplaywidget.h \
     src/tetaglistmodel.h \
     src/tetaglistwidget.h \
+    src/type_search.h \
     src/widget_pool.h
 
 FORMS += \
