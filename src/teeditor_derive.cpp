@@ -413,12 +413,15 @@ controls.push_back(type_cbb);
 QHBoxLayout* tenthline_layout = new QHBoxLayout;
 tenthline_layout->setSpacing(1);
 teTagCheckBox* blush_cb = new teTagCheckBox({ "blush" });
+teTagCheckBox* nose_blush_cb = new teTagCheckBox({ "nose blush" });
 teTagCheckBox* tears_cb = new teTagCheckBox({ "tears" });
 {
     tenthline_layout->addWidget(blush_cb);
+    tenthline_layout->addWidget(nose_blush_cb);
     tenthline_layout->addWidget(tears_cb);
     controls.push_back(blush_cb);
     controls.push_back(tears_cb);
+    controls.push_back(nose_blush_cb);
     contentLayout->addLayout(tenthline_layout);
 }
 
@@ -695,7 +698,8 @@ Object_list* object_list = new Object_list(new colorsWidget({{QStringList{object
         teTagCheckBox*futanari_cb = new teTagCheckBox({qsl("futanari")});
         teTagCheckBox*tomgirl_cb = new teTagCheckBox({qsl("tomgirl")});
         teTagCheckBox*otoko_no_ko_cb = new teTagCheckBox({qsl("otoko no ko")});
-        insertToEditor(layouts[++i],controls,{futanari_cb,tomgirl_cb,otoko_no_ko_cb},"gender");
+        teTagCheckBox*trap = new teTagCheckBox({qsl("trap")});
+        insertToEditor(layouts[++i],controls,{futanari_cb,tomgirl_cb,otoko_no_ko_cb,trap},"gender");
 
         teTagCheckBox* nakadashi_cb = new teTagCheckBox({ "cum inside" });
         teTagCheckBox* lacatation_cb = new teTagCheckBox({ "lactation" });

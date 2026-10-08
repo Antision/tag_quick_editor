@@ -119,13 +119,30 @@ int QFlowLayout::heightForWidth(int width) const
 //! [8]
 void QFlowLayout::setGeometry(const QRect &rect)
 {
+    const QSize before = sizeHint();
     QLayout::setGeometry(rect);
     doLayout(rect, false);
+    // The hint depends on the width, and the width is only known here: tell the
+    // hosting widget when wrapping changed how much room this layout needs, so a
+    // narrow first layout is corrected as soon as the real width arrives.
+    if(before != sizeHint()){
+        if(QWidget* host = parentWidget())
+            host->updateGeometry();
+    }
 }
 
 QSize QFlowLayout::sizeHint() const
 {
-    return minimumSize();
+    // The hint has to cover the *whole* flow, not one item: minimumSize() is a
+    // single button, and a widget that hosts this layout (the custom editor's
+    // frame) then claimed one row of height - its tag buttons overflowed the frame
+    // and looked "squeezed onto the add button" until something else forced a new
+    // layout pass. The width stays shrinkable (one item wide); the height is what
+    // the current width needs.
+    const QWidget* host = parentWidget();
+    const int width = host ? qMax(host->width(), 1) : 1;
+    const QSize minimum = minimumSize();
+    return QSize(minimum.width(), qMax(minimum.height(), heightForWidth(width)));
 }
 
 QSize QFlowLayout::minimumSize() const

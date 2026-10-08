@@ -121,6 +121,22 @@ background-color: rgb(27, 27, 27);
 }
 #picturelist[saving=&quot;true&quot;]{
     border-color: #0af581;
+}
+QMenu {
+        background-color: transparent;
+        font: 14px &quot;Segoe UI&quot;;
+        color:#8dfda7;
+        border-radius:3px;
+    }
+QMenu::item {
+        background-color: rgb(27,29,37);
+        padding: 3px;
+        border-radius:2px;
+        margin: 0px;
+        border: 1px solid #8b9ac6;
+    }
+QMenu::item:selected {
+	background-color: #3d258f;
 }</string>
       </property>
      </widget>
@@ -320,17 +336,12 @@ border-left:1px solid rgb(100,100,100);
 border-right:1px solid rgb(100,100,100);
 }
 QMenuBar::item:selected{
-
 	background: #613d80;
 }
 QMenuBar::item:first:selected{
-    border-top-left-radius: 14px; 
+    border-top-left-radius: 2px; 
 	background: #613d80;
 }
-/*QMenuBar::item:first:selected{
-	background: #613d80;
-	border-top-left-radius: 7px; 
-}*/
 QMenu{
 color:  #d2c5ff ;
 background-color: rgb(27, 27, 27);
