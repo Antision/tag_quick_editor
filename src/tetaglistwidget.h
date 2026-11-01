@@ -439,6 +439,13 @@ signals:
 protected:
     void dropEvent(QDropEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
+    /// Hovering the list gives it the keyboard focus, so the list under the mouse
+    /// is the one the keyboard talks to (its shortcuts and its type-to-search).
+    /// This is how the widget based list behaved before the refactor.
+    void enterEvent(QEnterEvent* event) override {
+        setFocus();
+        QListView::enterEvent(event);
+    }
     /// Moves the current row to the tag starting with what has been typed.
     /// Shared with the multi tag list, see type_search.h.
     void typeSearch(const QString& text);

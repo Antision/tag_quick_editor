@@ -72,6 +72,14 @@ public:
 
     tePictureFileModel* fileModel(){ return &picturefileModel; }
 
+    /// Focus follows the pointer: the list under the mouse is the one the
+    /// keyboard talks to (its own shortcuts, and the type-to-search of the tag
+    /// list next to it). This is how it behaved before the refactor.
+    void enterEvent(QEnterEvent *event) override {
+        setFocus();
+        QListView::enterEvent(event);
+    }
+
     void selectNext();
     void selectPrevious();
     void selectIndexList(QVector<QModelIndex> indexes);

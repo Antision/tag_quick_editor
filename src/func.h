@@ -18,12 +18,15 @@ extern QRect mainwindowGeometry;
 void setStyleSheetOnce(QWidget* widget,const QString& sheet);
 
 /**
- * @brief Sets a widget's "linked / not linked" text colour without a stylesheet.
+ * @brief Sets a widget's "linked / not linked" text colour.
  *
- * A setStyleSheet() on a QComboBox costs about 7 ms (Qt re-parses the sheet and
- * re-polishes the combo together with its popup view), and the editors' combo
- * boxes toggle that colour on every image switch - eleven of them made up almost
- * the whole 100 ms of the per-image editor rebuild. The palette is free.
+ * A setStyleSheet() on a QComboBox costs about 6 ms (Qt re-parses the sheet and
+ * re-polishes the combo together with its popup view). The palette would be free,
+ * but it is invisible for these widgets: the editors' page sheet sets
+ * `*{color:white}` for everything inside it, and a sheet colour always wins over
+ * a palette one - which is exactly why a captured tag stopped turning green.
+ * The colour therefore goes into the widget's own sheet (which does win), and
+ * only when it actually changes.
  */
 void setStateTextColor(QWidget* widget,const QColor& color);
 

@@ -93,7 +93,9 @@ bool teTagComboBox::filter(std::shared_ptr<teTag>tag){
 }
 
 void teTagComboBox::clear(){
-    setStyleSheetOnce(this,"color:white;");
+    // Same channel as refreshState() uses, so the two cannot disagree about what
+    // "not linked" looks like (both go through setStateTextColor).
+    setStateTextColor(this,QColor(Qt::white));
     for(std::shared_ptr<teTag>tag:linked_tags){
         tag->teDisconnect(this);
     }

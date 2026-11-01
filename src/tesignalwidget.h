@@ -82,6 +82,10 @@ public:
     QButtonGroup* extra_buttongroup =nullptr;
 
     QVector<std::pair<QLayout*,QButtonGroup*>>objectLayoutList;
+    /// The group every exclusive section shares, when the constructor got one.
+    /// It is what tells sendString() where the "type" sections start, i.e. where
+    /// the words that no button stands for belong (see sendString).
+    QButtonGroup* shared_group = nullptr;
     QString otherWords;
     void uncheckAllButtons();
     /// Adds one section (with an optional caption above it) to content_layout

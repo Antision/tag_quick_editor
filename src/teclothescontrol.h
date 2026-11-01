@@ -358,12 +358,29 @@ public:
                     front_adjectives.clear();
                     adjectives.clear();
                 back_adjectives.clear();
-                        if(type!= *core->words.back()){
+                    // A tag whose text was emptied has no words left; reading
+                    // back() would be reading past the end (the editors normally
+                    // drop such a tag before this runs, but not always).
+                    const QString lastWord = core->words.isEmpty()
+                                             ? QString{}
+                                             : static_cast<QString>(*core->words.back());
+                    if(!lastWord.isEmpty()&&type!=lastWord){
                         isTypeChanged=true;
+                        // `type` has to be updated *before* the lookup below, not
+                        // inside it. The wrapper is not always in all_clothes at
+                        // this point: reReadClothes() erases it before it calls
+                        // readCore(), so updating the type inside the find() block
+                        // meant the update was skipped exactly when the user
+                        // changed the garment word - and the *old* word was
+                        // written back. That is why "blue short sleeveless dress"
+                        // came back as itself after being switched to "...swimsuit",
+                        // and why the colour toggle re-created the wrong order.
+                        type = lastWord;
+                        // Re-insert so the wrapper sits at its new place in the
+                        // type-ordered set.
                         auto it = parentList->all_clothes.find(this);
                         if(it!=parentList->all_clothes.end()){
                             parentList->all_clothes.erase(it);
-                            type = *core->words.back();
                             parentList->all_clothes.insert(this);
                         }
                     }
@@ -437,22 +454,38 @@ public:
                         break;
                     }
                 }
-                int wordindex=-1;
-                for(teWord*wc:colors)
-                    if(core->words[++wordindex]!=wc)
-                        goto sortwords;
-                for(teWord*wc:front_adjectives)
-                    if(core->words[++wordindex]!=wc)
-                        goto sortwords;
-                for(teWord*wc:adjectives)
-                    if(core->words[++wordindex]!=wc)
-                        goto sortwords;
-                for(teWord*wc:back_adjectives)
-                    if(core->words[++wordindex]!=wc)
-                        goto sortwords;
-
-                return 0;
-                sortwords:
+                // Already in the canonical order - and spelled the same? Then
+                // there is nothing to rewrite and, just as important, nothing to
+                // announce.
+                //
+                // The comparison is by *text*, not by word object: a tag whose
+                // word was renamed keeps the same objects, and calling that "in
+                // order" is what suppresses the edited_with_layout() below - the
+                // announcement every widget based list needs to reload its text
+                // ("underwear" stayed on screen although the tag already said
+                // "panties"). The whole tag is compared, the type word included,
+                // so a changed garment name counts as a difference too.
+                {
+                    QVector<QString> canonical;
+                    canonical.reserve(colors.size()+front_adjectives.size()
+                                      +adjectives.size()+back_adjectives.size()+1);
+                    for(teWord*wc:colors)            canonical.append(wc->text);
+                    for(teWord*wc:front_adjectives)  canonical.append(wc->text);
+                    for(teWord*wc:adjectives)        canonical.append(wc->text);
+                    for(teWord*wc:back_adjectives)   canonical.append(wc->text);
+                    canonical.append(type);
+                    if(canonical.size()==core->words.size()){
+                        bool same=true;
+                        for(int i=0;i<int(canonical.size());++i){
+                            if(!core->words[i]||core->words[i]->text!=canonical[i]){
+                                same=false;
+                                break;
+                            }
+                        }
+                        if(same)
+                            return 0;
+                    }
+                }
                 static auto insertWords = [](std::shared_ptr<teTag>tag,QVector<QVector<teWord*>>wordListList,teTagWidgetBase* tagWidget){
                         bool hasWidget=tagWidget!=nullptr;
                         if(hasWidget)
@@ -482,9 +515,17 @@ public:
                             }
                     };
                 teWord*typeWord;
-                if(isTypeChanged){
+                // The word that will stand for the garment. When the core's last
+                // word does not spell `type` - a rename merge() asked for, or a
+                // type change - the old word is *replaced* instead of written
+                // into, so the rebuild below really happens and announces the
+                // change through edited_with_layout(): that is what makes the
+                // widget based lists (the editor's own tag list) show the new
+                // text instead of the old one.
+                if(isTypeChanged||core->words.isEmpty()||core->words.back()->text!=type){
                     typeWord=new teWord{type};
-                    delete core->words.back();
+                    if(!core->words.isEmpty())
+                        delete core->words.back();
                 }else{
                     typeWord=core->words.back();
                 }
@@ -540,9 +581,14 @@ public:
                 // the list and "panties" typed, the result says "panties".
                 const QString incoming = in_core->words.isEmpty()?QString{}:in_core->words.back()->text;
                 if(!incoming.isEmpty()&&isGenericClothesType(type)&&!isGenericClothesType(incoming)){
+                    // Only the wrapper's type changes here; readCore() below
+                    // replaces the tag's type word with a *new* word of this
+                    // spelling. Writing into the old word (which is what this
+                    // did) changed the tag text without announcing anything, so
+                    // every widget based list kept showing the old word - the
+                    // editor's own tag list went on saying "underwear" while the
+                    // tag itself already said "panties".
                     type = incoming;
-                    if(core&&!core->words.isEmpty())
-                        core->words.back()->text = incoming;
                 }
                 readCore(in_core);
                 return true;

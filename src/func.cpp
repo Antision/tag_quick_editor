@@ -55,11 +55,15 @@ void setStateTextColor(QWidget* widget,const QColor& color)
     if (cached.isValid() && cached.value<QColor>() == color)
         return;
     widget->setProperty(kStateColor,color);
-    QPalette pal = widget->palette();
-    pal.setColor(QPalette::WindowText,color);
-    pal.setColor(QPalette::Text,color);
-    pal.setColor(QPalette::ButtonText,color);
-    widget->setPalette(pal);
+    // Through the widget's own sheet, not through the palette: a sheet colour
+    // always wins over a palette one, and the editors' page sheet sets
+    // `*{color:white}` for every widget inside it - which is why the palette this
+    // used to set was invisible and a captured tag no longer turned green.
+    //
+    // setStyleSheetOnce() is what keeps it cheap: the sheet is only re-parsed
+    // when the colour really changes (Qt re-parsing one costs about 6 ms per
+    // combo box, see the regression harness, which measures this).
+    setStyleSheetOnce(widget,QStringLiteral("color:%1;").arg(color.name()));
 }
 
 int findWidgetIndexInLayout(QBoxLayout* layout, QWidget* widget) {

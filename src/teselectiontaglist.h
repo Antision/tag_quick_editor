@@ -119,6 +119,14 @@ public:
     /// Inserts a placeholder row and starts editing it (used by "insert above").
     teSelectionTag* tagInsert(int row, std::shared_ptr<teTag>in_tag=nullptr,bool select=true);
     teSelectionTag* tagInsert(int row,const QString&text,bool select);
+    /**
+     * @brief Makes `row` the current *and* selected row.
+     *
+     * Selecting alone leaves the current index where it was, which is what made a
+     * freshly added tag look unselected; the editors and the shortcuts address
+     * the list through the current row, so both have to move.
+     */
+    void selectRow(teSelectionTag* row);
     /// Moves the multi tag to the relative position it represents in every list.
     void setPos(int index);
     Qt::ItemFlags flags(const QModelIndex &index) const override {

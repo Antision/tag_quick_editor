@@ -102,6 +102,7 @@ colorsWidget::colorsWidget(QVector<QPair<QStringList, bool> > &&objects, QWidget
     }
 
     const bool sharedGroup = (sharedExclusiveGroup != nullptr);
+    shared_group = sharedExclusiveGroup;
 
     for(int sectionIndex=0;sectionIndex<objects.size();++sectionIndex){
         auto&[stringlist,ifExclusive]=objects[sectionIndex];
@@ -295,11 +296,31 @@ void colorsWidget::sendString(bool ifadd){
         }
     }
     int objectLayoutListSize = objectLayoutList.count();
+    // Where the words go that no button of this dialog stands for (they are what
+    // the tag had beyond the buttons: "short", "sleeveless", ...). They used to
+    // be appended just before the *last* section, which is right for a dialog
+    // whose last section is the variant word ("<colour> <other> hair") - but the
+    // clothes dialog has one type section per garment family, all sharing one
+    // exclusive group, so a type button can sit anywhere. Appending the leftover
+    // words after it produced "blue swimsuit short sleeveless": the type word in
+    // the middle then no longer identified the tag as a clothes tag, so the
+    // editor never sorted it back and the wrong order stuck.
+    // With a shared group, the words belong in front of its first section - that
+    // is exactly in front of the type word.
+    int otherWordsBefore = objectLayoutListSize-1;
+    if(shared_group){
+        for(int i=0;i<objectLayoutListSize;++i){
+            if(objectLayoutList[i].second==shared_group){
+                otherWordsBefore=i;
+                break;
+            }
+        }
+    }
     // Several sections may share one QButtonGroup (categories of the clothes
     // dialog), so a button must only contribute its text once.
     QSet<QAbstractButton*> emitted;
     for(int i=0;i<objectLayoutListSize;++i){
-        if(i==objectLayoutListSize-1&&!otherWords.isEmpty()){
+        if(i==otherWordsBefore&&!otherWords.isEmpty()){
             sendData+=otherWords;
         }
         auto&[layout,group] = objectLayoutList[i];

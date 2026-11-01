@@ -108,7 +108,11 @@ teSelectionTag *teSelectionTagModel::getMultiTag(const QString &in_text, bool &i
 
 void teSelectionTagModel::linkNewTagcore(std::shared_ptr<teTag> in_core, teTagList *in_list){
     bool isNewEntry = false;
-    teSelectionTag* find_mt = getMultiTag(*in_core, isNewEntry);
+    // `ifselect` only matters for a *new* row - getMultiTag() hands back an
+    // existing one without touching the selection. A tag that was just added to a
+    // picture (an editor button, a paste, a quick window) is the one the user
+    // wants to carry on with, so it becomes the current row here.
+    teSelectionTag* find_mt = getMultiTag(*in_core, isNewEntry, -1, true);
     find_mt->link(in_core,in_list);
 }
 
@@ -152,7 +156,7 @@ teSelectionTag *teSelectionTagModel::tagInsert(int row, std::shared_ptr<teTag> i
     connectTag(newmultitag);
     endInsertRows();
     if(select&&listview)
-        listview->selectionModel()->select(index(row,0), QItemSelectionModel::ClearAndSelect);
+        selectRow(newmultitag);
     if(in_tag==nullptr){
         if(listview)
             listview->scrollTo(index(row,0));
@@ -173,11 +177,25 @@ teSelectionTag *teSelectionTagModel::tagInsert(int row, const QString &text, boo
     tags.insert(row,newmultitag);
     endInsertRows();
     connectTag(newmultitag);
-    if(select&&listview){
-        listview->selectionModel()->select(index(row,0), QItemSelectionModel::ClearAndSelect);
-        listview->scrollTo(index(row,0));
-    }
+    if(select&&listview)
+        selectRow(newmultitag);
     return newmultitag;
+}
+
+void teSelectionTagModel::selectRow(teSelectionTag* row){
+    if(!listview||!row)
+        return;
+    const int at=tags.indexOf(row);
+    if(at<0)
+        return;
+    const QModelIndex idx=index(at,0);
+    // setCurrentIndex(), not select(): selecting a row leaves the *current* one
+    // where it was, so the list looked as if the new tag had not been picked - the
+    // reported "a tag I just added is not selected". Setting both is also what
+    // makes the next edit (which asks selectedRows()/currentIndex()) work on it.
+    listview->selectionModel()->setCurrentIndex(
+        idx,QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);
+    listview->scrollTo(idx);
 }
 
 void teSelectionTagModel::setPos(int index){
