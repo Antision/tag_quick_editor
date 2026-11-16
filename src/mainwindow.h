@@ -86,11 +86,33 @@ public:
     QTimer* selectionTimer=nullptr;
     /// The files the multi tag list currently represents.
     QList<tePictureFile*> shownMultiTagFiles;
+    /// True while the window is in the frameless "maximized" state that
+    /// toggleMaximize() applies (Windows' own maximized state is never used).
+    bool customMaximized = false;
+    /// Geometry restored when leaving that state.
+    QRect normalGeometryBeforeMax;
     ~MainWindow();
     void save();
+    /// 同步 nsfw 开关:改 nsfwMode、把 nsfw 编辑器排进/移出第二栏、保存配置。
+    /// rebuildLayout 为 false 时只同步显隐(启动时用,分栏已由 load_config 决定)。
+    void applyNsfwMode(bool on, bool rebuildLayout);
     int saveState(bool ifRunning=true);
     int loadState();
     bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result)override;
+    /// Paints a strip in the menu bar colour behind the fake title bar. The
+    /// window is translucent and paints no background of its own, so any
+    /// device pixel between the menu bar and the central widget that layout
+    /// rounding leaves uncovered would show the desktop wallpaper (a bright
+    /// seam that only shows up at fractional display scaling).
+    void paintEvent(QPaintEvent* event) override;
+    /// Frameless-safe maximize: fills the screen's available geometry instead
+    /// of letting Windows maximize the window (which overshoots the work area
+    /// by the hidden window frame on every side).
+    void toggleMaximize();
+    /// Rounded mask for the fake title bar so item hover/selection and the
+    /// window buttons cannot paint outside the QMenuBar corner radius.
+    void updateMenuBarMask();
+    bool eventFilter(QObject* watched, QEvent* event) override;
     void emitloadlists(const QItemSelection &selected, const QItemSelection &deselected);
     LRESULT OnTestBorder(const QPoint &pt);
     void checkForUpdate();
@@ -104,6 +126,8 @@ public:
 
 public slots:
     void dialog_LoadPath(bool clear=true);
+    /// Options -> NSFW Mode: 开关 nsfw 编辑器并把它排到(或移出)第二栏
+    void onNsfwModeToggled(bool on);
     /// Applies the pending picture-list selection (debounced).
     void applyPendingSelection();
     /// Runs autoSaveSec after the last change; safely on the GUI thread.

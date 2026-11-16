@@ -12,6 +12,14 @@ int main(int argc, char *argv[])
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
     QCoreApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
     QApplication a(argc, argv);
+    // 全局字体:内置 Ubuntu,Light 作主字重(版权见 LICENSES/UFL.txt)
+    {
+        QFont f(appFontFamily());
+        if (!f.family().isEmpty()) {
+            f.setWeight(QFont::Light);
+            a.setFont(f);
+        }
+    }
     QLoggingCategory::setFilterRules(QStringLiteral("qt.gui.imageio=false"));
     load_config();
     MainWindow w;

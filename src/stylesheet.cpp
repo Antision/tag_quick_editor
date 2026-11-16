@@ -1,7 +1,7 @@
 
 QString liststyle = QStringLiteral(R"(
 teWordWidgetBase{
-    font: %1pt "Segoe UI";
+    font-size:%1pt;
 }
 QListView{
     border:1px solid #4c399e;

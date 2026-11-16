@@ -1,5 +1,8 @@
 <RCC>
     <qresource prefix="/">
+        <file>../res/fonts/Ubuntu-Light.ttf</file>
+        <file>../res/fonts/Ubuntu-Regular.ttf</file>
+        <file>../res/fonts/Ubuntu-Bold.ttf</file>
         <file>../res/bin.png</file>
         <file>../res/bin_sleep.png</file>
         <file>../res/close.png</file>

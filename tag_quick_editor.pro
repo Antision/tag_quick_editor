@@ -18,6 +18,9 @@ LIBS += -luser32
 LIBS += -ldwmapi
 LIBS += -lgdi32
 RC_ICONS = res/icon.ico
+
+# 公用代码库(与 gallery_info 共用,独立仓库,git submodule -> ../common)
+include($$PWD/common/common.pri)
 SOURCES += \
     src/ctag.cpp \
     src/func.cpp \
@@ -25,7 +28,6 @@ SOURCES += \
     src/main.cpp \
     src/mainwindow.cpp \
     src/prefix_priority.cpp \
-    src/qflowlayout.cpp \
     src/stylesheet.cpp \
     src/suggestionlineedit.cpp \
     src/teeditor.cpp \
@@ -54,7 +56,6 @@ HEADERS += \
     src/mainwindow.h \
     src/pch.h \
     src/prefix_priority.h \
-    src/qflowlayout.h \
     src/suggestionlineedit.h \
     src/teeditor.h \
     src/teeditor_derive.h \
@@ -96,3 +97,17 @@ RESOURCES += \
     res/adult-check/websiteIcon.qrc
 
 DISTFILES +=
+
+win32 {
+    # Qt 运行时随 exe 部署:直接双击 exe 也能跑,不再依赖 Qt Creator 注入的 PATH
+    CONFIG(debug, debug|release) {
+        RUNTIME_DST = $$OUT_PWD/debug
+    } else {
+        RUNTIME_DST = $$OUT_PWD/release
+    }
+    CONFIG(debug, debug|release) {
+        QMAKE_POST_LINK += $$escape_expand(\\n\\t) windeployqt --no-translations --no-compiler-runtime --debug $(DESTDIR_TARGET)
+    } else {
+        QMAKE_POST_LINK += $$escape_expand(\\n\\t) windeployqt --no-translations --no-compiler-runtime --release $(DESTDIR_TARGET)
+    }
+}

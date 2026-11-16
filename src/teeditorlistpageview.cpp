@@ -1,4 +1,5 @@
 #include "teeditorlistpageview.h"
+#include "func.h"
 
 
 bool teEditorListPageModel::setData(const QModelIndex &index, const QVariant &value, int role) {
@@ -157,7 +158,7 @@ void teEditorListPageDelegate::paint(QPainter *painter, const QStyleOptionViewIt
                         ? QColor(0, 217, 109) : QColor(178, 136, 255));
 
     painter->setPen(Qt::white);
-    painter->setFont(QFont("Segoe UI", 15));
+    painter->setFont(QFont(appFontFamily(), 15));
     painter->drawText(rect.adjusted(3, 0, 0, 0), Qt::AlignVCenter | Qt::AlignLeft, *editorNamePtr);
     painter->restore();
 }

@@ -46,7 +46,7 @@ teTagListWidgetBase::teTagListWidgetBase(int wordsize,QWidget *parent): QWidget{
     menu->setStyleSheet(
         R"(QMenu {
         background-color: transparent;
-        font: 14px "Segoe UI";
+        font-size:14px;
         color:#8dfda7;
         border-radius:3px;
     }
@@ -1026,7 +1026,7 @@ void teTagListView::createMenu()
     menu->setStyleSheet(
         R"(QMenu {
         background-color: transparent;
-        font: 14px "Segoe UI";
+        font-size:14px;
         color:#8dfda7;
         border-radius:3px;
     }
@@ -1237,7 +1237,7 @@ void teTagListView::startDrag(Qt::DropActions supportedActions)
     if(!tagModel||indexes.isEmpty())
         return;
 
-    QFont font(QStringLiteral("Segoe UI"),10);
+    QFont font(appFontFamily(),10);
     const QFontMetrics metrics(font);
     const QString text = indexes.first().data(Qt::DisplayRole).toString();
     const int width = std::max(40,metrics.horizontalAdvance(text)+16);

@@ -1,4 +1,5 @@
 #include "tetaglistmodel.h"
+#include "func.h"
 
 namespace {
 
@@ -506,7 +507,7 @@ void teTagDelegate::paint(QPainter* painter,const QStyleOptionViewItem& option,c
     // was edited (and it stayed blank even after switching images).
     if(!(m_activeEditor&&m_activeEditor->isVisible()&&m_editingRow==index.row())){
         painter->setPen(selected?QColor(0x00,0xd9,0x6d):Qt::white);
-        QFont font(QStringLiteral("Segoe UI"),15);
+        QFont font(appFontFamily(),15);
         painter->setFont(font);
         painter->drawText(rect.adjusted(4,0,-4,0),Qt::AlignVCenter|Qt::AlignLeft,text);
     }

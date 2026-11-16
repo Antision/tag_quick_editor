@@ -1,11 +1,24 @@
 #include "tetagdisplaywidget.h"
+#include "func.h"
 #include "tetaglistwidget.h"
 #include "qflowlayout.h"
+
+#include <QApplication>
 
 namespace {
 
 /// The tag list draws its words at this point size (see teTagListWidget).
 constexpr int kTagListWordPointSize = 15;
+
+/// 测量字号必须和 teWordWidgetBase 实际渲染的字体同源:QSS 只覆盖字号,
+/// family/weight 继承全局(真实程序里是 QApplication::font() = Ubuntu Light)。
+/// 用 QFont(family) 冷启动会把字重退回 Regular,宽高算错就让词换行。
+QFont wordFont(int pointSize)
+{
+    QFont f = QApplication::font();
+    f.setPointSize(pointSize);
+    return f;
+}
 
 constexpr int kHorizontalMargin = 6;
 constexpr int kVerticalMargin = 4;
@@ -152,7 +165,7 @@ void teTagDisplayWidget::load()
 
     const int pointSize = displayPointSize();
     const QString style = QStringLiteral("teTagDisplayWidget{background-color:#2b2b2b;border:1px solid #6b6b6b;}"
-                                         "teWordWidgetBase{font:%1pt \"Segoe UI\";color:white;background:transparent;}"
+                                         "teWordWidgetBase{font-size:%1pt;color:white;background:transparent;}"
                                          "teWordWidgetBase:hover{border:1px solid #21ffbd;}")
                               .arg(pointSize);
     setStyleSheet(style);
@@ -190,7 +203,7 @@ void teTagDisplayWidget::load()
     // here: that also set the popup's *minimum* width, so for a long tag the popup
     // stayed as wide as the whole line no matter what maximum was applied later -
     // which is why a long tag (and a long sentence) kept its empty right half.
-    const QFontMetrics metrics(QFont(QStringLiteral("Segoe UI"),pointSize));
+    const QFontMetrics metrics(wordFont(pointSize));
     int natural = 2*kHorizontalMargin;
     for (teWord* wordCore : core->words)
         natural += metrics.horizontalAdvance(wordCore->text) + 8;
@@ -362,7 +375,7 @@ void teTagDisplayWidget::placeNextTo(const QPoint& anchor)
     // shrinks (a leftover minimum is exactly what made the cap ineffective).
     setMinimumWidth(0);
     setMaximumWidth(maxWidth);
-    const QFontMetrics metrics(QFont(QStringLiteral("Segoe UI"),displayPointSize()));
+    const QFontMetrics metrics(wordFont(displayPointSize()));
     const int height = std::max(m_flow->heightForWidth(wanted),
                                 metrics.height()+2*kVerticalMargin);
     resize(wanted,height);
@@ -500,7 +513,7 @@ void teTagDisplayWidget::startEditing(teWordWidgetBase* clickedWord)
     // which is what makes editing a long tag bearable.
     auto* editor = new QPlainTextEdit(this);
     m_editor = editor;
-    editor->setStyleSheet(QStringLiteral("QPlainTextEdit{font:%1pt \"Segoe UI\";color:white;"
+    editor->setStyleSheet(QStringLiteral("QPlainTextEdit{font-size:%1pt;color:white;"
                                          "background-color:#101010;border:1px solid #12b594;}")
                               .arg(displayPointSize()));
     editor->setLineWrapMode(QPlainTextEdit::NoWrap);

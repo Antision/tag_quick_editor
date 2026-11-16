@@ -50,7 +50,7 @@ void colorsWidget::addSectionToContent(QLayout* sectionLayout,const QString& hea
     wrapper->setSpacing(0);
     QLabel* label = new QLabel(heading,this);
     label->setProperty("type","sectionHeading");
-    label->setStyleSheet(qsl("QLabel{color:#c8c8c8;font:italic 12px \"Segoe UI\";border:none;background:transparent;}"));
+    label->setStyleSheet(qsl("QLabel{color:#c8c8c8;font-size:12px;font-style:italic;border:none;background:transparent;}"));
     wrapper->addWidget(label);
     wrapper->addLayout(sectionLayout);
     target->addLayout(wrapper);
@@ -397,7 +397,7 @@ QString teWidgetStyle = QStringLiteral(R"(
 QWidget{
     background-color:rgb(27,27,27);
     color:white;
-    font: 12pt "Segoe UI";
+    font-size:12pt;
 }
 QWidget#title{
     border:1px solid rgb(64,64,64);
@@ -479,7 +479,7 @@ QComboBox:hover{
     background-color:rgba(177,100,255,60);
 }
 QAbstractItemView{
-    font:10pt "Segoe UI";
+    font-size:10pt;
     outline: 0px solid black;
     border: 1px solid #4c399e;
     selection-background-color: #3aaf74;
@@ -572,7 +572,7 @@ QString colorButtonStyleSheet = qsl(R"(
 QPushButton{
 background-color:rgba(%1,%2,%3,164);
 border:1px solid #412579;
-font:12pt "Segoe UI";
+font-size:12pt;
 color:%4;
 }
 QPushButton:hover{

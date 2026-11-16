@@ -135,7 +135,7 @@ background-color: rgb(27, 27, 27);
 }
 QMenu {
         background-color: transparent;
-        font: 14px &quot;Segoe UI&quot;;
+        font-size:14px;
         color:#8dfda7;
         border-radius:3px;
     }
@@ -196,8 +196,9 @@ QTabBar::tab {
     border: 1px solid #c5aaf7;
     border-top-left-radius: 3px;
     border-top-right-radius: 3px;
-    min-width: 8ex;
-    padding: 2px;
+    min-width: 6ex;
+    padding: 1px 2px;
+    font-size:10pt;
 }
 QTabBar::tab:selected, QTabBar::tab:hover {
     background:#4d7d74;
@@ -354,11 +355,12 @@ background-color: rgb(27, 27, 27);
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>22</height>
+     <height>26</height>
     </rect>
    </property>
    <property name="styleSheet">
     <string notr="true">QMenuBar{
+font-size:13px;
 border-top-left-radius: 7px;
 border-top-right-radius: 7px;
 color:  #d2c5ff ;
@@ -366,18 +368,16 @@ background-color: rgb(27, 27, 27);
 border-top:1px solid rgb(100,100,100);
 border-left:1px solid rgb(100,100,100);
 border-right:1px solid rgb(100,100,100);
+border-bottom:1px solid rgb(27, 27, 27);
 }
 QMenuBar::item:selected{
-	background: #613d80;
-}
-QMenuBar::item:first:selected{
-    border-top-left-radius: 2px; 
 	background: #613d80;
 }
 QMenu{
 color:  #d2c5ff ;
 background-color: rgb(27, 27, 27);
 selection-background-color: rgb(70, 70, 70);
+font-size:13px;
 }</string>
    </property>
    <property name="nativeMenuBar">
@@ -407,6 +407,7 @@ selection-background-color: rgb(70, 70, 70);
      <string>Options</string>
     </property>
     <addaction name="action_editor_setting"/>
+    <addaction name="actionNsfw_Mode"/>
     <addaction name="actionAuto_Merge_Tags"/>
     <addaction name="actionAuto_Save_State"/>
     <addaction name="actionAbout_Qt"/>
@@ -471,6 +472,14 @@ selection-background-color: rgb(70, 70, 70);
   <action name="action_filt">
    <property name="text">
     <string>Filter</string>
+   </property>
+  </action>
+  <action name="actionNsfw_Mode">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>NSFW Mode</string>
    </property>
   </action>
   <action name="actionAuto_Merge_Tags">

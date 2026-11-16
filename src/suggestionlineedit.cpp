@@ -168,7 +168,7 @@ void suggestionLineEdit::keyPressEvent(QKeyEvent *event) {
 QString lineeditstyle = QStringLiteral(R"(background:rgba(0,0,0,135);
 border:white dashed 1px;
 color:white;
-font: 12pt "Segoe UI";)");
+font-size:12pt;)");
 
 const QString suggestionLineEditStyle(R"(
 QListWidget{border:1px solid #4c399e;}
@@ -194,7 +194,7 @@ height:0px;
 }
 
 QListView {
-    font: 12pt "Segoe UI";
+    font-size:12pt;
     show-decoration-selected: 1;
     background-color:rgb(20,20,20);
     color:white;

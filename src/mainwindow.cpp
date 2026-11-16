@@ -6,6 +6,12 @@
 #include"teeditor_derive.h"
 #include"logwindow.h"
 
+#include <QPainterPath>
+#include <QRegion>
+#include <QResizeEvent>
+#include <QScreen>
+#include <QGuiApplication>
+
 QWidget* global_window;
 bool autoMerge=true;
 bool MergeSwitch=true;
@@ -266,7 +272,7 @@ MainWindow::MainWindow(QWidget *parent)
     QLabel* titleLabel1 = new QLabel{"tag quick editor"};
     QLabel* titleLabel2 = new QLabel{};
     titleLabel1->setStyleSheet(
-        "font: 10pt bold \"Segoe UI\";"
+        "font-size:10pt;font-weight:bold;"
         "color: qlineargradient(spread:pad, x1:0, y1:0, x1:0, y1:1,stop:0 #666666, stop:1 #000000);");
 
     titleLabel2->setPixmap(icon.scaled(20,20,Qt::KeepAspectRatio,Qt::SmoothTransformation));
@@ -288,7 +294,7 @@ border-image:url(:/res/minimize_mainwindow_sleep.png);}
 QPushButton:hover{background-color:rgba(100,100,100,100);})"));
 
     connect(close_btn,&QPushButton::pressed,this, &MainWindow::onApplicationClose);
-    connect(maximize_btn,&QPushButton::pressed,[this]{if(isMaximized())showNormal(); else showMaximized();});
+    connect(maximize_btn,&QPushButton::pressed,this,&MainWindow::toggleMaximize);
     connect(minimize_btn,&QPushButton::pressed,this,&QMainWindow::showMinimized);
     menulayout->addWidget(minimize_btn);
     menulayout->addWidget(maximize_btn);
@@ -305,9 +311,13 @@ QPushButton:hover{background-color:rgba(100,100,100,100);})"));
         ,new teEditor_nsfw{ui->taglist,QStringLiteral("nsfw")}
     };
     extern int nsfwMode;
-    if(nsfwMode<1)
-        delete allEditors.takeLast();
     ui->editorlist->loadEditors(allEditors,&editorlistlayout);
+
+    // NSFW 编辑器始终构造出来,开关只决定它是否参与分栏与显示;
+    // 这样切换时不用重建整个 editorlist(也就不会丢掉控件状态)
+    ui->actionNsfw_Mode->setChecked(nsfwMode > 0);
+    connect(ui->actionNsfw_Mode, &QAction::toggled, this, &MainWindow::onNsfwModeToggled);
+    applyNsfwMode(nsfwMode > 0, false);
 
     ui->editorlist->connectTaglistWidget(ui->taglist);
     // The pool gets the view as its parking parent (the view is the widget; the
@@ -318,6 +328,149 @@ QPushButton:hover{background-color:rgba(100,100,100,100);})"));
 
     ui->actionAuto_Merge_Tags->setChecked(autoMerge);
 
+    // 伪标题栏(menubar)的圆角裁剪:见 updateMenuBarMask()
+    ui->menuBar->installEventFilter(this);
+    updateMenuBarMask();
+}
+
+void MainWindow::applyNsfwMode(bool on, bool rebuildLayout)
+{
+    nsfwMode = on ? 1 : 0;
+
+    if (rebuildLayout) {
+        // nsfw 单独占第二栏:它和常规 tag 编辑器不是同一套工作流,塞在第一栏里
+        // 会把那一栏挤到横向溢出。
+        auto& pages = editorlistlayout.editors;
+        for (auto& page : pages)
+            page.removeAll(QStringLiteral("nsfw"));
+        if (on) {
+            if (pages.isEmpty())
+                pages.push_back({});
+            while (pages.size() < 2)
+                pages.push_back({});
+            pages[1].push_back(QStringLiteral("nsfw"));
+        }
+        ui->editorlist->setEditorsToPages();
+        save_config();
+    }
+
+    // 关闭时只隐藏、不摘出布局:setEditorsToPages() 只搬运"还在栏里"的编辑器,
+    // 一旦把它 setParent(nullptr) 出去,再打开开关就找不回来了。
+    for (teEditor* e : ui->editorlist->editorlist) {
+        if (e->name == QStringLiteral("nsfw"))
+            e->setVisible(on);
+    }
+}
+
+void MainWindow::onNsfwModeToggled(bool on)
+{
+    applyNsfwMode(on, true);
+}
+
+// 窗口没有真正的非矩形形状(无 mask),menubar 的 border-radius 只作用于
+// 它自己的背景绘制;菜单项选中高亮、关闭/最大化按钮的 hover 背景都是
+// 矩形绘制,会溢出到 7px 圆角外面(Qt 的 QMenuBar::item 不支持 :first
+// 伪状态,所以靠 QSS 给"第一个菜单项"单独加圆角的路走不通)。
+// 这里给 menubar 本身装一个圆角 mask,把溢出部分物理裁掉,高亮自然
+// 贴合圆角,且与菜单字体大小无关。
+void MainWindow::paintEvent(QPaintEvent* event)
+{
+    QMainWindow::paintEvent(event);
+
+    // 伪标题栏底下垫一层与 menubar 同色的底。
+    // 本窗口是 WA_TranslucentBackground,Qt 不会替它刷背景(QSS 里的
+    // background-color 在无系统背景的顶层窗口上也不生效),所以 menubar 与
+    // 中央控件之间只要有 1 个设备像素没被覆盖,透出来的就是桌面壁纸——在
+    // 125%/150% 这类分数缩放的屏幕上,1 逻辑像素的边框会被摊成 2 个设备像素,
+    // 缝隙就更容易显形(100% 缩放的小屏上看不见就是这个原因)。
+    if (!ui || !ui->menuBar)
+        return;
+    const int bottom = ui->menuBar->geometry().bottom() + 1;
+    if (bottom <= 0)
+        return;
+
+    QPainter painter(this);
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(QColor(27, 27, 27));          // == QMenuBar 的 background-color
+    const qreal radius = 7.0;                      // == QSS 的 border-top-*-radius
+    QPainterPath strip;
+    strip.moveTo(0, bottom);
+    strip.lineTo(0, radius);
+    strip.quadTo(0, 0, radius, 0);
+    strip.lineTo(width() - radius, 0);
+    strip.quadTo(width(), 0, width(), radius);
+    strip.lineTo(width(), bottom);
+    strip.closeSubpath();
+    painter.drawPath(strip);
+}
+
+// 最大化不用系统那套:无边框 + WM_NCCALCSIZE 返回"整窗即客户区"之后,
+// Windows 最大化仍会把窗口按不可见的窗口边框向外撑(实测四边各多 9px),
+// 内容就被推到屏幕外。这里直接把窗口铺满当前屏幕的可用区域,行为完全由
+// Qt 控制,不依赖系统边框推算。
+void MainWindow::toggleMaximize()
+{
+    if (customMaximized) {
+        setGeometry(normalGeometryBeforeMax);
+        customMaximized = false;
+        return;
+    }
+    normalGeometryBeforeMax = geometry();
+    setWindowState(Qt::WindowNoState);   // 确保不是系统意义上的最大化
+    QScreen* scr = screen();
+    if (!scr)
+        scr = QGuiApplication::primaryScreen();
+    if (!scr)
+        return;
+    // Qt 把可用区域从设备像素换算成逻辑像素时会取整,直接用 availableGeometry()
+    // 有可能在屏幕右/下边缘留下 1 像素壁纸线(窗口是透明的,缝里就是桌面)。
+    // 往外补 1 像素:多出来的部分在屏幕外,看不见。
+    QRect target = scr->availableGeometry();
+    target.setWidth(target.width() + 1);
+    target.setHeight(target.height() + 1);
+    setGeometry(target);
+    customMaximized = true;
+}
+
+void MainWindow::updateMenuBarMask()
+{
+    QMenuBar* mb = ui->menuBar;
+    if (!mb)
+        return;
+    const QRect r = mb->rect();
+    if (r.isEmpty())
+        return;
+
+    // 圆角半径与 QSS 的 border-top-left/right-radius 一致。
+    // 只按"整行"削掉两个上角:逐行算出该行中心落在圆弧之外的那段宽度,再用
+    // 整数矩形从整块区域里减掉。这里刻意不用 QPainterPath 转 QRegion 的老写法:
+    // 路径是浮点坐标,在 125%/150% 这类分数缩放的屏幕上会被舍入,连 menubar
+    // 自己的最后一行也一起舍掉,底边就透出一条 1px 的桌面壁纸缝(100% 缩放的
+    // 屏幕上不会出现,所以只有大屏上才看得见)。
+    const int rad = 7;
+    QRegion region(r);
+    QRegion corners;
+    for (int y = 0; y < rad && y < r.height(); ++y) {
+        const double dy = rad - y - 0.5;                        // 行中心到圆心的纵向距离
+        const double inner = double(rad) * rad - dy * dy;       // 该行在圆内的水平余量
+        const double dx = inner <= 0.0 ? 0.0 : std::sqrt(inner);
+        const int cut = static_cast<int>(std::ceil(double(rad) - dx));
+        if (cut <= 0)
+            continue;
+        const int w = qMin(cut, r.width());
+        corners += QRect(0, y, w, 1);
+        corners += QRect(r.width() - w, y, w, 1);
+    }
+    region -= corners;
+    mb->setMask(region);
+}
+
+bool MainWindow::eventFilter(QObject* watched, QEvent* event)
+{
+    if (watched == ui->menuBar && event->type() == QEvent::Resize)
+        updateMenuBarMask();
+    return QMainWindow::eventFilter(watched, event);
 }
 
 QList<tePictureFile*> MainWindow::selectedPictureFiles() const
@@ -581,6 +734,31 @@ bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, qintptr
 
     case WM_NCCALCSIZE: {
         if (msg->wParam) {
+            *result = 0;
+            return true;
+        }
+        break;
+    }
+    case WM_SYSCOMMAND: {
+        // 最大化/还原全部走自己的实现(见 toggleMaximize):无边框窗口交给系统
+        // 最大化时,Windows 会按"隐藏的窗口边框"把窗口撑到工作区之外。
+        const WPARAM cmd = msg->wParam & 0xFFF0;
+        if (cmd == SC_MAXIMIZE) {
+            toggleMaximize();
+            *result = 0;
+            return true;
+        }
+        if (cmd == SC_RESTORE && customMaximized) {
+            toggleMaximize();
+            *result = 0;
+            return true;
+        }
+        break;
+    }
+    case WM_NCLBUTTONDBLCLK: {
+        // 双击伪标题栏 == 最大化/还原
+        if (msg->wParam == HTCAPTION) {
+            toggleMaximize();
             *result = 0;
             return true;
         }

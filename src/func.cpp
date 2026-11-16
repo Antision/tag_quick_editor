@@ -1,4 +1,6 @@
 #include "func.h"
+
+#include <QFontDatabase>
 #include "pch.h"
 #include"mainwindow.h"
 #include"logwindow.h"
@@ -6,6 +8,22 @@
 namespace {
 std::mutex g_logTargetMutex;
 std::function<void(const QString&)> g_logTarget;
+}
+
+const QString& appFontFamily()
+{
+    static const QString family = [] {
+        // Ubuntu 三字重(Light/Regular/Bold)一起注册,合并出 "Ubuntu" family:
+        // main.cpp 用 Light 作主字重,需要粗体的地方能命中真 Bold 而不是合成粗体
+        int loaded = 0;
+        for (const QString& res : {QStringLiteral(":/res/fonts/Ubuntu-Light.ttf"),
+                                   QStringLiteral(":/res/fonts/Ubuntu-Regular.ttf"),
+                                   QStringLiteral(":/res/fonts/Ubuntu-Bold.ttf")})
+            if (QFontDatabase::addApplicationFont(res) >= 0)
+                ++loaded;
+        return loaded ? QStringLiteral("Ubuntu") : QStringLiteral("Segoe UI");
+    }();
+    return family;
 }
 
 void teSetLogTarget(std::function<void(const QString&)> target)
@@ -97,9 +115,21 @@ void editorLayoutFix(editorListLayout&layout){
     }
     if(layout.editors.size()==0)
         layout.editors.push_back({});
-    for(int i=0;i<size;++i)
-        if(!ifExist[i])
-            layout.editors[0].push_back(editorNames[i]);
+    for(int i=0;i<size;++i){
+        if(ifExist[i])
+            continue;
+        // nsfw 编辑器单独占第二栏:它和常规 tag 编辑器不是同一套工作流,塞进第一栏会把
+        // 那一栏挤到横向溢出(通过成人认证后的首次启动拿到的就是这个默认布局)。
+        // 已经有配置的用户不受影响——这里只处理"配置里完全没有"的编辑器。
+        if(editorNames[i]==QStringLiteral("nsfw") && nsfwMode>0){
+            if(layout.editors.size()<2)
+                layout.editors.push_back({});
+            layout.editors[1].push_back(editorNames[i]);
+            continue;
+        }
+        layout.editors[0].push_back(editorNames[i]);
+    }
+    delete[] ifExist;
 }
 
 int load_config(){
@@ -161,9 +191,6 @@ int load_config(){
         }
     }catch(std::exception &e){
         telog(e.what());
-    }
-    if(nsfwMode==0){
-        adultCheckWindow w(&nsfwMode);
     }
     editorLayoutFix(editorlistlayout);
     return -1;

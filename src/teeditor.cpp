@@ -71,7 +71,7 @@ teEditor_standard::teEditor_standard(teTagListView*in_taglistwidget,const QStrin
     back_to_main_page->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
     back_to_main_page->setMinimumSize(30,25);
     back_to_main_page->setStyleSheet(QStringLiteral(R"(
-QPushButton{font:bold 16pt "Segoe UI";padding:0px;margin:0px;}
+QPushButton{font-size:16pt;font-style:bold;padding:0px;margin:0px;}
 QPushButton:!hover{border:2px solid #4c399e;}
 QPushButton:hover{border:2px solid #ad5dff;})"));
     back_to_main_page->hide();

@@ -282,7 +282,7 @@ QWidget{
 background-color: rgb(27, 27, 27);
 }
 *{
-    font: 12pt "Segoe UI";
+    font-size:11pt;
     color:white;
 }
 QScrollArea{border:1px solid #4c399e;}
@@ -314,7 +314,7 @@ QPushButton{
     outline: 0px solid black;
     border: 1px solid #4c399e;
     background-color:transparent;
-    padding: 0px;
+    padding: 2px 0px;
 }
 QPushButton:hover{
     border: 1px solid #a858f2;
@@ -339,16 +339,21 @@ QCheckBox:hover{
 QLineEdit{
     outline: 0px solid black;
     border: 1px solid #4c399e;
+    padding: 2px 0px;
 }
 QComboBox{
     border: 1px solid #4c399e;
+    padding: 2px 0px;
+}
+QLabel{
+    padding: 2px 0px;
 }
 QComboBox:hover{
     border: 1px solid #a858f2;
     background-color:rgba(177,100,255,60);
 }
 QAbstractItemView{
-    font:10pt "Segoe UI";
+    font-size:10pt;
     outline: 0px solid black;
     border: 1px solid #4c399e;
     selection-background-color: #3aaf74;

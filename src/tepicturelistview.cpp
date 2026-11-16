@@ -217,8 +217,8 @@ void tePictureFileDelegate::paint(QPainter *painter, const QStyleOptionViewItem 
         painter->drawImage(imageRect, image);
     }
 
-    static const QFont nameFont("Segoe UI", 14);
-    static const QFont tagCountFont("Segoe UI", 12, QFont::StyleItalic);
+    static const QFont nameFont(appFontFamily(), 14);
+    static const QFont tagCountFont(appFontFamily(), 12, QFont::StyleItalic);
 
     painter->setFont(nameFont);
     painter->setPen(Qt::white);
@@ -243,7 +243,7 @@ QSize tePictureFileDelegate::sizeHint(const QStyleOptionViewItem &option, const 
 
     // Fixed metric objects: this function runs for every visible row on every
     // layout pass and used to construct a QFont/QFontMetrics each time.
-    static const QFont nameFont("Segoe UI", 14);
+    static const QFont nameFont(appFontFamily(), 14);
     static const QFontMetrics nameMetrics(nameFont);
     return {image.width() + 2 + nameMetrics.horizontalAdvance(file->name()), image.height() + 2};
 }

@@ -8,6 +8,17 @@ int findWidgetIndexInLayout(QBoxLayout* layout, QWidget* widget);
 extern QRect mainwindowGeometry;
 
 /**
+ * @brief Global font family: the embedded Ubuntu fonts (Light/Regular/Bold).
+ *
+ * Registered on first call (:/res/fonts/Ubuntu-*.ttf, Ubuntu Font Licence,
+ * copyright text at LICENSES/UFL.txt). Returns an empty QString on failure
+ * (Qt then falls back to the platform default). Must be called after the
+ * QApplication instance exists. The Light weight is applied by main.cpp
+ * when setting the application font.
+ */
+const QString& appFontFamily();
+
+/**
  * @brief setStyleSheet() only when the sheet really changes.
  *
  * Qt re-parses a stylesheet on every call, which costs on the order of a

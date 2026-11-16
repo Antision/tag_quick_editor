@@ -1,4 +1,5 @@
 #include "teselectiontaglist.h"
+#include "func.h"
 
 namespace {
 
@@ -629,10 +630,10 @@ void teTagListDelegate::paint(QPainter *painter, const QStyleOptionViewItem &opt
         // text is painted unconditionally. Skipping it while editing made the
         // row look empty whenever the editor was closed without committing.
         painter->setPen(Qt::white);
-        painter->setFont(QFont("Segoe UI", 15));
+        painter->setFont(QFont(appFontFamily(), 15));
         painter->drawText(rect.adjusted(3, 0, 0, 0), Qt::AlignVCenter | Qt::AlignLeft, tag->text);
         painter->setPen(QColor(150, 150, 150));
-        painter->setFont(QFont("Segoe UI", 12));
+        painter->setFont(QFont(appFontFamily(), 12));
         painter->drawText(rect.adjusted(0, 0, -5, 0), Qt::AlignVCenter | Qt::AlignRight, QString::number(tag->linked_tags.size()));
     }
     painter->restore();
@@ -674,7 +675,7 @@ void teSelectionTagListView::initializeMenu(){
     menu->setStyleSheet(qsl(
         R"(QMenu {
         background-color: transparent;
-        font: 14px "Segoe UI";
+        font-size:14px;
         color:#8dfda7;
         border-radius:3px;
     }
@@ -734,7 +735,7 @@ void teSelectionTagListView::startDrag(Qt::DropActions supportedActions) {
     if (indexes.isEmpty())
         return;
     QList<teSelectionTag*>& tags = model->tags;
-    QFont font("Segoe UI", 10);
+    QFont font(appFontFamily(), 10);
     QFontMetrics fontMetrics(font);
     const QModelIndex index = *indexes.begin();
     if (index.row() < 0 || index.row() >= tags.size())

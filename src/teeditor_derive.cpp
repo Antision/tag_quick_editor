@@ -66,7 +66,7 @@ extern QStringList custom_tags;
 extern teCustomControlList* custom_controls;
 QString teEditor_custom_style = QStringLiteral(R"(
 QPushButton#addNewTagButton{
-font:12pt "Segoe UI";color:white;
+font-size:11pt;color:white;
 }
 QPushButton#addNewTagButton:!hover{
 border:1px solid rgb(50,50,50);background:qlineargradient(spread:pad, x1:0, y1:1, x2:0, y2:0, stop:0 rgba(0, 23, 175, 255), stop:1 rgba(37, 135, 255, 255));
@@ -79,7 +79,7 @@ QPushButton{
     outline: 0px solid black;
     border: 1px solid #2c5ea9;
     background-color:transparent;
-    padding: 0px;
+    padding: 2px 0px;
 }
 QPushButton:hover{
     border: 1px solid #3071d1;
@@ -213,7 +213,7 @@ void teEditor_custom::setControls(const QStringList& order){
 
 QString teEditor_pretreat_style = QStringLiteral(R"(
 QPushButton#editor_switch{
-font:16pt "Segoe UI";color:qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 rgba(0, 0, 0, 255), stop:1 rgba(255, 255, 255, 255)); background:black;
+font-size:16pt;color:qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 rgba(0, 0, 0, 255), stop:1 rgba(255, 255, 255, 255)); background:black;
 }
 QPushButton#editor_switch:!checked{
 border:1px solid rgb(50,50,50);
@@ -485,7 +485,7 @@ controls.push_back(hairlength_bgop);
 
 QString teEditor_hair_and_eyes_style = QStringLiteral(R"(
 QPushButton#editor_switch{
-font:16pt "Segoe UI";color:qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 rgba(255, 146, 235, 255), stop:0.497207 rgba(235, 239, 195, 255), stop:1 rgba(176, 246, 244, 255)); background:black;
+font-size:16pt;color:qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 rgba(255, 146, 235, 255), stop:0.497207 rgba(235, 239, 195, 255), stop:1 rgba(176, 246, 244, 255)); background:black;
 }
 QPushButton#editor_switch:!checked{
 border:1px solid rgb(50,50,50);
@@ -565,7 +565,7 @@ controls.push_back(hairlength_bgop);
 
 QString teEditor_clothes_style = QStringLiteral(R"(
 QPushButton#editor_switch{
-font:16pt "Segoe UI";color:qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 rgba(0, 255, 170, 255), stop:0.49162 rgba(191, 255, 0, 255), stop:1 rgba(0, 238, 255, 255)); background:black;
+font-size:16pt;color:qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 rgba(0, 255, 170, 255), stop:0.49162 rgba(191, 255, 0, 255), stop:1 rgba(0, 238, 255, 255)); background:black;
 }
 QPushButton#editor_switch:!checked{
 border:1px solid rgb(50,50,50);
@@ -632,7 +632,7 @@ controls.push_back(ears_Buttongroup);
 
 QString teEditor_nsfw_style = QStringLiteral(R"(
 QPushButton#editor_switch{
-font:16pt "Segoe UI";color:qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 rgba(255, 0, 0, 255), stop:0.536313 rgba(217, 0, 255, 255), stop:1 rgba(98, 0, 255, 255)); background:black;
+font-size:16pt;color:qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 rgba(255, 0, 0, 255), stop:0.536313 rgba(217, 0, 255, 255), stop:1 rgba(98, 0, 255, 255)); background:black;
 }
 QPushButton#editor_switch:!checked{
 border:1px solid rgb(50,50,50);
