@@ -21,6 +21,10 @@ public:
     void setControls(const QStringList& order);
     /// Rewrites string_controls from the current layout order (after a drag).
     void syncOrderFromLayout();
+    /// Re-asks the hosting layout for room after a style/font change: the tag
+    /// buttons take their height from the editor column's style sheet, and that
+    /// sheet is applied *after* the editor was built (see the override).
+    bool event(QEvent* event) override;
     ~teEditor_custom(){}
 };
 

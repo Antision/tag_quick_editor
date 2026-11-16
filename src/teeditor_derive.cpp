@@ -100,8 +100,10 @@ teEditor_custom::teEditor_custom(teTagListView*in_taglistwidget,QString&& name, 
     QPushButton* newtagButton = new QPushButton("add custom tags");
     mainLayout->setContentsMargins(1,1,1,1);
     mainLayout->setSpacing(1);
-    flowLayout->setVerticalSpacing(3);
-    flowLayout->setHorizontalSpacing(5);
+    // Same 1 px gap as every other editor control keeps; the custom tags used to
+    // sit 5 px / 3 px apart and looked like a different grid.
+    flowLayout->setVerticalSpacing(1);
+    flowLayout->setHorizontalSpacing(1);
     newtagButton->setObjectName("addNewTagButton");
     newtagButton->setFixedHeight(25);
     mainLayout->addWidget(newtagButton);
@@ -123,6 +125,7 @@ teEditor_custom::teEditor_custom(teTagListView*in_taglistwidget,QString&& name, 
         for(teEditorControl*ec:controls)
             delete ec;
         controls.clear();string_controls.clear();
+        updateGeometry();
     });
 }
 
@@ -145,6 +148,7 @@ void teEditor_custom::removeControl(const QString &str){
             widget->hide();
         }
         delete control;
+        updateGeometry();
         return;
     }
 }
@@ -159,6 +163,28 @@ void teEditor_custom::addControl(const QString &str){
             cbptr->read(tc);
     flowLayout->addWidget(cbptr);   // addWidget() reparents the button
     controlReorderer->attach(cbptr);
+    // The tag row makes the editor taller: the dialog / the config can add
+    // controls long after the page was laid out, and the page layout has to be
+    // told (see QFlowLayout::addItem()).
+    updateGeometry();
+}
+
+bool teEditor_custom::event(QEvent* event){
+    switch (event->type()) {
+    case QEvent::StyleChange:
+    case QEvent::FontChange:
+        // The tag buttons inherit their font (and so their height) from the
+        // editor column's style sheet, and that sheet is applied when the editor
+        // is dropped into the column - i.e. after this editor was built and
+        // already asked for room. Without re-asking, the page keeps the height
+        // the editor had as an empty frame and the rows are painted on top of the
+        // "add custom tags" button.
+        updateGeometry();
+        break;
+    default:
+        break;
+    }
+    return QFrame::event(event);
 }
 
 void teEditor_custom::syncOrderFromLayout(){
@@ -209,6 +235,7 @@ void teEditor_custom::setControls(const QStringList& order){
         ++target;
     }
     syncOrderFromLayout();
+    updateGeometry();
 }
 
 QString teEditor_pretreat_style = QStringLiteral(R"(
