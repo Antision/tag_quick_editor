@@ -32,4 +32,10 @@
         <file>../res/tick.png</file>
         <file>../res/tick_sleep.png</file>
     </qresource>
+    <!-- 样式表:用 teStyle::sheet("list") 取,见 src/testyle.h。
+         alias 是必须的:资源名是 prefix + 相对 .qrc 的路径,直接写
+         ../res/style/list.qss 会变成 :/style/res/style/list.qss。 -->
+    <qresource prefix="/style">
+        <file alias="list.qss">../res/style/list.qss</file>
+    </qresource>
 </RCC>

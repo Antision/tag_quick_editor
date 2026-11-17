@@ -4,7 +4,7 @@
 #include "ui_mainwindow.h"
 #include"tepicturefile.h"
 #include"teeditor_derive.h"
-#include"logwindow.h"
+#include "logwidget.h"
 #include "windows_frame.h"
 #include "task_runner.h"
 
@@ -71,8 +71,26 @@ MainWindow::MainWindow(QWidget *parent)
 
     // The log window is created first so that everything logged from here on
     // (including the tag list loading) is visible to the user.
-    logWindow = new LogWindow(nullptr);
-    teSetLogTarget([this](const QString& line){ if(logWindow) logWindow->append(line); });
+    // The log window is the shared one from common/logwidget (moved out of
+    // gallery_info): coloured levels, a "something went wrong" light, sounds and
+    // the habit of showing itself again for a Warning/Error. It is owned by this
+    // window, so closing the editor closes it too.
+    logWindow = new LogWidget(nullptr);
+    logWindow->setTitle(QStringLiteral("Log - tag quick editor"));
+    logWindow->setWindowIcon(QIcon(":/res/icon.ico"));
+    teSetLogTarget([this](const QString& line, teLogLevel level){
+        if (!logWindow)
+            return;
+        switch (level) {
+        case teLogLevel::Detail:  logWindow->append(line, LogWidget::Level::Detail); break;
+        case teLogLevel::Good:    logWindow->append(line, LogWidget::Level::Good); break;
+        case teLogLevel::Warning: logWindow->append(line, LogWidget::Level::Warning); break;
+        case teLogLevel::Error:   logWindow->append(line, LogWidget::Level::Error); break;
+        case teLogLevel::Info:
+        default:                  logWindow->append(line, LogWidget::Level::Info); break;
+        }
+    });
+    attachLogWindow();
     connect(ui->action_log_window,&QAction::triggered,this,&MainWindow::showLogWindow,Qt::DirectConnection);
 
     teDetachTask("tags-load", load_tags);
@@ -598,6 +616,17 @@ void MainWindow::showLogWindow()
     logWindow->show();
     logWindow->raise();
     logWindow->activateWindow();
+}
+
+void MainWindow::attachLogWindow()
+{
+    if (!logWindow)
+        return;
+    // An owned window: it is a real top level window (so it is never clipped by
+    // this frameless, translucent main window), but it stays above its owner and
+    // disappears together with it.
+    logWindow->setParent(this);
+    logWindow->setWindowFlags(logWindow->windowFlags() | Qt::Window);
 }
 
 void MainWindow::emitloadlists(const QItemSelection &selected, const QItemSelection &deselected){
@@ -1144,7 +1173,7 @@ teDuplicateStemReport teResolveDuplicateStems(QVector<tePath>& imagePaths)
             if (!QFile::rename(sourcePath,targetPath)) {
                 report.skipped++;
                 report.details << QStringLiteral("  skipped %1: the file could not be renamed").arg(fileName);
-                telog(QStringLiteral("[dataset] could not rename %1 to %2").arg(sourcePath,targetPath));
+                tewarn(QStringLiteral("[dataset] could not rename %1 to %2").arg(sourcePath,targetPath));
                 continue;
             }
 
@@ -1154,7 +1183,7 @@ teDuplicateStemReport teResolveDuplicateStems(QVector<tePath>& imagePaths)
                 const bool rolledBack = QFile::rename(targetPath,sourcePath);
                 report.skipped++;
                 report.details << QStringLiteral("  skipped %1: the caption file could not be copied").arg(fileName);
-                telog(QStringLiteral("[dataset] could not copy the caption of %1; image rename rolled back: %2")
+                tewarn(QStringLiteral("[dataset] could not copy the caption of %1; image rename rolled back: %2")
                           .arg(sourcePath, rolledBack ? QStringLiteral("yes") : QStringLiteral("NO - check this file manually")));
                 continue;
             }

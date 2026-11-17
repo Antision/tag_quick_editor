@@ -1,5 +1,4 @@
 
-QString liststyle = QStringLiteral(R"(
 teWordWidgetBase{
     font-size:%1pt;
 }
@@ -74,7 +73,3 @@ QScrollBar::add-line:horizontal {
     height: 10px;
     width:12px;
 }
-)");
-
-
-

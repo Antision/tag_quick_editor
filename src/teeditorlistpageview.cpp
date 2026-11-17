@@ -1,4 +1,5 @@
 #include "teeditorlistpageview.h"
+#include "testyle.h"
 #include "func.h"
 
 
@@ -189,7 +190,7 @@ void EditorListLayoutWidget::addList(bool notAddPageInLayout){
     newlistview->setAcceptDrops(true);
     newlistview->setDropIndicatorShown(true);
     listviews.push_back({newlistview,neweditorlistpagemodel});
-    newlistview->setStyleSheet(liststyle.arg(0));
+    newlistview->setStyleSheet(teStyle::list(0));
     layout->addWidget(newlistview);
     layout->addWidget(addPageButton);
 }

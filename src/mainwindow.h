@@ -32,7 +32,7 @@ extern QWidget* global_window;
 class tePictureFileModel;
 class teSelectionTagListView;
 class teSelectionTagModel;
-class LogWindow;
+class LogWidget;
 
 /// Outcome of teResolveDuplicateStems().
 struct teDuplicateStemReport{
@@ -80,7 +80,7 @@ public:
     teSelectionTagListView*multitaglist;
     filterWidget*filterWindow=nullptr;
     EditorListLayoutWidget* editorlistlayoutwidget;
-    LogWindow* logWindow=nullptr;
+    LogWidget* logWindow=nullptr;
     QTimer* autoSaveTimer=nullptr;
     /// Coalesces picture list selection changes into one tag list reload.
     QTimer* selectionTimer=nullptr;
@@ -123,6 +123,9 @@ public:
     /// make the process wait for the rest of the folder (the old shutdown waited
     /// for all of them, which is also why a single stuck task hung it forever).
     void cancelPendingWork();
+    /// Makes the log window an owned window of this one: above it, and destroyed
+    /// with it (see common/logwidget).
+    void attachLogWindow();
     int checkSave();
     /// Files currently selected in the picture list (one entry per row).
     QList<tePictureFile*> selectedPictureFiles() const;

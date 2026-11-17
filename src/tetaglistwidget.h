@@ -7,7 +7,6 @@
 #include "type_search.h"
 extern QStringList ClipBoard;
 
-extern QString liststyle;
 extern QString lineeditstyle;
 class teEditorList;
 class tePictureFile;

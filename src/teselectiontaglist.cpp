@@ -1,4 +1,5 @@
 #include "teselectiontaglist.h"
+#include "testyle.h"
 #include "func.h"
 
 namespace {
@@ -654,7 +655,7 @@ teSelectionTagListView::teSelectionTagListView(QWidget *parent) : QListView(pare
     setDropIndicatorShown(true);
     initializeMenu();
     setContextMenuPolicy(Qt::CustomContextMenu);
-    setStyleSheet(liststyle.arg(0));
+    setStyleSheet(teStyle::list(0));
     // The multi tag list is reloaded through its model (loadFiles(), the sort
     // buttons, an edit that merges rows), so a half typed search word has to be
     // dropped whenever the rows are rebuilt - otherwise the next key would be

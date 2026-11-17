@@ -1,0 +1,34 @@
+#include "testyle.h"
+
+#include <QFile>
+#include <QHash>
+
+namespace teStyle {
+
+const QString& sheet(const QString& name)
+{
+    // One read per file, ever. The caller keeps getting the same QString, so
+    // setStyleSheet() can be skipped with a pointer/std::cref comparison.
+    static QHash<QString,QString> cache;
+    auto it = cache.find(name);
+    if(it != cache.end())
+        return it.value();
+
+    QString body;
+    QFile file(QStringLiteral(":/style/") + name + QStringLiteral(".qss"));
+    if(file.open(QIODevice::ReadOnly | QIODevice::Text))
+        body = QString::fromUtf8(file.readAll());
+    // A missing sheet is a build error, not a run-time style: say so once and
+    // carry on with an empty sheet instead of crashing in the middle of layout.
+    else
+        qWarning("teStyle: no stylesheet named \"%s\" in the resources", qPrintable(name));
+
+    return *cache.insert(name,body);
+}
+
+QString list(int wordFontSizePt)
+{
+    return QString(sheet(QStringLiteral("list"))).arg(wordFontSizePt);
+}
+
+} // namespace teStyle

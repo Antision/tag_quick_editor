@@ -1,4 +1,5 @@
 #include "tetaglistwidget.h"
+#include "testyle.h"
 #include "teeditor.h"
 #include "teeditorlist.h"
 #include "tepicturefile.h"
@@ -20,7 +21,7 @@ teTagListWidgetBase::teTagListWidgetBase(int wordsize,QWidget *parent): QWidget{
     wlayout->setSpacing(0);
     wlayout->setContentsMargins(0,0,0,0);
     sc = new QScrollArea(this);
-    sc->setStyleSheet(liststyle.arg(wordsize));
+    sc->setStyleSheet(teStyle::list(wordsize));
     sc->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
     sc->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
     sc->setContentsMargins(0,0,0,0);

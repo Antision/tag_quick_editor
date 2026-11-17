@@ -193,13 +193,13 @@ void tePictureFile::save()
     // crash or a full disk can never truncate an existing caption file.
     QSaveFile file(tagFilePath());
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        telog(QString("[tePictureFile::save] could not open %1 for writing: %2")
+        teerror(QString("[tePictureFile::save] could not open %1 for writing: %2")
                   .arg(tagFilePath(), file.errorString()));
         return;
     }
     file.write(text.toUtf8());
     if (!file.commit()) {
-        telog(QString("[tePictureFile::save] could not commit %1: %2")
+        teerror(QString("[tePictureFile::save] could not commit %1: %2")
                   .arg(tagFilePath(), file.errorString()));
         return;
     }

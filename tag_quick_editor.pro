@@ -1,5 +1,7 @@
 QT       += core gui
 QT       += network
+# common/audio (提示音) 用 QMediaPlayer;缺这个模块链接会失败
+QT       += multimedia
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++20
@@ -24,11 +26,10 @@ include($$PWD/common/common.pri)
 SOURCES += \
     src/ctag.cpp \
     src/func.cpp \
-    src/logwindow.cpp \
     src/main.cpp \
     src/mainwindow.cpp \
     src/prefix_priority.cpp \
-    src/stylesheet.cpp \
+    src/testyle.cpp \
     src/suggestionlineedit.cpp \
     src/task_runner.cpp \
     src/teeditor.cpp \
@@ -53,7 +54,6 @@ HEADERS += \
     src/BS_thread_pool.hpp \
     src/ctag.h \
     src/func.h \
-    src/logwindow.h \
     src/mainwindow.h \
     src/pch.h \
     src/prefix_priority.h \
@@ -77,6 +77,7 @@ HEADERS += \
     src/tereftaglistwidget.h \
     src/teselectiontaglist.h \
     src/tesignalwidget.h \
+    src/testyle.h \
     src/tetag.h \
     src/tetagdisplaywidget.h \
     src/tetaglistmodel.h \
@@ -86,7 +87,6 @@ HEADERS += \
     src/windows_frame.h
 
 FORMS += \
-    src/logwindow.ui \
     src/mainwindow.ui
 
 # Default rules for deployment.
