@@ -4,7 +4,7 @@
 #include "teeditor.h"
 #include "tesignalwidget.h"
 
-class teEditorControl;
+class EditorControl;
 
 class teEditor_custom:public teEditor{
 public:
@@ -14,7 +14,7 @@ public:
     teEditor_custom(teTagListView*in_taglistwidget,QString&& name=QStringLiteral("custom"),QString*styleSheet=nullptr,QWidget*parent=nullptr);
     teCustomControlList string_controls;
     customControlWidget controlWidget;
-    teEditorControl* findControl(const QString& str) const;
+    EditorControl* findControl(const QString& str) const;
     void removeControl(const QString& str);
     void addControl(const QString & str);
     /// Replaces the whole control set so that the visual order matches `order`.

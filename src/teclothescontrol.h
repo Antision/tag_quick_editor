@@ -716,7 +716,7 @@ public:
         };
         void link(std::shared_ptr<teTag>in_tag)override{
             linked_tags.insert(in_tag);
-            in_tag->teConnect(teCallbackType::destroy,this,&teEditorControl::unlink,in_tag);
+            in_tag->teConnect(teCallbackType::destroy,this,&EditorControl::unlink,in_tag);
             teTagWidgetBase*widget =taginsert(-1,in_tag,taglistwidget->showing_list);
             extraWidgetPushBack(in_tag,widget);
         }

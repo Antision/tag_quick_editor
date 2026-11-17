@@ -1,6 +1,8 @@
 #include "func.h"
 
 #include <QFontDatabase>
+#include <QFile>
+#include <QTextStream>
 #include "pch.h"
 #include"mainwindow.h"
 #include"logwindow.h"
@@ -35,6 +37,23 @@ void teSetLogTarget(std::function<void(const QString&)> target)
 void teLog(const QString& message)
 {
     qDebug().noquote() << message;
+
+    // GUI 进程没有控制台,qDebug 只进调试器,用户现场的日志一条也拿不到。设了
+    // TE_LOG_FILE 就同时追加到那个文件:排查窗口行为这类只在用户机器上复现的问题
+    // 时,让对方带这个环境变量启动再把文件发过来即可。
+    {
+        static const QString logPath = qEnvironmentVariable("TE_LOG_FILE");
+        static std::mutex fileMutex;
+        if (!logPath.isEmpty()) {
+            std::lock_guard<std::mutex> lg(fileMutex);
+            QFile f(logPath);
+            if (f.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
+                QTextStream ts(&f);
+                ts.setEncoding(QStringConverter::Utf8);
+                ts << message << '\n';
+            }
+        }
+    }
 
     QCoreApplication* app = QCoreApplication::instance();
     if (!app)
@@ -252,11 +271,15 @@ int save_config() {
     }
     configObj.insert("mainWindowSplitterLength", mainWindowSplitterLengthArr);
 
+    // 最大化状态下 x()/y()/width()/height() 是铺满工作区的那个矩形,存下来下次
+    // 启动就变成一个铺满屏幕的普通窗口:存普通状态的矩形。
+    const QRect windowGeom = global_window->isMaximized() ? global_window->normalGeometry()
+                                                          : global_window->geometry();
     QJsonArray mainWindowSizeArr;
-    mainWindowSizeArr.append(global_window->x());
-    mainWindowSizeArr.append(global_window->y());
-    mainWindowSizeArr.append(global_window->width());
-    mainWindowSizeArr.append(global_window->height());
+    mainWindowSizeArr.append(windowGeom.x());
+    mainWindowSizeArr.append(windowGeom.y());
+    mainWindowSizeArr.append(windowGeom.width());
+    mainWindowSizeArr.append(windowGeom.height());
     configObj.insert("mainWindowSize", mainWindowSizeArr);
 
     QJsonArray editorlistPages;

@@ -122,14 +122,14 @@ teEditor_custom::teEditor_custom(teTagListView*in_taglistwidget,QString&& name, 
         controlWidget.tagWidget->addTag(str);
     }
     connect(&controlWidget,&customControlWidget::tagsClearAll,this,[this](){
-        for(teEditorControl*ec:controls)
+        for(EditorControl*ec:controls)
             delete ec;
         controls.clear();string_controls.clear();
         updateGeometry();
     });
 }
 
-teEditorControl* teEditor_custom::findControl(const QString& str) const {
+EditorControl* teEditor_custom::findControl(const QString& str) const {
     for(const auto& [text,control]:string_controls)
         if(text==str)
             return control;
@@ -140,7 +140,7 @@ void teEditor_custom::removeControl(const QString &str){
     for(int i=0;i<string_controls.size();++i){
         if(string_controls[i].first!=str)
             continue;
-        teEditorControl* control = string_controls[i].second;
+        EditorControl* control = string_controls[i].second;
         string_controls.removeAt(i);
         controls.removeAll(control);
         if(auto* widget = dynamic_cast<QWidget*>(control)){
@@ -219,7 +219,7 @@ void teEditor_custom::setControls(const QStringList& order){
     // Reorder so the editor matches the dialog.
     int target=0;
     for(const QString& str:order){
-        teEditorControl* control=findControl(str);
+        EditorControl* control=findControl(str);
         if(!control){
             ++target;
             continue;
@@ -681,7 +681,7 @@ Object_list* object_list = new Object_list(new colorsWidget({{QStringList{object
             layouts[i] = new QHBoxLayout;
             layouts[i]->setSpacing(1);
         }
-        auto insertToEditor = [this](QBoxLayout*layout,QVector<teEditorControl*>&controls_array,QVector<teEditorControl*>controls,QString title={}){
+        auto insertToEditor = [this](QBoxLayout*layout,QVector<EditorControl*>&controls_array,QVector<EditorControl*>controls,QString title={}){
             if(!title.isEmpty()){
                 QLabel*titleLabel = new QLabel(title);
                 titleLabel->setProperty("type","title");

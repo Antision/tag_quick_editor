@@ -6,14 +6,14 @@ class teTagList;
 struct teTagOperation;
 class teTagOperationList;
 class teTag;
-class teEditorControl;
+class EditorControl;
 class teEditorList;
 class teEditor:public QFrame,public teObject{
 public:
     QString name;
     bool ifrun=true;
     teEditor(teTagListView*in_taglistwidget,const QString& name,QWidget*parent=nullptr);
-    QList<teEditorControl*>controls;
+    QList<EditorControl*>controls;
     teTagListView*taglistwidget;
     teTagList*taglist=nullptr;
     virtual void reset();

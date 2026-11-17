@@ -47,10 +47,10 @@ int save_config();
 class teTag;
 std::string joinTag(const teTag& tag);
 
-class teEditorControl;
+class EditorControl;
 /// The custom-tag controls of the "custom" editor, in *insertion* order.
 /// A QMap would sort them alphabetically and lose the user's arrangement.
-using teCustomControlList = QVector<QPair<QString,teEditorControl*>>;
+using teCustomControlList = QVector<QPair<QString,EditorControl*>>;
 /// Points at the custom editor's control list; owned by teEditor_custom.
 extern teCustomControlList* custom_controls;
 

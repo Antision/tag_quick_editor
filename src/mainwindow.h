@@ -86,11 +86,6 @@ public:
     QTimer* selectionTimer=nullptr;
     /// The files the multi tag list currently represents.
     QList<tePictureFile*> shownMultiTagFiles;
-    /// True while the window is in the frameless "maximized" state that
-    /// toggleMaximize() applies (Windows' own maximized state is never used).
-    bool customMaximized = false;
-    /// Geometry restored when leaving that state.
-    QRect normalGeometryBeforeMax;
     ~MainWindow();
     void save();
     /// 同步 nsfw 开关:改 nsfwMode、把 nsfw 编辑器排进/移出第二栏、保存配置。
@@ -105,10 +100,17 @@ public:
     /// rounding leaves uncovered would show the desktop wallpaper (a bright
     /// seam that only shows up at fractional display scaling).
     void paintEvent(QPaintEvent* event) override;
-    /// Frameless-safe maximize: fills the screen's available geometry instead
-    /// of letting Windows maximize the window (which overshoots the work area
-    /// by the hidden window frame on every side).
+    /// Toggles the *system* maximized state. Windows has to own that state: it is
+    /// what makes dragging the title bar down from the screen edge restore the
+    /// window, and what keeps the button / double click / drag-to-top paths doing
+    /// the same thing. Nothing here (or anywhere else) may call setGeometry while
+    /// the window is maximized — see the comment on the implementation.
     void toggleMaximize();
+    /// 最大化时窗口矩形会比工作区每边多出"看不见的边框"(实测 9 物理像素)。客户区
+    /// 不能靠 WM_NCCALCSIZE 收窄(半透明窗口会把 Qt 的画布钉死在旧尺寸、只剩左上角
+    /// 一块有画面),所以让内容自己往里让这么多。
+    void updateMaximizedContentInset();
+    void changeEvent(QEvent* event) override;
     /// Rounded mask for the fake title bar so item hover/selection and the
     /// window buttons cannot paint outside the QMenuBar corner radius.
     void updateMenuBarMask();

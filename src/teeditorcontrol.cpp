@@ -2,7 +2,7 @@
 #include "tetag.h"
 #include "tetaglistwidget.h"
 
-TagHandling teEditorControl::re_read(std::shared_ptr<teTag>tag){
+TagHandling EditorControl::re_read(std::shared_ptr<teTag>tag){
     if(!filter(tag)){
         if(tag->retired){
             if(taglistwidget)
@@ -15,7 +15,7 @@ TagHandling teEditorControl::re_read(std::shared_ptr<teTag>tag){
     return TagHandling::Linked;
 }
 
-TagHandling teEditorControl::read(std::shared_ptr<teTag>tag){
+TagHandling EditorControl::read(std::shared_ptr<teTag>tag){
     const bool iffilt = filter(tag);
     if(tag->retired){
         if(taglistwidget)
@@ -36,38 +36,38 @@ TagHandling teEditorControl::read(std::shared_ptr<teTag>tag){
     return TagHandling::NotMine;
 }
 
-void teEditorControl::link(std::shared_ptr<teTag>in_tag){
-    in_tag->teConnect(teCallbackType::destroy,this,&teEditorControl::unlink,in_tag);
-    in_tag->teConnect(teCallbackType::edit,qsl("teEditorControl::link"),this,&teEditorControl::re_read,in_tag);
-    in_tag->teConnect(teCallbackType::edit_with_layout,this,&teEditorControl::re_read,in_tag);
+void EditorControl::link(std::shared_ptr<teTag>in_tag){
+    in_tag->teConnect(teCallbackType::destroy,this,&EditorControl::unlink,in_tag);
+    in_tag->teConnect(teCallbackType::edit,qsl("EditorControl::link"),this,&EditorControl::re_read,in_tag);
+    in_tag->teConnect(teCallbackType::edit_with_layout,this,&EditorControl::re_read,in_tag);
     linked_tags.insert(in_tag);
     refreshState();
 }
 
-void teEditorControl::unlink(std::shared_ptr<teTag>in_tag){
+void EditorControl::unlink(std::shared_ptr<teTag>in_tag){
     in_tag->teDisconnect(this);
     linked_tags.erase(in_tag);
     if(ifrefreshState)
         refreshState();
 }
 
-bool teEditorControl::linked(std::shared_ptr<teTag>tag){
+bool EditorControl::linked(std::shared_ptr<teTag>tag){
     return linked_tags.find(tag)!=linked_tags.end();
 }
 
-void teEditorControl::setTaglistwidget(teTagListView *in_taglistwidget){
+void EditorControl::setTaglistwidget(teTagListView *in_taglistwidget){
     taglistwidget=in_taglistwidget;
 }
 
-teTagWidgetBase* teEditorControl::tagWidgetFor(std::shared_ptr<teTag> core) const
+teTagWidgetBase* EditorControl::tagWidgetFor(std::shared_ptr<teTag> core) const
 {
     // Every editor control is also a tag list (it shows its linked tags as
     // widgets), so the lookup of the tag list base class applies.
-    auto* list = dynamic_cast<teTagListWidgetBase*>(const_cast<teEditorControl*>(this));
+    auto* list = dynamic_cast<teTagListWidgetBase*>(const_cast<EditorControl*>(this));
     return list?list->widgetForCore(core):nullptr;
 }
 
-void teEditorControl::edited(){
+void EditorControl::edited(){
     teemit(teCallbackType::edit,false);
 }
 teTagComboBox::teTagComboBox(QList<QPair<QString,QStringList>>&& string_datas,QString&&in_default_text, QWidget *parent, QString *styleSheet)
@@ -573,7 +573,7 @@ font:italic 14px;color:rgb(200,200,200);
 }
 
 void teTagListControl::link(std::shared_ptr<teTag> in_tag){
-    in_tag->teConnect(teCallbackType::destroy,this,&teEditorControl::unlink,in_tag);
+    in_tag->teConnect(teCallbackType::destroy,this,&EditorControl::unlink,in_tag);
     linked_tags.insert(in_tag);
     // The main list is the one that owns the tag; the editor only mirrors it.
     if(taglistwidget)

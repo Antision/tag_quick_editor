@@ -80,7 +80,8 @@ HEADERS += \
     src/tetaglistmodel.h \
     src/tetaglistwidget.h \
     src/type_search.h \
-    src/widget_pool.h
+    src/widget_pool.h \
+    src/windows_frame.h
 
 FORMS += \
     src/logwindow.ui \

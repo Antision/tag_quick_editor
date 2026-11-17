@@ -5,6 +5,7 @@
 #include"tepicturefile.h"
 #include"teeditor_derive.h"
 #include"logwindow.h"
+#include "windows_frame.h"
 
 #include <QPainterPath>
 #include <QRegion>
@@ -295,6 +296,7 @@ QPushButton:hover{background-color:rgba(100,100,100,100);})"));
 
     connect(close_btn,&QPushButton::pressed,this, &MainWindow::onApplicationClose);
     connect(maximize_btn,&QPushButton::pressed,this,&MainWindow::toggleMaximize);
+
     connect(minimize_btn,&QPushButton::pressed,this,&QMainWindow::showMinimized);
     menulayout->addWidget(minimize_btn);
     menulayout->addWidget(maximize_btn);
@@ -389,6 +391,16 @@ void MainWindow::paintEvent(QPaintEvent* event)
     if (bottom <= 0)
         return;
 
+    if (isMaximized()) {
+        // 最大化时整条菜单栏都在屏幕里(顶边那点空白已经被内容内缩让掉了),这里
+        // 只需要补菜单栏与中间控件之间那 1 个设备像素的缝。整条都重画会把菜单栏
+        // 右半截盖掉:窗口放大后右侧先脏的是这条底,底一画,菜单栏那三个窗口按钮
+        // 当帧就不再重画,屏幕上看着像按钮消失了(拖回来又能看见)。
+        QPainter painter(this);
+        painter.fillRect(QRect(0, bottom - 1, width(), 2), QColor(27, 27, 27));
+        return;
+    }
+
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing, true);
     painter.setPen(Qt::NoPen);
@@ -405,32 +417,129 @@ void MainWindow::paintEvent(QPaintEvent* event)
     painter.drawPath(strip);
 }
 
-// 最大化不用系统那套:无边框 + WM_NCCALCSIZE 返回"整窗即客户区"之后,
-// Windows 最大化仍会把窗口按不可见的窗口边框向外撑(实测四边各多 9px),
-// 内容就被推到屏幕外。这里直接把窗口铺满当前屏幕的可用区域,行为完全由
-// Qt 控制,不依赖系统边框推算。
+static QString teRectStr(int x, int y, int w, int h)
+{
+    return QStringLiteral("(%1,%2 %3x%4)").arg(x).arg(y).arg(w).arg(h);
+}
+
+/// Writes one line with every rect that matters for "maximize did not fill the
+/// screen" / "cannot drag the maximized window down" reports: the system state
+/// (IsZoomed), what Qt thinks, Qt's logical geometry, the physical window rect,
+/// the client rect (what Qt lays out into) and the work area of the monitor.
+static void teLogWindowState(const char* where, QWidget* w)
+{
+    HWND hwnd = reinterpret_cast<HWND>(w->winId());
+    RECT wr = {0, 0, 0, 0};
+    RECT cr = {0, 0, 0, 0};
+    ::GetWindowRect(hwnd, &wr);
+    ::GetClientRect(hwnd, &cr);
+    MONITORINFO mi;
+    mi.cbSize = sizeof(MONITORINFO);
+    ::GetMonitorInfoW(::MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST), &mi);
+    const QRect g = w->geometry();
+    QString layout;
+    if (auto* mw = qobject_cast<MainWindow*>(w)) {
+        if (mw->ui && mw->ui->menuBar && mw->centralWidget())
+            layout = QStringLiteral(" bar=%1 cw=%2")
+                     .arg(teRectStr(mw->ui->menuBar->geometry().x(), mw->ui->menuBar->geometry().y(),
+                                    mw->ui->menuBar->width(), mw->ui->menuBar->height()))
+                     .arg(teRectStr(mw->centralWidget()->geometry().x(), mw->centralWidget()->geometry().y(),
+                                    mw->centralWidget()->width(), mw->centralWidget()->height()));
+        if (mw->maximize_btn)
+            layout += QStringLiteral(" maxBtn=%1 vis=%2 visReg=%3")
+                      .arg(teRectStr(mw->maximize_btn->x(), mw->maximize_btn->y(),
+                                     mw->maximize_btn->width(), mw->maximize_btn->height()))
+                      .arg(mw->maximize_btn->isVisible() ? 1 : 0)
+                      .arg(teRectStr(mw->maximize_btn->visibleRegion().boundingRect().x(),
+                                     mw->maximize_btn->visibleRegion().boundingRect().y(),
+                                     mw->maximize_btn->visibleRegion().boundingRect().width(),
+                                     mw->maximize_btn->visibleRegion().boundingRect().height()));
+        if (mw->ui && mw->ui->menuBar)
+            layout += QStringLiteral(" mbMask=%1")
+                      .arg(teRectStr(mw->ui->menuBar->mask().boundingRect().x(),
+                                     mw->ui->menuBar->mask().boundingRect().y(),
+                                     mw->ui->menuBar->mask().boundingRect().width(),
+                                     mw->ui->menuBar->mask().boundingRect().height()));
+    }
+    telog(QStringLiteral("[maximize] %1 zoomed=%2 qt=%3 geo=%4 wsz=%5 winpx=%6 clientpx=%7 workpx=%8%9")
+          .arg(QLatin1String(where))
+          .arg(::IsZoomed(hwnd) ? 1 : 0)
+          .arg(w->isMaximized() ? 1 : 0)
+          .arg(teRectStr(g.x(), g.y(), g.width(), g.height()))
+          .arg(teRectStr(0, 0, w->width(), w->height()))
+          .arg(teRectStr(wr.left, wr.top, wr.right - wr.left, wr.bottom - wr.top))
+          .arg(teRectStr(0, 0, cr.right - cr.left, cr.bottom - cr.top))
+          .arg(teRectStr(mi.rcWork.left, mi.rcWork.top,
+                         mi.rcWork.right - mi.rcWork.left, mi.rcWork.bottom - mi.rcWork.top))
+          .arg(layout));
+}
+
+// 最大化只让 Windows 做:窗口的"最大化状态"必须由系统持有(IsZoomed)。只有那样,
+//   1. 把标题栏从屏幕上边缘往下拖,窗口才会恢复成原来的大小;
+//   2. 双击标题栏、拖到屏幕顶端吸附、点最大化按钮,三条路径行为完全一致;
+//   3. 还原尺寸由系统记着,不用我们存。
+//
+// 这里绝不能自己 setGeometry 摆窗口。一旦在最大化状态下改了窗口矩形,系统就是
+// "状态是最大化、矩形却没铺开":用户看到的正是窗口不放大、只贴着工作区左上角,
+// 而 WM_NCCALCSIZE 又把客户区钉在工作区上,客户区比窗口还大,内容于是从左右/
+// 上下各多出一条跑到屏幕外。这个坑踩过两次了,别再往这条路径上加 setGeometry。
+void MainWindow::updateMaximizedContentInset()
+{
+    // 半透明窗口最大化后,窗口矩形 = 工作区 + 一圈看不见的边框(实测每边 9 物理像素,
+    // 见 windows_frame.h)。客户区不能收窄(那会把 Qt 的画布钉死在旧尺寸),所以改成
+    // 让内容自己往里让这么多:菜单栏和中间那个 splitter 一起缩,屏幕上看到的边界正好
+    // 落在工作区上,一条也不越界。
+    HWND hwnd = reinterpret_cast<HWND>(winId());
+    const int overshoot = teMaximizedFrameOvershoot(hwnd);       // 物理像素
+    const double scale = getWindowScale(hwnd);                   // 1.0 / 1.25 / 1.5
+    const int inset = overshoot > 0 ? qRound(overshoot / scale) : 0;
+    setContentsMargins(inset, inset, inset, inset);
+    // 圆角是给"浮在桌面上"的窗口的:最大化时内容已经贴着屏幕,再按圆角削掉两个上角
+    // 就会在屏幕角上露出桌面,所以这里顺带把菜单栏的遮罩清掉/恢复。
+    updateMenuBarMask();
+}
+
 void MainWindow::toggleMaximize()
 {
-    if (customMaximized) {
-        setGeometry(normalGeometryBeforeMax);
-        customMaximized = false;
-        return;
+    HWND hwnd = reinterpret_cast<HWND>(winId());
+    // 以系统状态为准:Qt 记的窗口状态可能落后(窗口被从最大化状态拖出来、或者上一次
+    // 切换在中途被打断),信 Qt 就会出现"点一下没反应、必须点第二次"。
+    const bool zoomed = ::IsZoomed(hwnd) != 0;
+    teLogWindowState(zoomed ? "restore" : "maximize", this);
+
+    if (zoomed) {
+        showNormal();
+        // Qt 没跟着还原(状态不同步时它会直接吞掉这次调用):直接让系统还原。
+        if (::IsZoomed(hwnd))
+            ::ShowWindow(hwnd, SW_RESTORE);
+    } else {
+        showMaximized();
+        // 同上:系统没真的进入最大化就补一次,保证每次点击都翻转状态。
+        if (!::IsZoomed(hwnd))
+            ::ShowWindow(hwnd, SW_MAXIMIZE);
     }
-    normalGeometryBeforeMax = geometry();
-    setWindowState(Qt::WindowNoState);   // 确保不是系统意义上的最大化
-    QScreen* scr = screen();
-    if (!scr)
-        scr = QGuiApplication::primaryScreen();
-    if (!scr)
-        return;
-    // Qt 把可用区域从设备像素换算成逻辑像素时会取整,直接用 availableGeometry()
-    // 有可能在屏幕右/下边缘留下 1 像素壁纸线(窗口是透明的,缝里就是桌面)。
-    // 往外补 1 像素:多出来的部分在屏幕外,看不见。
-    QRect target = scr->availableGeometry();
-    target.setWidth(target.width() + 1);
-    target.setHeight(target.height() + 1);
-    setGeometry(target);
-    customMaximized = true;
+    updateMaximizedContentInset();
+
+    // 切换之后系统实际给的矩形:正常情况下 window = 工作区 + 一圈看不见的边框,
+    // client = 工作区。若不是,下一份日志会直接指出来。
+    QTimer::singleShot(0, this, [this]{ teLogWindowState("settled", this); });
+}
+
+void MainWindow::changeEvent(QEvent* event)
+{
+    // 双击标题栏、拖到屏幕顶端吸附都会自己进入最大化:状态一变就要重算内容内缩,
+    // 并记一行日志(出问题时能看出是哪条路径进来的、系统给的矩形对不对)。
+    if (event->type() == QEvent::WindowStateChange)
+        QTimer::singleShot(0, this, [this]{
+            updateMaximizedContentInset();
+            teLogWindowState("state change", this);
+            // 整窗同步重画一次。最大化时窗口矩形被系统撑大、客户区却还是原来那一块
+            // (半透明窗口的画布不跟着放大),右半截的子控件常常一次都没画上:菜单栏
+            // 右边的三个窗口按钮会整块空白,看起来像按钮消失了。一次全量 repaint 把
+            // 这块补齐,代价只有切换状态时的一帧。
+            repaint();
+        });
+    QMainWindow::changeEvent(event);
 }
 
 void MainWindow::updateMenuBarMask()
@@ -438,6 +547,16 @@ void MainWindow::updateMenuBarMask()
     QMenuBar* mb = ui->menuBar;
     if (!mb)
         return;
+    // 最大化时内容贴着屏幕边,上角的圆角会把桌面露出来一条,直接不要遮罩。
+    if (isMaximized()) {
+        if (!mb->mask().isEmpty()) {
+            mb->clearMask();
+            // 遮罩只管"画在哪",去掉遮罩不会让刚露出来的那块自动重画:菜单栏变宽后
+            // 右半截(标题、三个窗口按钮)会一直是空的,看起来像按钮消失了。
+            mb->update();
+        }
+        return;
+    }
     const QRect r = mb->rect();
     if (r.isEmpty())
         return;
@@ -463,7 +582,12 @@ void MainWindow::updateMenuBarMask()
         corners += QRect(r.width() - w, y, w, 1);
     }
     region -= corners;
-    mb->setMask(region);
+    if (mb->mask() != region) {
+        mb->setMask(region);
+        // 遮罩只决定"画在哪",改了就得重画一遍:菜单栏变宽时,新露出来的那一截
+        // 不属于任何一次无效区域,不 update 就一直空着(窗口按钮看着像消失了)。
+        mb->update();
+    }
 }
 
 bool MainWindow::eventFilter(QObject* watched, QEvent* event)
@@ -720,6 +844,27 @@ int MainWindow::loadState()
 extern QStringList custom_tags;
 
 
+/// One line per (result, coarse position) change so a drag around the title bar
+/// leaves a handful of readable lines instead of thousands.
+static void teLogHit(LRESULT hit, const char* why, const QPoint& phys, double scale,
+                     const QPoint& local, const QRect& barRect, const QRect& minBtnRect,
+                     int lastActionRightX, bool zoomed)
+{
+    static QByteArray lastKey;
+    const QByteArray key = QByteArray::number(qint64(hit)) + '|' + QByteArray::number(local.x() / 64)
+                           + ',' + QByteArray::number(local.y() / 8);
+    if (key == lastKey)
+        return;
+    lastKey = key;
+    telog(QStringLiteral("[hit] %1(%2) phys=(%3,%4) scale=%5 local=(%6,%7) bar=(%8,%9 %10x%11) minBtn=%12 menuRight=%13 zoomed=%14")
+          .arg(QLatin1String(why)).arg(hit)
+          .arg(phys.x()).arg(phys.y()).arg(scale)
+          .arg(local.x()).arg(local.y())
+          .arg(barRect.x()).arg(barRect.y()).arg(barRect.width()).arg(barRect.height())
+          .arg(minBtnRect.x()).arg(lastActionRightX)
+          .arg(zoomed ? 1 : 0));
+}
+
 bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, qintptr *result)
 {
     if (eventType != "windows_generic_MSG")
@@ -734,98 +879,66 @@ bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, qintptr
 
     case WM_NCCALCSIZE: {
         if (msg->wParam) {
-            *result = 0;
-            return true;
-        }
-        break;
-    }
-    case WM_SYSCOMMAND: {
-        // 最大化/还原全部走自己的实现(见 toggleMaximize):无边框窗口交给系统
-        // 最大化时,Windows 会按"隐藏的窗口边框"把窗口撑到工作区之外。
-        const WPARAM cmd = msg->wParam & 0xFFF0;
-        if (cmd == SC_MAXIMIZE) {
-            toggleMaximize();
-            *result = 0;
-            return true;
-        }
-        if (cmd == SC_RESTORE && customMaximized) {
-            toggleMaximize();
-            *result = 0;
-            return true;
-        }
-        break;
-    }
-    case WM_NCLBUTTONDBLCLK: {
-        // 双击伪标题栏 == 最大化/还原
-        if (msg->wParam == HTCAPTION) {
-            toggleMaximize();
+            // 无边框窗口:整窗都是客户区。最大化时系统会把窗口矩形按看不见的边框
+            // 往外撑 9px,这里**不能**把客户区收窄回来:本窗口是半透明的,一旦客户区
+            // 小于窗口矩形,Qt 的画布就不再跟着放大(实测只画出最大化之前的尺寸,
+            // 屏幕上一块界面 + 其余透明)。改成让内容自己往里让 9px,见
+            // updateMaximizedContentInset()。
             *result = 0;
             return true;
         }
         break;
     }
     case WM_NCHITTEST: {
-        // 把 lParam (物理屏幕像素) -> Qt 逻辑坐标（和 Qt 的 geometry/控件坐标一致）
-        POINT ptWin = { GET_X_LPARAM(msg->lParam), GET_Y_LPARAM(msg->lParam) };
-        double scale = getWindowScale(msg->hwnd); // e.g. 1.5, 2.0
-        // 转换为 Qt 逻辑全局点
-        QPointF qtGlobal(ptWin.x / scale, ptWin.y / scale);
+        // lParam 是物理屏幕像素,换成 Qt 逻辑坐标要除以这个窗口自己的 DPI 比例。
+        const QPoint phys(GET_X_LPARAM(msg->lParam), GET_Y_LPARAM(msg->lParam));
+        const double scale = getWindowScale(msg->hwnd); // e.g. 1.25, 1.5, 2.0
+        // 用 mapFromGlobal 而不是自己减 frameGeometry():最大化时窗口矩形被系统
+        // 撑大了 9px(客户区才是工作区),减 frameGeometry() 会把命中区域整块挪偏。
+        const QPoint local = mapFromGlobal(QPoint(qRound(phys.x() / scale),
+                                                  qRound(phys.y() / scale)));
+        const bool zoomed = IsZoomed(msg->hwnd) != 0;
 
-        // 计算相对于窗口左上角的逻辑坐标（和 frameGeometry()/width()/height() 在同一坐标系）
-        int xPos = static_cast<int>(qtGlobal.x()) - this->frameGeometry().x();
-        int yPos = static_cast<int>(qtGlobal.y()) - this->frameGeometry().y();
+        // 标题栏 = 菜单栏这条横带里"不属于菜单项、也不属于窗口按钮"的那一段。
+        // 三个矩形统一用 mapTo(this) 换算到窗口坐标,不再假设菜单栏正好贴在
+        // y=0..height():只要两者错开一点点(最大化、以后加边框、或者某个平台给的
+        // 客户区原点不是 0),写死的 y 区间就会把标题栏搬到菜单栏下面去——表现正是
+        // "按住菜单栏拖不动,按住菜单栏下面那一条反而能拖下来,窗口按钮也点不动"。
+        const QRect barRect(ui->menuBar->mapTo(this, QPoint(0, 0)), ui->menuBar->size());
+        const QRect minBtnRect(minimize_btn->mapTo(this, QPoint(0, 0)), minimize_btn->size());
+        const QRect lastActionGeom = ui->menuBar->actionGeometry(ui->menuBar->actions().back());
+        const int lastActionRightX = barRect.x() + lastActionGeom.x() + lastActionGeom.width();
 
-        // 如果 boundaryWidth 是以逻辑像素定义（推荐这样），可以直接使用
-        // 判断是否为标题栏区域（注意：你原来用的 last action x 等都是 Qt 逻辑坐标）
-        QRect lastActionGeom = ui->menuBar->actionGeometry(ui->menuBar->actions().back());
-        int lastActionRightX = lastActionGeom.x() + lastActionGeom.width();
-
-        if (yPos > boundaryWidth && yPos < ui->menuBar->height()
-            && xPos > lastActionRightX && xPos < minimize_btn->x())  // 标题栏区域
-        {
-            *result = HTCAPTION;
+        LRESULT hit = HTCLIENT;
+        const char* why = "client";
+        if (barRect.contains(local) && local.x() > lastActionRightX && local.x() < minBtnRect.left()) {
+            // 最大化时也必须返回 HTCAPTION:系统就是靠"按住标题栏往下拖"把最大化
+            // 的窗口还原的,返回别的值这条路就没了。
+            hit = HTCAPTION;
+            why = "caption";
+        } else if (!zoomed) {
+            // 最大化状态下窗口没有可拖的边框(和普通 Windows 窗口一致):那几像素
+            // 是贴屏幕边缘的,拖它既不该改大小,也不该把窗口撕下来。
+            const bool left = local.x() < boundaryWidth;
+            const bool right = local.x() >= width() - boundaryWidth;
+            const bool top = local.y() < boundaryWidth;
+            const bool bottom = local.y() >= height() - boundaryWidth;
+            if (top && left)        { hit = HTTOPLEFT;     why = "topLeft"; }
+            else if (top && right)  { hit = HTTOPRIGHT;    why = "topRight"; }
+            else if (bottom && left){ hit = HTBOTTOMLEFT;  why = "bottomLeft"; }
+            else if (bottom && right){hit = HTBOTTOMRIGHT; why = "bottomRight"; }
+            else if (left)          { hit = HTLEFT;        why = "left"; }
+            else if (right)         { hit = HTRIGHT;       why = "right"; }
+            else if (top)           { hit = HTTOP;         why = "top"; }
+            else if (bottom)        { hit = HTBOTTOM;      why = "bottom"; }
         }
-        else if (xPos < boundaryWidth && yPos < boundaryWidth)
-            *result = HTTOPLEFT;
-        else if (xPos >= width() - boundaryWidth && yPos < boundaryWidth)
-            *result = HTTOPRIGHT;
-        else if (xPos < boundaryWidth && yPos >= height() - boundaryWidth)
-            *result = HTBOTTOMLEFT;
-        else if (xPos >= width() - boundaryWidth && yPos >= height() - boundaryWidth)
-            *result = HTBOTTOMRIGHT;
-        else if (xPos < boundaryWidth)
-            *result = HTLEFT;
-        else if (xPos >= width() - boundaryWidth)
-            *result = HTRIGHT;
-        else if (yPos < boundaryWidth)
-            *result = HTTOP;
-        else if (yPos >= height() - boundaryWidth)
-            *result = HTBOTTOM;
-        else
-            return false;
 
+        teLogHit(hit, why, phys, scale, local, barRect, minBtnRect, lastActionRightX, zoomed);
+        if (hit == HTCLIENT)
+            return false;   // 交回给 Qt(它自己会给出客户区/子控件)
+        *result = hit;
         return true;
     }
-    case WM_GETMINMAXINFO: {
-        MINMAXINFO* minMax = reinterpret_cast<MINMAXINFO*>(msg->lParam);
-
-        HMONITOR monitor = MonitorFromWindow(msg->hwnd, MONITOR_DEFAULTTONEAREST);
-        MONITORINFO monitorInfo = { sizeof(MONITORINFO) };
-        GetMonitorInfo(monitor, &monitorInfo);
-
-        RECT workArea = monitorInfo.rcWork;
-        RECT monitorArea = monitorInfo.rcMonitor;
-
-        minMax->ptMaxPosition.x = workArea.left - monitorArea.left;
-        minMax->ptMaxPosition.y = workArea.top - monitorArea.top;
-        minMax->ptMaxSize.x = workArea.right - workArea.left;
-        minMax->ptMaxSize.y = workArea.bottom - workArea.top;
-
-        *result = 0;
-        return true;
-    }
-    break;
-
     default:
         break;
     }

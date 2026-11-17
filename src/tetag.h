@@ -277,7 +277,7 @@ public:
     ~teTag();
 };
 class teInputWidget;
-class teEditorControl;
+class EditorControl;
 
 class teTagWidgetBase: public QFrame,public teObject{
     Q_OBJECT
@@ -289,7 +289,7 @@ public:
     std::shared_ptr<teTag> core{};
     QHBoxLayout* layout=nullptr;
 
-    std::multimap<teEditorControl*,QWidget*>extra_widgets;
+    std::multimap<EditorControl*,QWidget*>extra_widgets;
     void reset(){
         core.reset();
     }
@@ -313,7 +313,7 @@ public:
             if(f->connected)(*f)();
         teDisconnect(nullptr,teCallbackType::extraWidget_removed);
     }
-    void insertExtraWidgets(teEditorControl*e,QWidget*w){
+    void insertExtraWidgets(EditorControl*e,QWidget*w){
         extra_widgets.insert({e,w});
         layout->addWidget(w);
     }

@@ -1,4 +1,5 @@
 #include "tesignalwidget.h"
+#include "windows_frame.h"
 
 void addButtonsToGridLayout(QGridLayout *gridLayout, QButtonGroup *buttonGroup, QStringList &stringList) {
     if (!gridLayout || !buttonGroup || stringList.isEmpty()) {
@@ -653,6 +654,9 @@ bool teWidget::nativeEvent(const QByteArray &eventType, void *message, qintptr *
     switch (msg->message) {
     case WM_NCCALCSIZE: {
         if (msg->wParam) {
+            // 无边框窗口:整窗都是客户区;最大化时客户区只取工作区,否则内容被
+            // 系统撑出的边框推到屏幕外(见 windows_frame.h)。
+            teClampMaximizedClientArea(msg);
             *result = 0;
             return true;
         }
@@ -675,10 +679,20 @@ bool teWidget::nativeEvent(const QByteArray &eventType, void *message, qintptr *
         // Get the x coordinate of minimize_btn relative to this (ensure consistent units)
         int minimizeBtnX = minimize_btn ? minimize_btn->mapTo(this, QPoint(0,0)).x() : width();
 
-        if (yPos > boundaryWidth && yPos < titleWidget->height() && xPos > 0 && xPos < minimizeBtnX) {
+        // 标题栏 = 标题栏控件这条横带里按钮左边的部分。用控件自己的矩形,而且不在
+        // 顶上留死角:窗口贴在屏幕顶端时用户正是按在最上面那几像素,那里若判成
+        // 客户区,按住就拖不动(最大化窗口也没法拖下来还原)。
+        const QRect titleRect(titleWidget->mapTo(this, QPoint(0, 0)), titleWidget->size());
+        if (titleRect.contains(local) && xPos > titleRect.x() && xPos < minimizeBtnX) {
+            // 最大化时也要给 HTCAPTION:系统靠"按住标题栏往下拖"还原最大化窗口
             *result = HTCAPTION;
+            return true;
         }
-        else if (xPos < boundaryWidth && yPos < boundaryWidth)
+        // 最大化时没有可拖的边框(和普通 Windows 窗口一致)
+        if (IsZoomed(msg->hwnd))
+            return false;
+
+        if (xPos < boundaryWidth && yPos < boundaryWidth)
             *result = HTTOPLEFT;
         else if (xPos >= width() - boundaryWidth && yPos < boundaryWidth)
             *result = HTTOPRIGHT;
@@ -697,23 +711,6 @@ bool teWidget::nativeEvent(const QByteArray &eventType, void *message, qintptr *
         else {
             return false;
         }
-        return true;
-    }
-    case WM_GETMINMAXINFO: {
-        MINMAXINFO* minMax = reinterpret_cast<MINMAXINFO*>(msg->lParam);
-        HMONITOR monitor = MonitorFromWindow(msg->hwnd, MONITOR_DEFAULTTONEAREST);
-        MONITORINFO monitorInfo = { sizeof(MONITORINFO) };
-        GetMonitorInfo(monitor, &monitorInfo);
-
-        RECT workArea = monitorInfo.rcWork;
-        RECT monitorArea = monitorInfo.rcMonitor;
-
-        minMax->ptMaxPosition.x = workArea.left - monitorArea.left;
-        minMax->ptMaxPosition.y = workArea.top - monitorArea.top;
-        minMax->ptMaxSize.x = workArea.right - workArea.left;
-        minMax->ptMaxSize.y = workArea.bottom - workArea.top;
-
-        *result = 0;
         return true;
     }
     default:

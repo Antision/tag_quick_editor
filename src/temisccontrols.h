@@ -84,7 +84,7 @@
     };
 
     struct page1_button_link : public teTagControlGroup{
-        page1_button_link(QPushButton* linked,QVector<teEditorControl*>&&children,QWidget*parent=nullptr):
+        page1_button_link(QPushButton* linked,QVector<EditorControl*>&&children,QWidget*parent=nullptr):
             teTagControlGroup(linked,std::move(children),parent){}
         auto extract(const QString&in){
             int people_count=0;
@@ -124,7 +124,7 @@
             QFontMetrics fontMetrics(((QPushButton*)linked_widget)->font());
             ((QPushButton*)linked_widget)->setText(fontMetrics.elidedText(showing_string, Qt::ElideMiddle, linked_widget->width()));
         }
-        virtual void onChildControlEdited(teEditorControl*){
+        virtual void onChildControlEdited(EditorControl*){
             refreshState();
         }
     };

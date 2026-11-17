@@ -6,7 +6,7 @@ teEditor::teEditor(teTagListView*in_taglistwidget,const QString& name,QWidget *p
 }
 
 void teEditor::reset(){
-    for(teEditorControl*control:controls)
+    for(EditorControl*control:controls)
         control->reset();
 }
 
@@ -15,7 +15,7 @@ TagHandling teEditor::read(std::shared_ptr<teTag>tag){
     // colour control and a length control, say), and a control that links it
     // without consuming it must not keep the others from seeing it.
     TagHandling result=TagHandling::NotMine;
-    for(teEditorControl*ctrl_ptr:controls){
+    for(EditorControl*ctrl_ptr:controls){
         const TagHandling handled=ctrl_ptr->read(tag);
         if(handled==TagHandling::Consumed)
             return TagHandling::Consumed;
@@ -30,10 +30,10 @@ TagHandling teEditor::re_read(std::shared_ptr<teTag>tag){
     if(taglistwidget)
         taglistwidget->ensureWidgetFor(tag);
     // Only controls that do *not* have the tag are offered it: the ones that do
-    // re-check it through the tag's own edit callbacks (teEditorControl::link
+    // re-check it through the tag's own edit callbacks (EditorControl::link
     // connects re_read for that), so calling re_read here as well would re-read
     // every linked tag twice.
-    for(teEditorControl*ctrl_ptr:controls){
+    for(EditorControl*ctrl_ptr:controls){
         if(!ctrl_ptr->linked(tag)){
             if(ctrl_ptr->read(tag)==TagHandling::Consumed)
                 return TagHandling::Consumed;
@@ -44,7 +44,7 @@ TagHandling teEditor::re_read(std::shared_ptr<teTag>tag){
     return TagHandling::NotMine;
 }
 void teEditor::clear(){
-    for(teEditorControl*ctrl_ptr:controls){
+    for(EditorControl*ctrl_ptr:controls){
         ctrl_ptr->clear();
     }
     if(taglist){
@@ -56,7 +56,7 @@ void teEditor::clear(){
 
 void teEditor::setTagListWidget(teTagListView *listwidget){
     taglistwidget = listwidget;
-    for(teEditorControl*ec:controls){
+    for(EditorControl*ec:controls){
         ec->setTaglistwidget(listwidget);
     }
 }

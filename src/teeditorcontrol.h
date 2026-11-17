@@ -12,7 +12,7 @@ struct anytype{
     operator T&&(){}
 };
 
-class teEditorControl:virtual public teObject{
+class EditorControl:virtual public teObject{
 public:
     std::set<std::shared_ptr<teTag>>linked_tags;
     teEditor* editor=nullptr;
@@ -64,10 +64,10 @@ public:
      */
     teTagWidgetBase* tagWidgetFor(std::shared_ptr<teTag> core) const;
     void edited();
-    virtual ~teEditorControl(){};
+    virtual ~EditorControl(){};
 };
 
-class teTagButtonGroup:public QWidget,public teEditorControl{
+class teTagButtonGroup:public QWidget,public EditorControl{
     Q_OBJECT
 public:
     struct item{
@@ -111,7 +111,7 @@ public:
     std::unordered_set<QString> defaultFiltStrings;
     virtual void getDefaultFiltStrings();
 };
-class teTagCheckBox : public QPushButton, public teEditorControl{
+class teTagCheckBox : public QPushButton, public EditorControl{
     Q_OBJECT
 public:
     int excute=1;
@@ -147,7 +147,7 @@ public:
     }
 };
 
-class teTagComboBox : public QComboBox,public teEditorControl{
+class teTagComboBox : public QComboBox,public EditorControl{
     Q_OBJECT
 public:
     int excute=1;
@@ -163,7 +163,7 @@ public:
     }
 };
 
-class teTagLineedit:public QWidget,public teEditorControl{
+class teTagLineedit:public QWidget,public EditorControl{
     Q_OBJECT
 public:
     QHBoxLayout* layout = new QHBoxLayout(this);
@@ -187,17 +187,17 @@ class teTagControlGroup:public QObject,public teObject{
     Q_OBJECT
 public:
     QWidget*linked_widget=nullptr;
-    QVector<teEditorControl*>children;
-    teTagControlGroup(QWidget*in_widget,QVector<teEditorControl*>&&in_children,QWidget* parent=nullptr):QObject(parent),linked_widget(in_widget),children(std::move(in_children)){
-        for(teEditorControl*control:children){
+    QVector<EditorControl*>children;
+    teTagControlGroup(QWidget*in_widget,QVector<EditorControl*>&&in_children,QWidget* parent=nullptr):QObject(parent),linked_widget(in_widget),children(std::move(in_children)){
+        for(EditorControl*control:children){
             control->teConnect(teCallbackType::edit,this,&teTagControlGroup::onChildControlEdited,control);
         }
     }
-    virtual void onChildControlEdited(teEditorControl*)=0;
+    virtual void onChildControlEdited(EditorControl*)=0;
     virtual ~teTagControlGroup(){}
 };
 
-class teTagListControl:public teRefTagListWidget,public teEditorControl {
+class teTagListControl:public teRefTagListWidget,public EditorControl {
     Q_OBJECT
 public:
     bool ifedit=false;
