@@ -1,5 +1,6 @@
 #include "tepicturefile.h"
 #include "func.h"
+#include "task_runner.h"
 #include <QSaveFile>
 
 namespace {
@@ -131,7 +132,7 @@ void tePictureFile::startLoadPicture()
     auto token = load_token;
     // `file` is captured by value: the outer lambda must not capture `this`,
     // because it may run after this tePictureFile is gone.
-    thread_pool.detach_task([token, path = filepath.qstring, rp = refered_pixels, file = this] {
+    teDetachTask("thumbnail-decode", [token, path = filepath.qstring, rp = refered_pixels, file = this] {
         if (token->slot->cancelled)
             return;
 

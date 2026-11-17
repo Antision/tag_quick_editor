@@ -187,6 +187,15 @@ bool teEditor_custom::event(QEvent* event){
     return QFrame::event(event);
 }
 
+teEditor_custom::~teEditor_custom(){
+    // save_config() lists the custom tags through this pointer; it must not keep
+    // pointing into a destroyed editor. A rebuilt layout (layout dialog, NSFW
+    // toggle) deletes editors, and the next save then read freed memory - the
+    // release build reported that as an unhandled win32 exception.
+    if (custom_controls == &string_controls)
+        custom_controls = nullptr;
+}
+
 void teEditor_custom::syncOrderFromLayout(){
     teCustomControlList reordered;
     reordered.reserve(string_controls.size());

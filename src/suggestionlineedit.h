@@ -15,6 +15,9 @@ public:
     unsigned int l=0;unsigned int r=ctags.size();
     std::atomic<bool> lineeditTextUpdateFlag=false;
     std::atomic<bool> lineeditfocusflag=false;
+    /// Incremented by start(): a worker from an older edit sees a different value
+    /// and returns, so the widget never feeds two background threads at once.
+    std::atomic<unsigned> workerGeneration{0};
     std::pair<size_t, size_t> prefixRange;
     std::mutex lineEditUpdateCheckThreadMutex;
     std::condition_variable_any lineEditUpdateMutexCV;
@@ -31,6 +34,13 @@ public:
      */
     void hideEvent(QHideEvent* event) override {
         suggestionBox->hide();
+        // Hiding the editor ends the edit. The refresh worker below has to stop
+        // here: it reads this widget from another thread, and a worker that only
+        // ever stops through stop() would keep a pool thread (and a dangling
+        // `this`) for the rest of the session - a tag edit that ended because the
+        // window was closed used to be one of them.
+        lineeditfocusflag = false;
+        lineEditUpdateMutexCV.notify_all();
         QLineEdit::hideEvent(event);
     }
     void moveSuggestionBox();

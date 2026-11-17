@@ -1,4 +1,5 @@
 #include "ctag.h"
+#include "task_runner.h"
 std::vector<ctag> ctags;
 
 ctag::ctag() {}
@@ -259,6 +260,10 @@ void download_tags(){
     const QUrl url("https://raw.githubusercontent.com/DraconicDragon/dbr-e621-lists-archive/refs/heads/main/tag-lists/danbooru/danbooru_2026-04-01_pt20-ia-dd.csv");
 
     QNetworkRequest request(url);
+    // The reply is awaited by a local event loop, so without a timeout a server
+    // that accepts the connection and then goes quiet would keep this pool thread
+    // (and therefore the whole process, see main.cpp) alive forever.
+    request.setTransferTimeout(30000);
     QNetworkReply* reply = manager.get(request);
 
     QEventLoop loop;
@@ -266,7 +271,8 @@ void download_tags(){
     loop.exec();
     if (reply->error() == QNetworkReply::NoError) {
         QByteArray data = reply->readAll();
-        readCSV(std::stringstream(data.toStdString()));
+        if (!g_appShuttingDown)
+            readCSV(std::stringstream(data.toStdString()));
     } else {
         qDebug() << "failed to download danbooru tags" << reply->errorString();
     }
@@ -276,7 +282,7 @@ void load_tags(){
     std::ifstream inf("./tag.tag", std::ios::binary);
     if(!inf.is_open()){
         telog("could not open tag path");
-        thread_pool.detach_task(download_tags);
+        teDetachTask("tags-download", download_tags);
         return;
     }
     unsigned int inwords_size;

@@ -38,23 +38,6 @@ void teLog(const QString& message)
 {
     qDebug().noquote() << message;
 
-    // GUI 进程没有控制台,qDebug 只进调试器,用户现场的日志一条也拿不到。设了
-    // TE_LOG_FILE 就同时追加到那个文件:排查窗口行为这类只在用户机器上复现的问题
-    // 时,让对方带这个环境变量启动再把文件发过来即可。
-    {
-        static const QString logPath = qEnvironmentVariable("TE_LOG_FILE");
-        static std::mutex fileMutex;
-        if (!logPath.isEmpty()) {
-            std::lock_guard<std::mutex> lg(fileMutex);
-            QFile f(logPath);
-            if (f.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
-                QTextStream ts(&f);
-                ts.setEncoding(QStringConverter::Utf8);
-                ts << message << '\n';
-            }
-        }
-    }
-
     QCoreApplication* app = QCoreApplication::instance();
     if (!app)
         return;
@@ -264,23 +247,28 @@ int save_config() {
         }
     configObj.insert("customTags", customTags);
     configObj.insert("nsfwMode", nsfwMode);
-    QJsonArray mainWindowSplitterLengthArr;
-    QList<int> mainwindowSplitterSizes = static_cast<MainWindow*>(global_window)->splitter->sizes();
-    for(int i =0;i<MainWindowWidgetCount;++i){
-        mainWindowSplitterLengthArr.push_back(mainwindowSplitterSizes[i]);
-    }
-    configObj.insert("mainWindowSplitterLength", mainWindowSplitterLengthArr);
+    // The splitter sizes and the geometry can only be read while the window exists.
+    // A save that runs after it was destroyed used to dereference freed memory and
+    // took the process down with an unhandled win32 exception on exit.
+    if (global_window) {
+        QJsonArray mainWindowSplitterLengthArr;
+        QList<int> mainwindowSplitterSizes = static_cast<MainWindow*>(global_window)->splitter->sizes();
+        for(int i =0;i<MainWindowWidgetCount;++i){
+            mainWindowSplitterLengthArr.push_back(mainwindowSplitterSizes[i]);
+        }
+        configObj.insert("mainWindowSplitterLength", mainWindowSplitterLengthArr);
 
-    // 最大化状态下 x()/y()/width()/height() 是铺满工作区的那个矩形,存下来下次
-    // 启动就变成一个铺满屏幕的普通窗口:存普通状态的矩形。
-    const QRect windowGeom = global_window->isMaximized() ? global_window->normalGeometry()
-                                                          : global_window->geometry();
-    QJsonArray mainWindowSizeArr;
-    mainWindowSizeArr.append(windowGeom.x());
-    mainWindowSizeArr.append(windowGeom.y());
-    mainWindowSizeArr.append(windowGeom.width());
-    mainWindowSizeArr.append(windowGeom.height());
-    configObj.insert("mainWindowSize", mainWindowSizeArr);
+        // 最大化状态下 x()/y()/width()/height() 是铺满工作区的那个矩形,存下来下次
+        // 启动就变成一个铺满屏幕的普通窗口:存普通状态的矩形。
+        const QRect windowGeom = global_window->isMaximized() ? global_window->normalGeometry()
+                                                              : global_window->geometry();
+        QJsonArray mainWindowSizeArr;
+        mainWindowSizeArr.append(windowGeom.x());
+        mainWindowSizeArr.append(windowGeom.y());
+        mainWindowSizeArr.append(windowGeom.width());
+        mainWindowSizeArr.append(windowGeom.height());
+        configObj.insert("mainWindowSize", mainWindowSizeArr);
+    }
 
     QJsonArray editorlistPages;
     for (QStringList &strlist : editorlistlayout.editors) {
@@ -306,58 +294,57 @@ int save_config() {
 }
 
 void MainWindow::checkForUpdate() {
+    // Asynchronous on purpose. This used to run its own QEventLoop before
+    // a.exec() started: the window was already on screen, but for as long as the
+    // request lasted (seconds on a slow answer) it could not be closed - the close
+    // button's quit() only ended that nested loop, so the click did nothing.
     QNetworkAccessManager *manager = new QNetworkAccessManager(this);
     const QVersionNumber currentVersion = QVersionNumber::fromString(qApp->applicationVersion());
 
-    QEventLoop loop;
-    connect(manager, &QNetworkAccessManager::finished, &loop, &QEventLoop::quit);
-
     QNetworkRequest request(QUrl("https://api.github.com/repos/Antision/tag_quick_editor/releases/latest"));
     request.setRawHeader("User-Agent", "TagQuickEditor/"+qApp->applicationVersion().toUtf8());
+    // No reply is worth a stuck request: the socket is given one idle timeout.
+    request.setTransferTimeout(8000);
 
     QNetworkReply *reply = manager->get(request);
-    loop.exec();
-
-    if (reply->error()) {
-        qDebug() << "Update error:" << reply->errorString();
+    connect(reply, &QNetworkReply::finished, this, [this, reply, currentVersion]{
         reply->deleteLater();
-        return;
-    }
 
-    QJsonParseError parseError{};
-    QJsonDocument doc = QJsonDocument::fromJson(reply->readAll(), &parseError);
-    if (parseError.error != QJsonParseError::NoError) {
-        qDebug() << "JSON parse error:" << parseError.errorString();
-        reply->deleteLater();
-        return;
-    }
+        if (reply->error()) {
+            qDebug() << "Update error:" << reply->errorString();
+            return;
+        }
 
-    QJsonObject json = doc.object();
-    if (!json.contains("tag_name") || !json["tag_name"].isString()) {
-        qDebug() << "Invalid release data";
-        reply->deleteLater();
-        return;
-    }
+        QJsonParseError parseError{};
+        QJsonDocument doc = QJsonDocument::fromJson(reply->readAll(), &parseError);
+        if (parseError.error != QJsonParseError::NoError) {
+            qDebug() << "JSON parse error:" << parseError.errorString();
+            return;
+        }
 
-    QVersionNumber latestVersion = QVersionNumber::fromString(json["tag_name"].toString().remove('v'));
-    if (latestVersion > currentVersion) {
-        QMetaObject::invokeMethod(this, [this, json, latestVersion](){
-            QJsonArray assets = json["assets"].toArray();
-            if (!assets.isEmpty()) {
-                QUrl downloadUrl = assets[0].toObject()["browser_download_url"].toString();
-                QMessageBox::StandardButton reply = QMessageBox::question(
-                    this,
-                    tr("Update Available"),
-                    tr("New version %1 is available. Download now?").arg(latestVersion.toString()),
-                    QMessageBox::Yes|QMessageBox::No
-                    );
-                if (reply == QMessageBox::Yes) {
-                    QDesktopServices::openUrl(downloadUrl);
-                }
-            }
-        }, Qt::QueuedConnection);
-    }
-    reply->deleteLater();
+        QJsonObject json = doc.object();
+        if (!json.contains("tag_name") || !json["tag_name"].isString()) {
+            qDebug() << "Invalid release data";
+            return;
+        }
+
+        const QVersionNumber latestVersion = QVersionNumber::fromString(json["tag_name"].toString().remove('v'));
+        if (!(latestVersion > currentVersion))
+            return;
+
+        QJsonArray assets = json["assets"].toArray();
+        if (assets.isEmpty())
+            return;
+        QUrl downloadUrl = assets[0].toObject()["browser_download_url"].toString();
+        QMessageBox::StandardButton answer = QMessageBox::question(
+            this,
+            tr("Update Available"),
+            tr("New version %1 is available. Download now?").arg(latestVersion.toString()),
+            QMessageBox::Yes|QMessageBox::No
+            );
+        if (answer == QMessageBox::Yes)
+            QDesktopServices::openUrl(downloadUrl);
+    });
 }
 double getWindowScale(HWND hwnd)
 {

@@ -1,4 +1,5 @@
 #include "suggestionlineedit.h"
+#include "task_runner.h"
 
 suggestionLineEdit::suggestionLineEdit(QListWidget *suggestionBox, QWidget *parent):QLineEdit(parent),suggestionBox(suggestionBox){
     connect(suggestionBox, &QListWidget::itemClicked, this, &suggestionLineEdit::onSuggestionClicked,Qt::DirectConnection);
@@ -67,8 +68,13 @@ void suggestionLineEdit::start(const QString &in){
     setText(in);
     lineeditTextUpdateFlag=true;
     lineeditfocusflag=true;
-    thread_pool.detach_task([this]{
-        while(lineeditfocusflag==true){
+    // The editor widget is reused for every tag, so a worker started by an
+    // earlier edit may still be inside its sleep slice. The generation makes it
+    // retire instead of running beside the new one.
+    const unsigned generation = ++workerGeneration;
+    teDetachTask("autocomplete", [this, generation]{
+        while(lineeditfocusflag==true && !g_appShuttingDown
+              && generation == workerGeneration.load()){
             if(lineeditTextUpdateFlag==true){
                 lineeditTextUpdateFlag=false;
                 QString newtext=text();
@@ -105,7 +111,7 @@ void suggestionLineEdit::stop(){
     suggestionBox->hide();
     QTimer::singleShot(0, this, &suggestionLineEdit::hide);
     lineeditfocusflag=false;
-    lineEditUpdateMutexCV.notify_one();
+    lineEditUpdateMutexCV.notify_all();
     containerParent=nullptr;
     return;
 }

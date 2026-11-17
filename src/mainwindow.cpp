@@ -6,6 +6,7 @@
 #include"teeditor_derive.h"
 #include"logwindow.h"
 #include "windows_frame.h"
+#include "task_runner.h"
 
 #include <QPainterPath>
 #include <QRegion>
@@ -74,7 +75,7 @@ MainWindow::MainWindow(QWidget *parent)
     teSetLogTarget([this](const QString& line){ if(logWindow) logWindow->append(line); });
     connect(ui->action_log_window,&QAction::triggered,this,&MainWindow::showLogWindow,Qt::DirectConnection);
 
-    thread_pool.detach_task(load_tags);
+    teDetachTask("tags-load", load_tags);
 
     setWindowFlags(Qt::WindowMinimizeButtonHint|Qt::FramelessWindowHint);
     setAttribute(Qt::WA_TranslucentBackground);
@@ -158,22 +159,38 @@ MainWindow::MainWindow(QWidget *parent)
         QMessageBox::aboutQt(this, tr("About Qt"));
     });
     connect(ui->actionLicense,&QAction::triggered,this,[this]{
-        QFile licenseFile(":/gpl-3.0.txt");
-        licenseFile.open(QIODevice::ReadOnly);
         teWidget* licenseWidget = new teWidget;
         connect(licenseWidget->close_btn,&QPushButton::pressed,licenseWidget,&QWidget::deleteLater);
-        QVBoxLayout* contentLayout = new QVBoxLayout;
         QScrollArea* textScrollArea = new QScrollArea;
         textScrollArea->setWidgetResizable(true);
-        QVBoxLayout* textLayout = new QVBoxLayout;
         QWidget*centralWidget = new QWidget;
         textScrollArea->setWidget(centralWidget);
-        textScrollArea->widget()->setLayout(textLayout);
-        QTextEdit* textEdit = new QTextEdit();
-        textEdit->setReadOnly(true);
-        textEdit->setWordWrapMode(QTextOption::WordWrap);
-        textEdit->setText(QString::fromUtf8(licenseFile.readAll()));
-        contentLayout->addWidget(textEdit);
+        QVBoxLayout* textLayout = new QVBoxLayout(centralWidget);
+        // 程序本体与内嵌字体的许可证。字体经 QFontDatabase 编译进 exe 即为再分发,
+        // UFL 要求许可文本随附,所以和 GPL 一起打包在 licenses.qrc 里展示。
+        const struct{const char* heading;const char* resource;} licenseSections[] = {
+            {"Tag Quick Editor - GNU General Public License v3.0", ":/gpl-3.0.txt"},
+            {"Embedded font \"Ubuntu\" (Light/Regular/Bold) - Ubuntu Font Licence 1.0", ":/UFL.txt"},
+        };
+        for (const auto& section : licenseSections) {
+            QLabel* headingLabel = new QLabel(QString::fromUtf8(section.heading));
+            QFont headingFont = headingLabel->font();
+            headingFont.setBold(true);
+            headingLabel->setFont(headingFont);
+            headingLabel->setWordWrap(true);
+            textLayout->addWidget(headingLabel);
+            QFile licenseFile(QString::fromUtf8(section.resource));
+            if (licenseFile.open(QIODevice::ReadOnly)) {
+                QTextEdit* textEdit = new QTextEdit();
+                textEdit->setReadOnly(true);
+                textEdit->setWordWrapMode(QTextOption::WordWrap);
+                textEdit->setText(QString::fromUtf8(licenseFile.readAll()));
+                textLayout->addWidget(textEdit);
+            }
+        }
+        textLayout->addStretch();
+        QVBoxLayout* contentLayout = new QVBoxLayout;
+        contentLayout->addWidget(textScrollArea);
         licenseWidget->content->setLayout(contentLayout);
         licenseWidget->resize(400,500);
         licenseWidget->show();
@@ -298,6 +315,10 @@ QPushButton:hover{background-color:rgba(100,100,100,100);})"));
     connect(maximize_btn,&QPushButton::pressed,this,&MainWindow::toggleMaximize);
 
     connect(minimize_btn,&QPushButton::pressed,this,&QMainWindow::showMinimized);
+    // 悬停高亮偶尔不画(见 eventFilter 里的说明),悬停状态的变化从这里接管。
+    close_btn->installEventFilter(this);
+    maximize_btn->installEventFilter(this);
+    minimize_btn->installEventFilter(this);
     menulayout->addWidget(minimize_btn);
     menulayout->addWidget(maximize_btn);
     menulayout->addWidget(close_btn);
@@ -417,63 +438,6 @@ void MainWindow::paintEvent(QPaintEvent* event)
     painter.drawPath(strip);
 }
 
-static QString teRectStr(int x, int y, int w, int h)
-{
-    return QStringLiteral("(%1,%2 %3x%4)").arg(x).arg(y).arg(w).arg(h);
-}
-
-/// Writes one line with every rect that matters for "maximize did not fill the
-/// screen" / "cannot drag the maximized window down" reports: the system state
-/// (IsZoomed), what Qt thinks, Qt's logical geometry, the physical window rect,
-/// the client rect (what Qt lays out into) and the work area of the monitor.
-static void teLogWindowState(const char* where, QWidget* w)
-{
-    HWND hwnd = reinterpret_cast<HWND>(w->winId());
-    RECT wr = {0, 0, 0, 0};
-    RECT cr = {0, 0, 0, 0};
-    ::GetWindowRect(hwnd, &wr);
-    ::GetClientRect(hwnd, &cr);
-    MONITORINFO mi;
-    mi.cbSize = sizeof(MONITORINFO);
-    ::GetMonitorInfoW(::MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST), &mi);
-    const QRect g = w->geometry();
-    QString layout;
-    if (auto* mw = qobject_cast<MainWindow*>(w)) {
-        if (mw->ui && mw->ui->menuBar && mw->centralWidget())
-            layout = QStringLiteral(" bar=%1 cw=%2")
-                     .arg(teRectStr(mw->ui->menuBar->geometry().x(), mw->ui->menuBar->geometry().y(),
-                                    mw->ui->menuBar->width(), mw->ui->menuBar->height()))
-                     .arg(teRectStr(mw->centralWidget()->geometry().x(), mw->centralWidget()->geometry().y(),
-                                    mw->centralWidget()->width(), mw->centralWidget()->height()));
-        if (mw->maximize_btn)
-            layout += QStringLiteral(" maxBtn=%1 vis=%2 visReg=%3")
-                      .arg(teRectStr(mw->maximize_btn->x(), mw->maximize_btn->y(),
-                                     mw->maximize_btn->width(), mw->maximize_btn->height()))
-                      .arg(mw->maximize_btn->isVisible() ? 1 : 0)
-                      .arg(teRectStr(mw->maximize_btn->visibleRegion().boundingRect().x(),
-                                     mw->maximize_btn->visibleRegion().boundingRect().y(),
-                                     mw->maximize_btn->visibleRegion().boundingRect().width(),
-                                     mw->maximize_btn->visibleRegion().boundingRect().height()));
-        if (mw->ui && mw->ui->menuBar)
-            layout += QStringLiteral(" mbMask=%1")
-                      .arg(teRectStr(mw->ui->menuBar->mask().boundingRect().x(),
-                                     mw->ui->menuBar->mask().boundingRect().y(),
-                                     mw->ui->menuBar->mask().boundingRect().width(),
-                                     mw->ui->menuBar->mask().boundingRect().height()));
-    }
-    telog(QStringLiteral("[maximize] %1 zoomed=%2 qt=%3 geo=%4 wsz=%5 winpx=%6 clientpx=%7 workpx=%8%9")
-          .arg(QLatin1String(where))
-          .arg(::IsZoomed(hwnd) ? 1 : 0)
-          .arg(w->isMaximized() ? 1 : 0)
-          .arg(teRectStr(g.x(), g.y(), g.width(), g.height()))
-          .arg(teRectStr(0, 0, w->width(), w->height()))
-          .arg(teRectStr(wr.left, wr.top, wr.right - wr.left, wr.bottom - wr.top))
-          .arg(teRectStr(0, 0, cr.right - cr.left, cr.bottom - cr.top))
-          .arg(teRectStr(mi.rcWork.left, mi.rcWork.top,
-                         mi.rcWork.right - mi.rcWork.left, mi.rcWork.bottom - mi.rcWork.top))
-          .arg(layout));
-}
-
 // 最大化只让 Windows 做:窗口的"最大化状态"必须由系统持有(IsZoomed)。只有那样,
 //   1. 把标题栏从屏幕上边缘往下拖,窗口才会恢复成原来的大小;
 //   2. 双击标题栏、拖到屏幕顶端吸附、点最大化按钮,三条路径行为完全一致;
@@ -505,7 +469,6 @@ void MainWindow::toggleMaximize()
     // 以系统状态为准:Qt 记的窗口状态可能落后(窗口被从最大化状态拖出来、或者上一次
     // 切换在中途被打断),信 Qt 就会出现"点一下没反应、必须点第二次"。
     const bool zoomed = ::IsZoomed(hwnd) != 0;
-    teLogWindowState(zoomed ? "restore" : "maximize", this);
 
     if (zoomed) {
         showNormal();
@@ -519,20 +482,14 @@ void MainWindow::toggleMaximize()
             ::ShowWindow(hwnd, SW_MAXIMIZE);
     }
     updateMaximizedContentInset();
-
-    // 切换之后系统实际给的矩形:正常情况下 window = 工作区 + 一圈看不见的边框,
-    // client = 工作区。若不是,下一份日志会直接指出来。
-    QTimer::singleShot(0, this, [this]{ teLogWindowState("settled", this); });
 }
 
 void MainWindow::changeEvent(QEvent* event)
 {
-    // 双击标题栏、拖到屏幕顶端吸附都会自己进入最大化:状态一变就要重算内容内缩,
-    // 并记一行日志(出问题时能看出是哪条路径进来的、系统给的矩形对不对)。
+    // 双击标题栏、拖到屏幕顶端吸附都会自己进入最大化:状态一变就要重算内容内缩。
     if (event->type() == QEvent::WindowStateChange)
         QTimer::singleShot(0, this, [this]{
             updateMaximizedContentInset();
-            teLogWindowState("state change", this);
             // 整窗同步重画一次。最大化时窗口矩形被系统撑大、客户区却还是原来那一块
             // (半透明窗口的画布不跟着放大),右半截的子控件常常一次都没画上:菜单栏
             // 右边的三个窗口按钮会整块空白,看起来像按钮消失了。一次全量 repaint 把
@@ -594,6 +551,19 @@ bool MainWindow::eventFilter(QObject* watched, QEvent* event)
 {
     if (watched == ui->menuBar && event->type() == QEvent::Resize)
         updateMenuBarMask();
+    // 三个窗口按钮的悬停高亮(QSS :hover)偶尔画不出来:半透明窗口上,子控件的小块
+    // 异步重绘会丢(最大化切换之后尤其明显,点击功能却一直正常,因为命中测试走的是
+    // 另一条路)。悬停一进一出就同步重画一次按钮,把丢掉的帧补上;重画一个 40x26 的
+    // 按钮,代价可以忽略。
+    if (watched == close_btn || watched == maximize_btn || watched == minimize_btn) {
+        const auto type = event->type();
+        if (type == QEvent::HoverEnter || type == QEvent::HoverLeave
+            || type == QEvent::Enter || type == QEvent::Leave) {
+            // 延一拍:等悬停状态真正生效后再画,repaint() 是同步刷屏,不会被丢。
+            if (auto* btn = qobject_cast<QPushButton*>(watched))
+                QTimer::singleShot(0, btn, [btn]{ btn->repaint(); });
+        }
+    }
     return QMainWindow::eventFilter(watched, event);
 }
 
@@ -689,6 +659,16 @@ void MainWindow::emitloadlists(const QItemSelection &selected, const QItemSelect
     }
     shownMultiTagFiles = selectedFiles;
 }
+void MainWindow::cancelPendingWork()
+{
+    // Every decode checks this before and after the image reader, so the pool
+    // drains within one image instead of one whole folder. Without it the shutdown
+    // had to wait for the folder (or, before, forever).
+    if (picturefileModel)
+        for (tePictureFile* file : picturefileModel->picturefiles)
+            file->cancelLoading();
+}
+
 MainWindow::~MainWindow()
 {
     // Stop every timer first: none of them may fire while the widgets are gone.
@@ -705,6 +685,11 @@ MainWindow::~MainWindow()
     delete imageWidget;
     delete logWindow;
     delete ui;
+    // Nothing may read the window through this any more: save_config() uses it for
+    // the splitter sizes and the geometry, and running it after the window is gone
+    // was an access violation on freed memory (the release build reported it as an
+    // unhandled win32 exception while closing).
+    global_window = nullptr;
 }
 
 void MainWindow::save(){
@@ -844,27 +829,6 @@ int MainWindow::loadState()
 extern QStringList custom_tags;
 
 
-/// One line per (result, coarse position) change so a drag around the title bar
-/// leaves a handful of readable lines instead of thousands.
-static void teLogHit(LRESULT hit, const char* why, const QPoint& phys, double scale,
-                     const QPoint& local, const QRect& barRect, const QRect& minBtnRect,
-                     int lastActionRightX, bool zoomed)
-{
-    static QByteArray lastKey;
-    const QByteArray key = QByteArray::number(qint64(hit)) + '|' + QByteArray::number(local.x() / 64)
-                           + ',' + QByteArray::number(local.y() / 8);
-    if (key == lastKey)
-        return;
-    lastKey = key;
-    telog(QStringLiteral("[hit] %1(%2) phys=(%3,%4) scale=%5 local=(%6,%7) bar=(%8,%9 %10x%11) minBtn=%12 menuRight=%13 zoomed=%14")
-          .arg(QLatin1String(why)).arg(hit)
-          .arg(phys.x()).arg(phys.y()).arg(scale)
-          .arg(local.x()).arg(local.y())
-          .arg(barRect.x()).arg(barRect.y()).arg(barRect.width()).arg(barRect.height())
-          .arg(minBtnRect.x()).arg(lastActionRightX)
-          .arg(zoomed ? 1 : 0));
-}
-
 bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, qintptr *result)
 {
     if (eventType != "windows_generic_MSG")
@@ -910,12 +874,10 @@ bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, qintptr
         const int lastActionRightX = barRect.x() + lastActionGeom.x() + lastActionGeom.width();
 
         LRESULT hit = HTCLIENT;
-        const char* why = "client";
         if (barRect.contains(local) && local.x() > lastActionRightX && local.x() < minBtnRect.left()) {
             // 最大化时也必须返回 HTCAPTION:系统就是靠"按住标题栏往下拖"把最大化
             // 的窗口还原的,返回别的值这条路就没了。
             hit = HTCAPTION;
-            why = "caption";
         } else if (!zoomed) {
             // 最大化状态下窗口没有可拖的边框(和普通 Windows 窗口一致):那几像素
             // 是贴屏幕边缘的,拖它既不该改大小,也不该把窗口撕下来。
@@ -923,17 +885,16 @@ bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, qintptr
             const bool right = local.x() >= width() - boundaryWidth;
             const bool top = local.y() < boundaryWidth;
             const bool bottom = local.y() >= height() - boundaryWidth;
-            if (top && left)        { hit = HTTOPLEFT;     why = "topLeft"; }
-            else if (top && right)  { hit = HTTOPRIGHT;    why = "topRight"; }
-            else if (bottom && left){ hit = HTBOTTOMLEFT;  why = "bottomLeft"; }
-            else if (bottom && right){hit = HTBOTTOMRIGHT; why = "bottomRight"; }
-            else if (left)          { hit = HTLEFT;        why = "left"; }
-            else if (right)         { hit = HTRIGHT;       why = "right"; }
-            else if (top)           { hit = HTTOP;         why = "top"; }
-            else if (bottom)        { hit = HTBOTTOM;      why = "bottom"; }
+            if (top && left)         hit = HTTOPLEFT;
+            else if (top && right)   hit = HTTOPRIGHT;
+            else if (bottom && left) hit = HTBOTTOMLEFT;
+            else if (bottom && right)hit = HTBOTTOMRIGHT;
+            else if (left)           hit = HTLEFT;
+            else if (right)          hit = HTRIGHT;
+            else if (top)            hit = HTTOP;
+            else if (bottom)         hit = HTBOTTOM;
         }
 
-        teLogHit(hit, why, phys, scale, local, barRect, minBtnRect, lastActionRightX, zoomed);
         if (hit == HTCLIENT)
             return false;   // 交回给 Qt(它自己会给出客户区/子控件)
         *result = hit;

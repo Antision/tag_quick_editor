@@ -25,7 +25,10 @@ public:
     /// buttons take their height from the editor column's style sheet, and that
     /// sheet is applied *after* the editor was built (see the override).
     bool event(QEvent* event) override;
-    ~teEditor_custom(){}
+    /// Lets go of the global `custom_controls` pointer, which save_config() reads.
+    /// A rebuilt editor layout deletes editors, and a pointer into a destroyed
+    /// editor made the next configuration save read freed memory.
+    ~teEditor_custom();
 };
 
 class teEditor_pretreat:public teEditor_standard{

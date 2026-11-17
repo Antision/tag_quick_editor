@@ -118,6 +118,11 @@ public:
     void emitloadlists(const QItemSelection &selected, const QItemSelection &deselected);
     LRESULT OnTestBorder(const QPoint &pt);
     void checkForUpdate();
+    /// Asks every queued thumbnail decode to return without decoding. Called from
+    /// main() before the pool is drained, so closing a folder of images does not
+    /// make the process wait for the rest of the folder (the old shutdown waited
+    /// for all of them, which is also why a single stuck task hung it forever).
+    void cancelPendingWork();
     int checkSave();
     /// Files currently selected in the picture list (one entry per row).
     QList<tePictureFile*> selectedPictureFiles() const;

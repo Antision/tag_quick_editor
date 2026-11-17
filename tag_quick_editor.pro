@@ -4,7 +4,7 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++20
 
-VERSION = 0.0.1
+VERSION = 0.0.1.1
 DEFINES += APP_VERSION=\\\"$$VERSION\\\"
 
 # You can make your code fail to compile if it uses deprecated APIs.
@@ -30,6 +30,7 @@ SOURCES += \
     src/prefix_priority.cpp \
     src/stylesheet.cpp \
     src/suggestionlineedit.cpp \
+    src/task_runner.cpp \
     src/teeditor.cpp \
     src/teeditor_derive.cpp \
     src/teeditorcontrol.cpp \
@@ -57,6 +58,7 @@ HEADERS += \
     src/pch.h \
     src/prefix_priority.h \
     src/suggestionlineedit.h \
+    src/task_runner.h \
     src/teeditor.h \
     src/teeditor_derive.h \
     src/teeditorcontrol.h \
