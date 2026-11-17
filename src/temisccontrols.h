@@ -24,15 +24,11 @@
             if (linked_tags.empty()) { return QString{}; }
             else { return (QString)(*(*linked_tags.begin())); }
         }
-        bool filter(std::shared_ptr<teTag> tag)override {
+        /// Pure: the number it matches is put into the line edit by refreshState()
+        /// (which runs when the tag is linked), not from inside the predicate.
+        bool filter(std::shared_ptr<teTag> tag) const override {
             if (!tag) return false;
-            QString tagStr = static_cast<QString>(*tag);
-            QRegularExpressionMatch m = regex.match(tagStr);
-            if(m.hasMatch()){
-                lineedit->setText(m.captured(1));
-                return true;
-            }else
-                return false;
+            return regex.match(static_cast<QString>(*tag)).hasMatch();
         }
         virtual void refreshState()override{
             if(linked_tags.empty()) {
@@ -133,7 +129,7 @@
                                                     multipeople_CheckBox(QString key_string1, QWidget* parent = nullptr, QString* stylesheet = nullptr) :
                                                         teTagCheckBoxPlus({ key_string1 }, parent, stylesheet) {
                                                         }
-                                                    bool filter(std::shared_ptr<teTag> tag)override {
+                                                    bool filter(std::shared_ptr<teTag> tag) const override {
                                                                                           static QRegularExpression reg(QStringLiteral(R"(^multiple\s?(girl(s)?|boy(s)?|other(s)?)$)"));
     if (reg.match(*tag).hasMatch()) {
         return true;
@@ -172,7 +168,7 @@ void onStateChanged(bool state)override {
             :teTagListControl(in_onEdit_widget,parentlist,parent,styleSheet,"object"){
             sc->setMinimumHeight(110);
         }
-        bool filter(std::shared_ptr<teTag>in_tag)override{
+        bool filter(std::shared_ptr<teTag> in_tag) const override{
             if(in_tag->words.count()!=3)return false;
             if(object1.contains(in_tag->words[0]->text)&&
                 preposwords.contains(in_tag->words[1]->text)&&

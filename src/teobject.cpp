@@ -1,5 +1,54 @@
 #include "teobject.h"
 
+namespace {
+std::atomic<long> g_liveCallbackObjects{0};
+/// Attribution is a debugging aid with a map lookup per connection, so it is off
+/// unless someone asks for it (the regression harness does).
+std::atomic<bool> g_callbackBreakdownEnabled{false};
+/// (receiver class, callback type) -> live connections.
+std::map<std::string,long>& callbackBreakdown()
+{
+    static std::map<std::string,long> m;
+    return m;
+}
+}
+
+void teCountLiveCallbackObject(int delta, const char* receiverType, int type)
+{
+    g_liveCallbackObjects.fetch_add(delta, std::memory_order_relaxed);
+    if(!g_callbackBreakdownEnabled.load(std::memory_order_relaxed))
+        return;
+    std::lock_guard<std::recursive_mutex> lg(teCallbackMutex());
+    const std::string key = std::string(receiverType) + " #" + std::to_string(type);
+    long& slot = callbackBreakdown()[key];
+    slot += delta;
+    if(slot == 0)
+        callbackBreakdown().erase(key);
+}
+
+void teSetCallbackBreakdownEnabled(bool enabled)
+{
+    std::lock_guard<std::recursive_mutex> lg(teCallbackMutex());
+    callbackBreakdown().clear();
+    g_callbackBreakdownEnabled = enabled;
+}
+
+obj_callback_function_base::~obj_callback_function_base()
+{
+    teCountLiveCallbackObject(-1, receiverType, type);
+}
+
+long teLiveCallbackObjects()
+{
+    return g_liveCallbackObjects.load(std::memory_order_relaxed);
+}
+
+std::map<std::string,long> teLiveCallbackBreakdown()
+{
+    std::lock_guard<std::recursive_mutex> lg(teCallbackMutex());
+    return callbackBreakdown();
+}
+
 std::recursive_mutex& teCallbackMutex()
 {
     static std::recursive_mutex mtx;

@@ -183,9 +183,11 @@ struct hair_and_eyes_color_list : public teTagListControl{
             sc->setMinimumHeight(110);
         }
 
-        bool filter(std::shared_ptr<teTag>in_tag)override{
-            if(hairtag_types.contains(in_tag))
-                on_hairtag_edited(in_tag);
+        /// Is this a hair (or eyes) tag? Pure: the merge it used to start from
+        /// here is absorb() now, called from link() and onHairTagEdited().
+        bool filter(std::shared_ptr<teTag> in_tag) const override{
+            if(!in_tag)
+                return false;
             if(in_tag->retired)
                 return false;
             if(in_tag->words.empty())return false;
@@ -199,10 +201,12 @@ struct hair_and_eyes_color_list : public teTagListControl{
                 return true;
             return false;
         }
-        QHash<std::shared_ptr<teTag>, HairKind> hairtag_types;
-        /// The classification itself lives in classifyHairTag() (pure, testable).
-        HairKind classify_tag(std::shared_ptr<teTag> tag) {
-            return classifyHairTag(*tag);
+        /// The classification lives in classifyHairTag() (pure, testable) and is
+        /// computed from the tag whenever it is needed. It used to be cached in a
+        /// QHash keyed by tag, which had to be kept in step with every edit - the
+        /// cache and the tag could disagree, and the entry kept the tag alive.
+        HairKind classify_tag(std::shared_ptr<teTag> tag) const {
+            return tag?classifyHairTag(*tag):HairKind::None;
         }
         /// The merge matrix lives in hairTagsCanMerge() (pure, testable).
         bool can_merge(std::shared_ptr<teTag>,HairKind target_type, std::shared_ptr<teTag>,HairKind source_type) {
@@ -216,23 +220,23 @@ struct hair_and_eyes_color_list : public teTagListControl{
                     candidate = widget->core;
                 else
                     continue;
-                if(!hairtag_types.contains(candidate)) continue;
                 if(candidate==new_tag)continue;
                 if(candidate->retired)continue;
+                const HairKind candidateType = classify_tag(candidate);
+                if(candidateType==HairKind::None) continue;
 
-                if(can_merge(candidate,hairtag_types[candidate], new_tag,type)){
+                if(can_merge(candidate,candidateType, new_tag,type)){
                     return candidate;
                 }
             }
             return nullptr;
         }
         void perform_merge(std::shared_ptr<teTag> target, std::shared_ptr<teTag> source,HairKind source_type) {
-            if(source_type == HairKind::RawStreakHair||hairtag_types[target]==HairKind::RawStreakHair) {
+            const HairKind target_type = classify_tag(target);
+            if(source_type == HairKind::RawStreakHair||target_type==HairKind::RawStreakHair) {
                 merge_streaks(target, source,source_type==HairKind::RawStreakHair);
-                hairtag_types[target]=HairKind::StreakHair;
-            } else if(source_type == HairKind::RawGradientHair||hairtag_types[target]==HairKind::RawGradientHair) {
+            } else if(source_type == HairKind::RawGradientHair||target_type==HairKind::RawGradientHair) {
                 merge_gradient(target, source,source_type==HairKind::RawGradientHair);
-                hairtag_types[target]=HairKind::GradientHair;
             }else
                 telog("[perform_merge]:couldn't merge tag");
         }
@@ -252,24 +256,20 @@ struct hair_and_eyes_color_list : public teTagListControl{
                     : extract_colors(source)+extract_colors(target);
             taglistwidget->tagEdit(target,gradientHairText(all_colors));
         }
-        void link_hair(std::shared_ptr<teTag> tag){
-            tag->teConnect(teCallbackType::edit_with_layout,this,&hair_and_eyes_color_list::on_hairtag_edited,tag);
-            hairtag_types.insert(tag,classify_tag(tag));
-        }
-        void unlink_hair(std::shared_ptr<teTag> tag){
-            if(hairtag_types.contains(tag)){
-                tag->teDisconnect(this,teCallbackType::edit_with_layout);
-                hairtag_types.remove(tag);
-            }
-        }
-        void on_hairtag_edited(std::shared_ptr<teTag> edited_tag) {
-            HairKind still_valid = classify_tag(edited_tag);
-            if(still_valid==HairKind::None) {
-                unlink_hair(edited_tag);
+        /**
+         * @brief A linked tag changed: see whether it can now be merged.
+         *
+         * Connected for every linked tag, not only for the ones that were a hair
+         * tag when they were linked - the classification is taken from the tag on
+         * every call, so a tag that *became* a streak ("blue streaked hair") is
+         * picked up here just the same.
+         */
+        void onHairTagEdited(std::shared_ptr<teTag> edited_tag) {
+            if(!edited_tag||edited_tag->retired)
                 return;
-            }
-            if(hairtag_types.contains(edited_tag))
-                hairtag_types[edited_tag]=still_valid;
+            const HairKind still_valid = classify_tag(edited_tag);
+            if(still_valid==HairKind::None)
+                return;                     // not a mergeable hair tag any more
             std::shared_ptr<teTag> new_target = find_merge_target(edited_tag,still_valid);
             if(new_target) {
                 edited_tag->retired=true;
@@ -277,7 +277,7 @@ struct hair_and_eyes_color_list : public teTagListControl{
             }
         }
         virtual void tagEdit(teTagWidgetBase*tag,teWordWidgetBase*word)override{
-            if(std::shared_ptr<teTag>core =tag->core; hairtag_types.contains(core)&&(hairtag_types[core]==HairKind::StreakHair||hairtag_types[core]==HairKind::GradientHair)){
+            if(std::shared_ptr<teTag>core =tag->core; core&&(classify_tag(core)==HairKind::StreakHair||classify_tag(core)==HairKind::GradientHair)){
                 int maxsize=0;
                 editingTag=tag;
                 QString tagtext="";
@@ -308,40 +308,50 @@ struct hair_and_eyes_color_list : public teTagListControl{
                         }
         }
         void link(std::shared_ptr<teTag>in_tag)override{
-            if(autoMerge&&MergeSwitch&&(!in_tag->contains("eyes"))&&
-                (is_color(*in_tag).second>0)
-                )
-            {
-                const HairKind new_type = classify_tag(in_tag);
-                if(new_type==HairKind::None){
-                    telog("[hair_and_eyes]:unable to distinguish hair tag's type");
-                    goto mergeEnd;
-                }
-                std::shared_ptr<teTag> target_tag = find_merge_target(in_tag,new_type);
-
-                if(target_tag) {
-                    in_tag->retired=true;
-                    perform_merge(target_tag,in_tag,new_type);
-                    return;
-                } else {
-                    link_hair(in_tag);
-                }
-            }
-            mergeEnd:
+            if(absorb(in_tag))
+                return;
             linked_tags.insert(in_tag);
             in_tag->teConnect(teCallbackType::destroy,this,&EditorControl::unlink,in_tag);
+            in_tag->teConnect(teCallbackType::edit_with_layout,this,&hair_and_eyes_color_list::onHairTagEdited,in_tag);
             teTagWidgetBase*widget =taginsert(-1,in_tag,taglistwidget->showing_list);
             extraWidgetPushBack(in_tag,widget);
         }
 
+        /**
+         * @brief Merges `in_tag` into a hair tag that is already linked.
+         *
+         * Returns true when it did: `in_tag` is marked as retired and the caller
+         * has to retire it from the list. This is what filter() used to do from
+         * inside its own predicate.
+         */
+        bool absorb(std::shared_ptr<teTag> in_tag){
+            if(!autoMerge||!MergeSwitch)
+                return false;
+            if(in_tag->contains("eyes"))
+                return false;
+            if(is_color(*in_tag).second<=0)
+                return false;
+            const HairKind new_type = classify_tag(in_tag);
+            if(new_type==HairKind::None){
+                telog("[hair_and_eyes]:unable to distinguish hair tag's type");
+                return false;
+            }
+            std::shared_ptr<teTag> target_tag = find_merge_target(in_tag,new_type);
+            if(!target_tag)
+                return false;
+            in_tag->retired=true;
+            perform_merge(target_tag,in_tag,new_type);
+            return true;
+        }
+
         void unlink(std::shared_ptr<teTag>in_tag)override{
             teDisconnect(in_tag.get());
-            hairtag_types.remove(in_tag);
             linked_tags.erase(in_tag);
             tagErase(in_tag);
         }
         void extraWidgetPushBack(std::shared_ptr<teTag>in_tag,teTagWidgetBase*widget){
-            if(hairtag_types.contains(in_tag)&&((hairtag_types[in_tag]==HairKind::BaseHair)||(hairtag_types[in_tag]==HairKind::RawStreakHair)||(hairtag_types[in_tag]==HairKind::RawGradientHair))){
+            const HairKind kind = classify_tag(in_tag);
+            if(kind==HairKind::BaseHair||kind==HairKind::RawStreakHair||kind==HairKind::RawGradientHair){
                 int wordcount = in_tag->words.size();
                 QPushButton*streaked_btn = new QPushButton("s",widget);
                 streaked_btn->setStyleSheet(qsl(R"(font:8pt "Sonsolas")"));
@@ -439,7 +449,7 @@ struct BangsList : public teTagListControl{
         else telog("[BangsList::BangsList]could not find the \"bangs\" button or \"curtained\" button");
         sc->setMinimumHeight(110);
     }
-    bool filter(std::shared_ptr<teTag>in_tag)override{
+    bool filter(std::shared_ptr<teTag> in_tag) const override{
         if(in_tag->words.empty())return false;
         QString tagtext = *in_tag;
         QString&&lastword=*in_tag->words.back();
@@ -653,16 +663,47 @@ struct ponytail_buttongroup : public teTagButtonGroup {
         ponytailTag=nullptr;
         twintailsTag=nullptr;
     }
-    bool filter(std::shared_ptr<teTag>tag)override{
+    /// A "tail" tag: the word "tail"/"twintails" plus the kinds this group knows.
+    ///
+    /// Pure - the merge of a second tail tag is absorb()'s job now, called from
+    /// read(); deciding whether a tag belongs here no longer removes anything.
+    bool filter(std::shared_ptr<teTag> tag) const override{
+        if(!tag)
+            return false;
         QString tagstring=*tag;
         int index = tagstring.lastIndexOf("tail");
         if(index<0)return false;
         else if(index==tagstring.size()-5)
             tagstring.chop(1);
-        if(defaultFiltStrings.find(tagstring)!=defaultFiltStrings.end()){
+        return defaultFiltStrings.find(tagstring)!=defaultFiltStrings.end();
+    }
 
-            return !(autoMerge&&MergeSwitch&&merge(tag));
-        }else return false;
+    TagHandling read(std::shared_ptr<teTag> tag) override {
+        if(!tag)
+            return TagHandling::NotMine;
+        if(tag->retired){
+            if(taglistwidget)
+                taglistwidget->retire(tag);
+            return TagHandling::Consumed;
+        }
+        if(!filter(tag))
+            return TagHandling::NotMine;
+        // A second "ponytail"/"twintails" tag is merged into the one already
+        // there instead of being linked twice.
+        if(autoMerge&&MergeSwitch&&merge(tag)){
+            if(taglistwidget)
+                taglistwidget->retire(tag);
+            return TagHandling::Consumed;
+        }
+        if(taglistwidget)
+            taglistwidget->ensureWidgetFor(tag);
+        link(tag);
+        if(tag->retired){
+            if(taglistwidget)
+                taglistwidget->retire(tag);
+            return TagHandling::Consumed;
+        }
+        return TagHandling::Linked;
     }
     void getDefaultFiltStrings()override{}
     void refreshState()override{
@@ -685,8 +726,6 @@ struct HairLength_Buttongroup : public teTagButtonGroup {
         })
         {
         layout->setSpacing(1);
-            long_hair_iterator=defaultFiltStrings.find(qsl("long hair"));
-        very_long_hair_iterator = defaultFiltStrings.find(qsl("very long hair"));
         }
     virtual void reform(int id)override {
         // The rules live in hairLengthAfterClick() (pure, testable), including the
@@ -702,38 +741,75 @@ struct HairLength_Buttongroup : public teTagButtonGroup {
 
     std::shared_ptr<teTag>long_hair_ptr=nullptr;
     std::shared_ptr<teTag>very_long_hair_ptr=nullptr;
-    std::unordered_set<QString>::iterator long_hair_iterator;
-    std::unordered_set<QString>::iterator very_long_hair_iterator;
 
-    std::unordered_set<QString>::iterator filter_it;
-    bool filter(std::shared_ptr<teTag>tag)override{
-        if(filter_it = defaultFiltStrings.find(*tag);filter_it!=defaultFiltStrings.end()){
-            if(autoMerge&&MergeSwitch){
-                if(filter_it==long_hair_iterator){
-                    if(very_long_hair_ptr==tag){
-                        very_long_hair_ptr=nullptr;
-                    }
-                    if(very_long_hair_ptr){
-                        tag->retired=true;
-                        long_hair_ptr=nullptr;
-                        return false;
-                    }
-                    else
-                        long_hair_ptr=tag;
-                }
-                else if(filter_it==very_long_hair_iterator){
-                    if(long_hair_ptr==tag)
-                        long_hair_ptr=nullptr;
-                    very_long_hair_ptr=tag;
-                    if(long_hair_ptr){
-                        if(tag!=long_hair_ptr)
-                            taglistwidget->tagErase(long_hair_ptr);
-                        long_hair_ptr=nullptr;
-                    }
-                }
+    /// Is this one of the two tags this control writes? Pure.
+    ///
+    /// The two iterators this used to compare against were handles into
+    /// defaultFiltStrings; the strings say the same thing and cannot be left
+    /// dangling by a later insert into that set.
+    bool filter(std::shared_ptr<teTag> tag) const override{
+        if(!tag)
+            return false;
+        return defaultFiltStrings.find(*tag)!=defaultFiltStrings.end();
+    }
+
+    /**
+     * @brief "very long hair" wins over "long hair": only one of them survives.
+     *
+     * This is the merge filter() used to perform, as its own step: the control
+     * only reads tags, and a tag that came back as "long hair" while "very long
+     * hair" is already linked is dropped instead of being shown twice.
+     */
+    void absorbLongHair(std::shared_ptr<teTag> tag){
+        const QString text = *tag;
+        if(text==qsl("long hair")){
+            if(very_long_hair_ptr==tag)
+                very_long_hair_ptr=nullptr;
+            if(very_long_hair_ptr){
+                tag->retired=true;
+                long_hair_ptr=nullptr;
+                return;
             }
-            return true;
-        }else return false;
+            long_hair_ptr=tag;
+        }else if(text==qsl("very long hair")){
+            if(long_hair_ptr==tag)
+                long_hair_ptr=nullptr;
+            very_long_hair_ptr=tag;
+            if(long_hair_ptr){
+                std::shared_ptr<teTag> superseded = long_hair_ptr;
+                long_hair_ptr=nullptr;
+                if(tag!=superseded&&taglistwidget)
+                    taglistwidget->retire(superseded);
+            }
+        }
+    }
+
+    TagHandling read(std::shared_ptr<teTag>tag)override{
+        if(!tag)
+            return TagHandling::NotMine;
+        if(tag->retired){
+            if(taglistwidget)
+                taglistwidget->retire(tag);
+            return TagHandling::Consumed;
+        }
+        if(!filter(tag))
+            return TagHandling::NotMine;
+        if(autoMerge&&MergeSwitch)
+            absorbLongHair(tag);
+        if(tag->retired){
+            if(taglistwidget)
+                taglistwidget->retire(tag);
+            return TagHandling::Consumed;
+        }
+        if(taglistwidget)
+            taglistwidget->ensureWidgetFor(tag);
+        link(tag);
+        if(tag->retired){
+            if(taglistwidget)
+                taglistwidget->retire(tag);
+            return TagHandling::Consumed;
+        }
+        return TagHandling::Linked;
     }
     void unlink(std::shared_ptr<teTag>tag)override{
         if(tag==long_hair_ptr)long_hair_ptr=nullptr;

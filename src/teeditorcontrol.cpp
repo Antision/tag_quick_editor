@@ -85,7 +85,7 @@ teTagComboBox::teTagComboBox(QList<QPair<QString,QStringList>>&& string_datas,QS
     connect(this,&teTagComboBox::currentIndexChanged,this,&teTagComboBox::onIndexChanged,Qt::DirectConnection);
 }
 
-bool teTagComboBox::filter(std::shared_ptr<teTag>tag){
+bool teTagComboBox::filter(std::shared_ptr<teTag>tag) const{
     if(captureList.find((QString)(*tag))!=captureList.end())
         return true;
     else
@@ -312,7 +312,7 @@ void teTagButtonGroup::getDefaultFiltStrings(){
     } while (std::next_permutation(movableItems.begin(), movableItems.end(),
                                    [](const item& a, const item& b) { return a.data < b.data; }));
 }
-bool teTagButtonGroup::filter(std::shared_ptr<teTag>tag){
+bool teTagButtonGroup::filter(std::shared_ptr<teTag>tag) const{
     if(defaultFiltStrings.find(*tag)!=defaultFiltStrings.end()){
         return true;
     }else return false;
@@ -441,7 +441,7 @@ void teTagCheckBox::unselect(){
     ++excute;
 }
 
-bool teTagCheckBox::filter(std::shared_ptr<teTag>tag){
+bool teTagCheckBox::filter(std::shared_ptr<teTag>tag) const{
     if(strings.indexOf(QString(*tag))>-1){
         return true;
     }return false;
@@ -642,7 +642,7 @@ int teTagListControl::setUnselect(teTagWidgetBase *in){
     return 1;
 }
 
-bool teTagListControl::filter(std::shared_ptr<teTag> tag)
+bool teTagListControl::filter(std::shared_ptr<teTag> tag) const
 {
     if(!tag||tag->words.isEmpty())
         return false;

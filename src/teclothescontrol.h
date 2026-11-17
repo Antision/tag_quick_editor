@@ -183,64 +183,172 @@ inline QVector<ClothesRole> classifyClothesWords(const teTag& tag){
 }
 
 /**
- * @brief The tag text a clothes wrapper stands for.
+ * @brief A clothes tag split into the parts the editor reasons about.
  *
- * Pure: colours, front adjectives, adjectives, back adjectives, then the type.
- * It used to be a method that read the wrapper's members, so nothing but the
- * window could check what a wrapper would write back into a tag.
+ * "colours + front adjectives + adjectives + back adjectives + type" is the
+ * canonical order a clothes tag is rewritten into, and every question the editor
+ * asks about a tag (may these two merge, what would the merged text be) is
+ * answered from this - computed on demand instead of kept in a per-tag object
+ * that had to be deleted at exactly the right moment.
  */
-inline QString clothesText(const QVector<teWord*>& colors,const QVector<teWord*>& front_adjectives,
-                           const QVector<teWord*>& adjectives,const QVector<teWord*>& back_adjectives,
-                           const QString& type){
-    QString final;
-    for(teWord*wd:colors)
-        final.append(wd->text + qsl(" "));
-    for(teWord*wd:front_adjectives)
-        final.append(wd->text + qsl(" "));
-    for(teWord*wd:adjectives)
-        final.append(wd->text + qsl(" "));
-    for(teWord*wd:back_adjectives)
-        final.append(wd->text + qsl(" "));
-    final.append(type);
-    return final;
+struct ClothesParts {
+    QStringList colors;
+    QStringList front;
+    QStringList adjectives;
+    QStringList back;
+    QString type;
+};
+
+/**
+ * @brief Splits `tag` into its parts. Pure: it reads the tag and the tables.
+ *
+ * The per-word rule is clothesRoleAt(), so this is the whole-tag form of the
+ * classification the control makes while it walks the words.
+ */
+inline ClothesParts clothesParse(const teTag& tag)
+{
+    ClothesParts parts;
+    if (tag.words.isEmpty())
+        return parts;
+    parts.type = tag.words.back()->text;
+    const auto colorSlot = is_color(tag);
+    for (int i = 0; i + 1 < tag.words.size(); ++i) {
+        const QString& text = tag.words[i]->text;
+        QStringList* bucket = nullptr;
+        switch (clothesRoleAt(tag, i, parts.type, colorSlot)) {
+        case ClothesRole::Colour:         bucket = &parts.colors;     break;
+        case ClothesRole::FrontAdjective: bucket = &parts.front;      break;
+        case ClothesRole::BackAdjective:  bucket = &parts.back;       break;
+        case ClothesRole::Adjective:
+        case ClothesRole::Type:           bucket = &parts.adjectives; break;
+        }
+        if (bucket && !bucket->contains(text))
+            bucket->append(text);
+    }
+    return parts;
 }
 
-/// Just the adjectives of a clothes tag, in the order the wrapper stores them.
-inline QStringList clothesAdjectives(const QVector<teWord*>& front_adjectives,
-                                     const QVector<teWord*>& adjectives,
-                                     const QVector<teWord*>& back_adjectives){
-    QStringList final;
-    for(teWord*wd:front_adjectives)
-        final.append(wd->text);
-    for(teWord*wd:adjectives)
-        final.append(wd->text);
-    for(teWord*wd:back_adjectives)
-        final.append(wd->text);
-    return final;
+/// The words of `parts` in canonical order, each word only once.
+inline QStringList clothesCanonicalWords(const ClothesParts& parts)
+{
+    QStringList words;
+    words.reserve(parts.colors.size()+parts.front.size()
+                  +parts.adjectives.size()+parts.back.size()+1);
+    for (const QStringList* bucket : {&parts.colors,&parts.front,&parts.adjectives,&parts.back})
+        for (const QString& text : *bucket)
+            if (!words.contains(text))
+                words.append(text);
+    words.append(parts.type);
+    return words;
 }
 
 /**
- * @brief True when `incoming` may be merged into a tag that looks like this.
+ * @brief True when `incoming` may be merged into a tag that looks like `target`.
  *
  * The garment has to be the same (sameClothesType handles the generic words) and
  * the colours have to agree: "red dress" and "blue dress" stay apart, "red
  * dress" and "red torn dress" merge. Pure, so the merge *rules* - which used to
  * be reachable only by typing two tags into the window - can be checked.
  */
-inline bool clothesMergeable(const QString& type,const QVector<teWord*>& colors,const teTag& incoming){
-    if(type.isEmpty()||incoming.words.isEmpty())
+inline bool clothesMergeable(const ClothesParts& target,const teTag& incoming)
+{
+    if(target.type.isEmpty()||incoming.words.isEmpty())
         return false;
-    if(!sameClothesType(incoming.words.back()->text,type))
+    if(!sameClothesType(incoming.words.back()->text,target.type))
         return false;
     const auto [colorpos,colorcount] = is_color(incoming);
-    if(colorcount>0&&!colors.isEmpty()){
-        if(colorcount!=colors.count())
+    if(colorcount>0&&!target.colors.isEmpty()){
+        if(colorcount!=target.colors.size())
             return false;
         for(int i=0;i<colorcount;++i)
-            if(incoming.words[i+colorpos]->text!=colors[i]->text)
+            if(incoming.words[i+colorpos]->text!=target.colors[i])
                 return false;
     }
     return true;
+}
+
+/// Convenience for a target known only by its garment word and its colours.
+inline bool clothesMergeable(const QString& type,const QStringList& colors,const teTag& incoming)
+{
+    ClothesParts target;
+    target.type = type;
+    target.colors = colors;
+    return clothesMergeable(target,incoming);
+}
+
+/**
+ * @brief The words of a tag that has absorbed `incoming`.
+ *
+ * The absorbing tag keeps its garment and its colours; the incoming tag
+ * contributes its adjectives, and a generic garment word ("underwear",
+ * "footwear") gives way to the specific spelling the incoming tag has
+ * ("panties", "boots"). Pure, so what a merge produces can be checked without
+ * opening the window.
+ */
+inline QStringList clothesMergedWords(const ClothesParts& target,const teTag& incoming)
+{
+    ClothesParts merged = target;
+    if(!incoming.words.isEmpty()){
+        const QString incomingType = incoming.words.back()->text;
+        if(isGenericClothesType(merged.type)&&!isGenericClothesType(incomingType))
+            merged.type = incomingType;
+    }
+    const ClothesParts in = clothesParse(incoming);
+    if(merged.colors.isEmpty())
+        merged.colors = in.colors;
+    merged.front += in.front;
+    merged.adjectives += in.adjectives;
+    merged.back += in.back;
+    return clothesCanonicalWords(merged);
+}
+
+/**
+ * @brief Writes `words` into `tag`, reusing the word objects that survive.
+ *
+ * Words are matched by text and moved, so a widget showing one keeps its
+ * connection; a word that is no longer part of the tag is deleted (after the
+ * widgets have let go of it) and a new text gets a new word object. `widget` is
+ * the tag's widget, or nullptr when the control does not show one. The change is
+ * announced once - edited_with_layout() - which is what makes every list showing
+ * the tag reload its text.
+ */
+inline void clothesApplyWords(std::shared_ptr<teTag> tag,const QStringList& words,
+                              teTagWidgetBase* widget)
+{
+    if(!tag)
+        return;
+    QMultiHash<QString,teWord*> available;
+    for(teWord* word : tag->words)
+        if(word)
+            available.insert(word->text,word);
+    QVector<teWord*> next;
+    next.reserve(words.size());
+    for(const QString& text : words){
+        auto it = available.find(text);
+        if(it==available.end())
+            next.append(new teWord{text});
+        else{
+            next.append(*it);
+            available.erase(it);
+        }
+    }
+    const bool hasWidget = widget!=nullptr;
+    if(hasWidget)
+        widget->disconnectWord();
+    tag->words.clear();
+    for(teWord* leftover : available){      // duplicates the canonical list dropped
+        if(hasWidget)
+            widget->forgetWord(leftover);
+        delete leftover;
+    }
+    int pos = -1;
+    for(teWord* word : next){
+        if(hasWidget)
+            widget->insertWord(++pos,word,true,false);
+        else
+            tag->words.append(word);
+    }
+    tag->edited_with_layout();
 }
 
 /// Words that make a clothes tag a *state* rather than a garment.
@@ -267,520 +375,256 @@ inline bool clothesHasStateModifier(const teTag& tag){
     return false;
 }
 
-    struct ClothesList : public teTagListControl {
-public:
-        std::shared_ptr<teTag> clothes_editing=nullptr;
-        struct teClothes:public teObject{
-            ClothesList*parentList = nullptr;
-            /**
-             * @brief True once this wrapper has been retired.
-             *
-             * Retiring means "removed from all_clothes, delete it later". The
-             * deletion itself has to be deferred: readCore() emits
-             * edited_with_layout(), whose slot (reReadClothes) uses to delete the
-             * wrapper - and readCore() then kept using `this`, so `parentList`
-             * was read from freed memory (the crash in teeditor_derive.cpp:1768).
-             * Every entry point checks this flag instead.
-             */
-            bool dead=false;
-            teTagListView*parentTagListWidget=nullptr;
-            std::shared_ptr<teTag>core=nullptr;
-            QVector<teWord*>colors;
-            QVector<teWord*>front_adjectives;
-            QVector<teWord*>adjectives;
-            QVector<teWord*>back_adjectives;
-            QVector<teWord*>exclusiveModifiers;
-            QString type;
-            teClothes(std::shared_ptr<teTag>core,ClothesList*parent,teTagListView*in_parentTagListWidget):parentList(parent),parentTagListWidget(in_parentTagListWidget){
-                readCore(core);
-                core->teConnect(teCallbackType::edit,this,&teClothes::reReadClothes,core);
-                core->teConnect(teCallbackType::edit_with_layout,this,&teClothes::reReadClothes,core);
-            }
-            // Deliberately no constructor without a parentList: every method here
-            // goes through it, and a wrapper built without one was exactly the
-            // dangling-parentList crash this class used to have.
-            ~teClothes(){
-                // Drop the callbacks the tag core holds for this wrapper, so a
-                // deleted wrapper can never be called again.
-                teDisconnect();
-            }
+/**
+ * @brief The clothes control.
+ *
+ * It used to own one `teClothes` object per tag: that object cached the parsed
+ * tag, held a shared_ptr to it and kept two connections on it, and the whole
+ * lifetime machine around it (a `dead` flag, a retired list and a deferred purge
+ * timer) existed only to keep the object from being used after it had been
+ * deleted - and it still leaked one per tag per picture switch, which kept whole
+ * tag lists alive.
+ *
+ * None of that state was necessary. Everything a wrapper knew is a pure function
+ * of the tag (clothesParse), so the control keeps nothing but the tags it linked
+ * and recomputes on demand. filter() is a predicate again: the merge it used to
+ * perform from inside is the explicit absorb() step in read()/onTagEdited().
+ */
+struct ClothesList : public teTagListControl {
+    /// The tag this control is rewriting right now.
+    ///
+    /// Its own announcement must not send it through the merge/rewrite path
+    /// again; the wrapper had the same guard and called it clothes_editing.
+    std::shared_ptr<teTag> clothes_editing = nullptr;
+    /**
+     * @brief The linked clothes tags, in link order.
+     *
+     * When two tags could absorb a third one, the first one linked wins - the
+     * insertion order the old type-sorted multiset gave. Only the order matters:
+     * the tags are owned by the tag list and the shared_ptrs here are dropped in
+     * unlink(), exactly like linked_tags.
+     */
+    QVector<std::shared_ptr<teTag>> clothes_order;
 
-            void reReadClothes(std::shared_ptr<teTag>tag){
-                if(dead)
-                    return;
-                if(tag==parentList->clothes_editing)return;
-                if(tag->retired)
-                    return;
-                teClothes*tagClothes = nullptr;
-                if(tagClothes=parentList->findClothes(tag);!tagClothes){
-                    return;
-                }
-                parentList->all_clothes.erase(tagClothes);
-                // Snapshot: merge() below can retire other wrappers (it goes
-                // through readCore() -> edited_with_layout() -> reReadClothes),
-                // which would invalidate an iterator into the set.
-                const QVector<teClothes*> others(parentList->all_clothes.begin(),
-                                                 parentList->all_clothes.end());
-                for(teClothes*clz:others){
-                    if(clz==this||clz->dead||!parentList->all_clothes.count(clz))
-                        continue;
-                    if(clz->merge(tag)){
-                        tag->retired=true;
-                        parentTagListWidget->tagErase(tag);
-                        parentList->retire(tagClothes);
-                        return;
-                    }
-                }
-                if(tagClothes->dead)
-                    return;
-                if(tagClothes->readCore()>=0)
-                    parentList->all_clothes.insert(tagClothes);
-                else
-                    parentList->retire(tagClothes);
-            }
-            int readCore(std::shared_ptr<teTag>in_core=nullptr){
-                if(dead)
-                    return 0;
-                if((core||!in_core)&&parentList->clothes_editing==core)return 0;
-                if(core==in_core) in_core=nullptr;
+    ClothesList(colorsWidget*in_onEdit_widget,teTagListView*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr)
+        :teTagListControl(in_onEdit_widget,parentlist,parent,styleSheet,"clothes"){
+        this->info=QStringLiteral("ClothesList");
+        sc->setMinimumHeight(110);
+    }
 
-                bool isNewEntry=false;
-                bool ifhascolor=in_core?(!colors.empty()):false;
-                bool isTypeChanged=false;
-                if(in_core&&(!core)){
-                    isNewEntry=true;
-                    core=in_core;
-                    type=*in_core->words.back();
-                }
-                else if((!in_core)&&core){
-                    isNewEntry=true;
-                    colors.clear();
-                    front_adjectives.clear();
-                    adjectives.clear();
-                back_adjectives.clear();
-                    // A tag whose text was emptied has no words left; reading
-                    // back() would be reading past the end (the editors normally
-                    // drop such a tag before this runs, but not always).
-                    const QString lastWord = core->words.isEmpty()
-                                             ? QString{}
-                                             : static_cast<QString>(*core->words.back());
-                    if(!lastWord.isEmpty()&&type!=lastWord){
-                        isTypeChanged=true;
-                        // `type` has to be updated *before* the lookup below, not
-                        // inside it. The wrapper is not always in all_clothes at
-                        // this point: reReadClothes() erases it before it calls
-                        // readCore(), so updating the type inside the find() block
-                        // meant the update was skipped exactly when the user
-                        // changed the garment word - and the *old* word was
-                        // written back. That is why "blue short sleeveless dress"
-                        // came back as itself after being switched to "...swimsuit",
-                        // and why the colour toggle re-created the wrong order.
-                        type = lastWord;
-                        // Re-insert so the wrapper sits at its new place in the
-                        // type-ordered set.
-                        auto it = parentList->all_clothes.find(this);
-                        if(it!=parentList->all_clothes.end()){
-                            parentList->all_clothes.erase(it);
-                            parentList->all_clothes.insert(this);
-                        }
-                    }
-                    in_core=core;
-                    MergeSwitch=false;
-                    if(!parentList->filter(core)){
-                        parentList->unlink(core);
-                        MergeSwitch=true;
-                        return -1;
-                    }
-                    MergeSwitch=true;
-                    // filter() re-enters this class through the tag signals and
-                    // can retire this wrapper.
-                    if(dead)
-                        return 1;
-                }
-                auto [colorpos,colorcount] = is_color(*in_core);
-
-                static auto ifduplicate = [](QVector<teWord*>vec,QString str)->bool{
-                    for(teWord*wc:vec)
-                        if(wc->text==str)
-                            return true;
-                    return false;
-                };
-                // Which part of the tag each word is. This used to be three
-                // chained lookups right here, with the second one (back
-                // adjectives) unreachable because both queried prefix_front - see
-                // clothesRoleAt(), where the rule now lives and is testable. The
-                // per word call keeps this path allocation free.
-                const QPair<int,int> colorSlot(colorpos,colorcount);
-                int wordcountMinusOne = in_core->words.count()-1;
-                for(int i=0;i<wordcountMinusOne;++i){
-                    switch(clothesRoleAt(*in_core,i,type,colorSlot)){
-                    case ClothesRole::Colour:
-                        if(ifhascolor)continue;
-                        if(isNewEntry||!ifduplicate(colors,in_core->words[i]->text)){
-                            colors.push_back(in_core->words[i]);
-                            if(!isNewEntry){
-                                in_core->takeWordAt(i,false);
-                                --i;--wordcountMinusOne;--colorpos;
-                            }
-                        }
-                        break;
-                    case ClothesRole::FrontAdjective:
-                        if(isNewEntry||!ifduplicate(front_adjectives,in_core->words[i]->text)){
-                            front_adjectives.push_back(in_core->words[i]);
-                            if(!isNewEntry){
-                                in_core->takeWordAt(i,false);
-                                --i;--wordcountMinusOne;--colorpos;
-                            }
-                        }
-                        break;
-                    case ClothesRole::Adjective:
-                    case ClothesRole::Type:      // unreachable: i < words.size()-1
-                        if(isNewEntry||!ifduplicate(adjectives,in_core->words[i]->text)){
-                            adjectives.push_back(in_core->words[i]);
-                            if(!isNewEntry){
-                                in_core->takeWordAt(i,false);
-                                --i;--wordcountMinusOne;--colorpos;
-                            }
-                        }
-                        break;
-                    case ClothesRole::BackAdjective:
-                        if(isNewEntry||!ifduplicate(back_adjectives,in_core->words[i]->text)){
-                            back_adjectives.push_back(in_core->words[i]);
-                            if(!isNewEntry){
-                                in_core->takeWordAt(i,false);
-                                --i;--wordcountMinusOne;--colorpos;
-                            }
-                        }
-                        break;
-                    }
-                }
-                // Already in the canonical order - and spelled the same? Then
-                // there is nothing to rewrite and, just as important, nothing to
-                // announce.
-                //
-                // The comparison is by *text*, not by word object: a tag whose
-                // word was renamed keeps the same objects, and calling that "in
-                // order" is what suppresses the edited_with_layout() below - the
-                // announcement every widget based list needs to reload its text
-                // ("underwear" stayed on screen although the tag already said
-                // "panties"). The whole tag is compared, the type word included,
-                // so a changed garment name counts as a difference too.
-                {
-                    QVector<QString> canonical;
-                    canonical.reserve(colors.size()+front_adjectives.size()
-                                      +adjectives.size()+back_adjectives.size()+1);
-                    for(teWord*wc:colors)            canonical.append(wc->text);
-                    for(teWord*wc:front_adjectives)  canonical.append(wc->text);
-                    for(teWord*wc:adjectives)        canonical.append(wc->text);
-                    for(teWord*wc:back_adjectives)   canonical.append(wc->text);
-                    canonical.append(type);
-                    if(canonical.size()==core->words.size()){
-                        bool same=true;
-                        for(int i=0;i<int(canonical.size());++i){
-                            if(!core->words[i]||core->words[i]->text!=canonical[i]){
-                                same=false;
-                                break;
-                            }
-                        }
-                        if(same)
-                            return 0;
-                    }
-                }
-                static auto insertWords = [](std::shared_ptr<teTag>tag,QVector<QVector<teWord*>>wordListList,teTagWidgetBase* tagWidget){
-                        bool hasWidget=tagWidget!=nullptr;
-                        if(hasWidget)
-                            tagWidget->disconnectWord();
-                        tag->words.clear();
-                        int pos=-1;
-                        QHash<QString, bool> seen;
-                        for(QVector<teWord*>& wordList:wordListList)
-                            for(teWord*wc:wordList){
-                                if(seen[*wc]){
-                                    // The dropped duplicate is deleted, so the
-                                    // widget showing it has to let go first:
-                                    // disconnectWord() only removed the
-                                    // *connections*, and a widget that keeps a
-                                    // pointer to a deleted word is what crashed
-                                    // disconnectWord() the next time it ran.
-                                    if(hasWidget)
-                                        tagWidget->forgetWord(wc);
-                                    delete wc;
-                                    continue;
-                                }
-                                seen[*wc]=true;
-                                if(hasWidget)
-                                    tagWidget->insertWord(++pos,wc,true,false);
-                                else
-                                    tag->words.append(wc);
-                            }
-                    };
-                teWord*typeWord;
-                // The word that will stand for the garment. When the core's last
-                // word does not spell `type` - a rename merge() asked for, or a
-                // type change - the old word is *replaced* instead of written
-                // into, so the rebuild below really happens and announces the
-                // change through edited_with_layout(): that is what makes the
-                // widget based lists (the editor's own tag list) show the new
-                // text instead of the old one.
-                if(isTypeChanged||core->words.isEmpty()||core->words.back()->text!=type){
-                    typeWord=new teWord{type};
-                    if(!core->words.isEmpty())
-                        delete core->words.back();
-                }else{
-                    typeWord=core->words.back();
-                }
-                insertWords(core,{colors,front_adjectives,adjectives,back_adjectives,{typeWord}},parentList?parentList->tagWidgetFor(core):nullptr);
-                parentList->clothes_editing = in_core;
-                core->edited_with_layout();
-                // The signal above may have retired this wrapper (and thus freed
-                // nothing yet, but every member is off limits from then on).
-                if(dead)
-                    return 1;
-                parentList->clothes_editing = nullptr;
-                if(in_core&&in_core!=core){
-                    parentList->clothes_editing = in_core;
-                    in_core->retired=true;
-                    in_core->edited_with_layout();
-                    if(!dead)
-                        parentList->clothes_editing=nullptr;
-                }
-                return 1;
-            }
-            void clear(){
-                colors.clear();
-                front_adjectives.clear();
-                adjectives.clear();
-                back_adjectives.clear();
-                exclusiveModifiers.clear();
-                type=nullptr;
-                core=nullptr;
-            }
-            QString text(){
-                return clothesText(colors,front_adjectives,adjectives,back_adjectives,type);
-            }
-            QStringList allAdjectives(){
-                return clothesAdjectives(front_adjectives,adjectives,back_adjectives);
-            }
-
-            bool merge(std::shared_ptr<teTag>in_core){
-                if(dead)
-                    return false;
-                if(in_core==core)
-                    return false;
-                // A tag that describes a state ("no shoes", "unworn panties",
-                // "open jacket", "top without sleeves") neither absorbs another
-                // clothes tag nor is absorbed by one - in either direction.
-                if(clothesHasStateModifier(*in_core))
-                    return false;
-                if(core&&clothesHasStateModifier(*core))
-                    return false;
-                if(!clothesMergeable(type,colors,*in_core))
-                    return false;
-                // The generic word is the one being absorbed, so the specific
-                // spelling of the incoming tag replaces it: with "underwear" in
-                // the list and "panties" typed, the result says "panties".
-                const QString incoming = in_core->words.isEmpty()?QString{}:in_core->words.back()->text;
-                if(!incoming.isEmpty()&&isGenericClothesType(type)&&!isGenericClothesType(incoming)){
-                    // Only the wrapper's type changes here; readCore() below
-                    // replaces the tag's type word with a *new* word of this
-                    // spelling. Writing into the old word (which is what this
-                    // did) changed the tag text without announcing anything, so
-                    // every widget based list kept showing the old word - the
-                    // editor's own tag list went on saying "underwear" while the
-                    // tag itself already said "panties".
-                    type = incoming;
-                }
-                readCore(in_core);
-                return true;
-            }
-            bool sameType(std::shared_ptr<teTag>core){
-                if(type.isEmpty()||core->words.empty())
-                    return false;
-                // Synonyms ("underwear" / "panties") and the generic words
-                // ("footwear" / "boots") count as the same garment, so picking one
-                // merges the other instead of leaving both.
-                return sameClothesType(core->words.back()->text,type);
-            }
-        };
-
-        std::multiset<teClothes*,std::function<bool(teClothes*, teClothes*)>>all_clothes{[](teClothes *a, teClothes *b)->bool{
-            if(a->type==nullptr)return true;
-            else if(b->type==nullptr)return false;
-            else
-                return a->type<b->type;
-        }};
-        /// Wrappers waiting to be deleted (see teClothes::dead).
-        QVector<teClothes*> retired_clothes;
-        bool purgeScheduled=false;
-        /**
-         * @brief Takes a wrapper out of all_clothes and deletes it later.
-         *
-         * Never delete a teClothes while anything may still be running inside it:
-         * both reReadClothes() and readCore() are re-entered through the tag's
-         * signals, and they used to delete the wrapper they were called from.
-         */
-        void retire(teClothes*wrapper){
-            if(!wrapper||wrapper->dead)
-                return;
-            wrapper->dead=true;
-            wrapper->core.reset();
-            all_clothes.erase(wrapper);
-            retired_clothes.append(wrapper);
-            purgeRetired();
-        }
-        void purgeRetired(){
-            if(purgeScheduled||retired_clothes.isEmpty())
-                return;
-            purgeScheduled=true;
-            // Deferred to the event loop: everything that is still on the stack
-            // only looks at the dead flag, which is already set.
-            QTimer::singleShot(0,this,[this]{
-                purgeScheduled=false;
-                for(teClothes*wrapper:retired_clothes)
-                    delete wrapper;
-                retired_clothes.clear();
-            });
-        }
-        void purgeRetiredNow(){
-            purgeScheduled=false;
-            for(teClothes*wrapper:retired_clothes)
-                delete wrapper;
-            retired_clothes.clear();
-        }
-        teClothes* findClothes(std::shared_ptr<teTag>tag){
-            for(teClothes*clz:all_clothes){
-                if(clz->core==tag){
-                    return clz;
-                }
-            }
-            telog("[reReadClothes]:didn't find clothes object for input tag");
-            return nullptr;
-        }
-        ClothesList(colorsWidget*in_onEdit_widget,teTagListView*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr)
-            :teTagListControl(in_onEdit_widget,parentlist,parent,styleSheet,"clothes"){
-            this->info=QStringLiteral("ClothesList");
-            sc->setMinimumHeight(110);
-        }
-        ~ClothesList(){
-            // The deferred purge is bound to this widget, so it will not run any
-            // more: delete what it was still holding.
-            purgeRetiredNow();
-        }
-        bool filter(std::shared_ptr<teTag>in_tag)override{
-            if(in_tag==clothes_editing)return true;
-            if(in_tag->words.empty())return false;
-            // "reaching through panties" and friends are actions, not garments.
-            if(looksLikeActionPhrase(*in_tag))
-                return false;
-            if(allClothesTypes.contains(*in_tag->words.back())){
-                if(autoMerge&&MergeSwitch){
-                    if(!all_clothes.empty()){
-                        // Every wrapper is a candidate: the type words that mean
-                        // the same garment ("panties"/"underwear") are *not*
-                        // adjacent in the type-ordered set, so looking them up
-                        // with lower_bound()/upper_bound() never found them -
-                        // which is why the merge was not automatic.
-                        // Snapshot first: readCore()/merge() re-enter this class
-                        // through the tag signals and can retire wrappers.
-                        const QVector<teClothes*> candidates(all_clothes.begin(),all_clothes.end());
-                        for(teClothes*clothes:candidates){
-                            if(clothes->dead||!all_clothes.count(clothes))
-                                continue;
-                            if(in_tag==clothes->core){
-                                clothes->readCore();
-                                return false;
-                            }
-                        }
-                        for(teClothes*clothes:candidates){
-                            if(clothes->dead||!all_clothes.count(clothes))
-                                continue;
-                            if(clothes->merge(in_tag)){
-                                in_tag->retired=true;
-                                return false;
-                            }
-                        }
-                    }
-                    auto newClothse = new teClothes(in_tag,this,taglistwidget);
-                    all_clothes.insert(newClothse);
-                }
-                return true;
-            }
+    /**
+     * @brief Is this tag a garment? Pure.
+     *
+     * It changes nothing: the merge, the insertion and the retirement that used
+     * to happen in here are absorb() now, called from the two places that really
+     * want them (read() and onTagEdited()). That is what makes the answer to
+     * "is this mine?" worth something.
+     */
+    bool filter(std::shared_ptr<teTag> in_tag) const override{
+        if(!in_tag||in_tag->words.empty())
             return false;
-        }
+        if(in_tag==clothes_editing)
+            return true;                        // our own rewrite, still ours
+        // "reaching through panties" and friends are actions, not garments.
+        if(looksLikeActionPhrase(*in_tag))
+            return false;
+        return allClothesTypes.contains(*in_tag->words.back());
+    }
 
-        void resetPolicy()override{
-            for(teClothes*clothes:all_clothes)
-                clothes->dead=true;         // no callback may touch them any more
-            purgeRetiredNow();
-            all_clothes.clear();
-        };
-        void link(std::shared_ptr<teTag>in_tag)override{
-            linked_tags.insert(in_tag);
-            in_tag->teConnect(teCallbackType::destroy,this,&EditorControl::unlink,in_tag);
-            teTagWidgetBase*widget =taginsert(-1,in_tag,taglistwidget->showing_list);
-            extraWidgetPushBack(in_tag,widget);
+    TagHandling read(std::shared_ptr<teTag> tag)override{
+        if(!tag)
+            return TagHandling::NotMine;
+        const bool mine = filter(tag);
+        if(tag->retired){
+            if(taglistwidget)
+                taglistwidget->retire(tag);
+            return TagHandling::Consumed;
         }
-        void connectTag(teTagWidgetBase*tag)override{
-            teTagListWidgetBase::connectTag(tag);
+        if(!mine)
+            return TagHandling::NotMine;
+        if(absorb(tag)){
+            if(taglistwidget)
+                taglistwidget->retire(tag);
+            return TagHandling::Consumed;
         }
-        void unlink(std::shared_ptr<teTag>in_tag)override{
-            // teDisconnect(in_tag.get());
-            for(teClothes*clothes:QVector<teClothes*>(all_clothes.begin(),all_clothes.end()))
-                if(clothes->core==in_tag){
-                    retire(clothes);
-                    break;
-                }
-            tagErase(in_tag);
-            linked_tags.erase(in_tag);
+        if(taglistwidget)
+            taglistwidget->ensureWidgetFor(tag);
+        link(tag);
+        if(tag->retired){
+            if(taglistwidget)
+                taglistwidget->retire(tag);
+            return TagHandling::Consumed;
         }
-        void extraWidgetPushBack(std::shared_ptr<teTag>in_tag,teTagWidgetBase*widget){
-            if(*in_tag->words.back()==qsl("bow")){
-                int wordcount = in_tag->words.size();
-                QPushButton*hairbow_btn = new QPushButton("hair",widget);
-                hairbow_btn->setStyleSheet(qsl(R"(font:8pt "Sonsolas")"));
-                hairbow_btn->setCheckable(true);
-                hairbow_btn->setFixedHeight(15);
-                hairbow_btn->setContentsMargins(2,1,2,1);
-                for(int i =0;i<wordcount;++i)
-                    if(*in_tag->words[i]==qsl("hair"))
-                        hairbow_btn->setChecked(true);
-                connect(hairbow_btn,&QPushButton::clicked,widget,[in_tag,this](bool ifchecked){
-                    auto* editorTag=tagWidgetFor(in_tag);
-                    if(ifchecked){
-                        // Never a second "hair": clicking again must not add another
-                        // word (it used to, so "hair" piled up).
-                        if(in_tag->contains(qsl("hair")))
-                            return;
+        return TagHandling::Linked;
+    }
+
+    /**
+     * @brief The tag was edited: absorb it, or bring it back into shape.
+     *
+     * This replaces the wrapper's reReadClothes(), which had to find its own
+     * wrapper by pointer first and to live with being deleted from inside the
+     * signal it was called from.
+     */
+    void onTagEdited(std::shared_ptr<teTag> tag){
+        if(!tag||tag->retired)
+            return;
+        if(tag==clothes_editing)
+            return;                             // our own rewrite
+        if(!linked_tags.count(tag))
+            return;                             // not one of ours (any more)
+        if(!filter(tag)){
+            unlink(tag);
+            return;
+        }
+        if(absorb(tag)){
+            if(taglistwidget)
+                taglistwidget->retire(tag);
+            return;
+        }
+        applyWords(tag);
+    }
+
+    /**
+     * @brief Merges `incoming` into the first linked tag that accepts it.
+     *
+     * Returns true when it did, and the caller then retires `incoming` (marked by
+     * this call). The absorbing tag is rewritten through applyWords(), so the
+     * result is announced like any other edit.
+     */
+    bool absorb(std::shared_ptr<teTag> incoming){
+        if(!incoming||incoming->words.isEmpty())
+            return false;
+        if(!autoMerge||!MergeSwitch)
+            return false;
+        if(!allClothesTypes.contains(incoming->words.back()->text))
+            return false;
+        // A tag that describes a state ("no shoes", "unworn panties") neither
+        // absorbs another clothes tag nor is absorbed by one - in either
+        // direction.
+        if(clothesHasStateModifier(*incoming))
+            return false;
+        for(const std::shared_ptr<teTag>& target : clothes_order){
+            if(!target||target==incoming||target->retired)
+                continue;
+            if(!linked_tags.count(target))
+                continue;
+            if(clothesHasStateModifier(*target))
+                continue;
+            const ClothesParts parts = clothesParse(*target);
+            if(parts.type.isEmpty())
+                continue;
+            if(!clothesMergeable(parts,*incoming))
+                continue;
+            const QStringList words = clothesMergedWords(parts,*incoming);
+            incoming->retired = true;
+            writeWords(target,words);
+            return true;
+        }
+        return false;
+    }
+
+    /// Puts one tag's words into canonical order (no merge, no widget churn when
+    /// the tag already is canonical).
+    void applyWords(std::shared_ptr<teTag> tag){
+        writeWords(tag,clothesCanonicalWords(clothesParse(*tag)));
+    }
+
+    /**
+     * @brief Writes `words` into `tag` and announces it.
+     *
+     * Nothing is written when the tag already spells them: an announcement that
+     * changes nothing is not harmless here - it makes every list reload, and it
+     * is what would turn "already in order" into an endless loop of re-reads.
+     */
+    void writeWords(std::shared_ptr<teTag> tag,const QStringList& words){
+        if(!tag||tag->words.isEmpty())
+            return;
+        QStringList current;
+        current.reserve(tag->words.size());
+        for(const teWord* word : tag->words)
+            current.append(word->text);
+        if(current==words)
+            return;
+        // Another control reading this tag must not start merging while the words
+        // are being replaced (the wrapper suppressed it the same way).
+        const bool previousSwitch = MergeSwitch;
+        MergeSwitch = false;
+        const std::shared_ptr<teTag> previousEditing = clothes_editing;
+        clothes_editing = tag;
+        clothesApplyWords(tag,words,tagWidgetFor(tag));
+        clothes_editing = previousEditing;
+        MergeSwitch = previousSwitch;
+    }
+
+    void link(std::shared_ptr<teTag> in_tag)override{
+        linked_tags.insert(in_tag);
+        clothes_order.append(in_tag);
+        in_tag->teConnect(teCallbackType::destroy,this,&EditorControl::unlink,in_tag);
+        // Canonical order first, before the widget exists: that is the order the
+        // old wrapper read the tag in, so the widget is built from the final words
+        // instead of being rewritten right after it was created.
+        applyWords(in_tag);
+        in_tag->teConnect(teCallbackType::edit,qsl("ClothesList::link"),this,&ClothesList::onTagEdited,in_tag);
+        in_tag->teConnect(teCallbackType::edit_with_layout,this,&ClothesList::onTagEdited,in_tag);
+        teTagWidgetBase*widget =taginsert(-1,in_tag,taglistwidget->showing_list);
+        extraWidgetPushBack(in_tag,widget);
+    }
+
+    void unlink(std::shared_ptr<teTag> in_tag)override{
+        teDisconnect(in_tag.get());
+        clothes_order.removeAll(in_tag);
+        linked_tags.erase(in_tag);
+        tagErase(in_tag);
+    }
+
+    void resetPolicy()override{
+        clothes_order.clear();
+        clothes_editing.reset();
+    }
+
+    void extraWidgetPushBack(std::shared_ptr<teTag>in_tag,teTagWidgetBase*widget){
+        if(in_tag->words.empty()||*in_tag->words.back()!=qsl("bow"))
+            return;
+        int wordcount = in_tag->words.size();
+        QPushButton*hairbow_btn = new QPushButton("hair",widget);
+        hairbow_btn->setStyleSheet(qsl(R"(font:8pt "Sonsolas")"));
+        hairbow_btn->setCheckable(true);
+        hairbow_btn->setFixedHeight(15);
+        hairbow_btn->setContentsMargins(2,1,2,1);
+        for(int i =0;i<wordcount;++i)
+            if(*in_tag->words[i]==qsl("hair"))
+                hairbow_btn->setChecked(true);
+        connect(hairbow_btn,&QPushButton::clicked,widget,[in_tag,this](bool ifchecked){
+            auto* editorTag=tagWidgetFor(in_tag);
+            if(ifchecked){
+                // Never a second "hair": clicking again must not add another
+                // word (it used to, so "hair" piled up).
+                if(in_tag->contains(qsl("hair")))
+                    return;
+                if(editorTag)
+                    editorTag->insertWord(-2,qsl("hair"));
+            }else{
+                // Every "hair" is removed *without* signalling in between.
+                // Each destroyWord() re-enters this control through
+                // edited_with_layout() -> onTagEdited() -> applyWords(), which
+                // rewrites the tag's words - so the old loop walked a vector that
+                // had already been rewritten, and the word either survived or came
+                // back. One announcement at the end is enough.
+                bool removed=false;
+                for(int i=in_tag->words.size()-1;i>=0;--i)
+                    if(*in_tag->words[i]==qsl("hair")){
                         if(editorTag)
-                            editorTag->insertWord(-2,qsl("hair"));
-                    }else{
-                        // Every "hair" is removed *without* signalling in between.
-                        // Each destroyWord() re-enters this control through
-                        // edited_with_layout() -> reReadClothes() -> readCore(),
-                        // which rebuilds the tag's words - so the old loop walked a
-                        // vector that readCore() had already rewritten, and the word
-                        // either survived or came back. One announcement at the end
-                        // is enough, and it is what the control reacts to.
-                        bool removed=false;
-                        for(int i=in_tag->words.size()-1;i>=0;--i)
-                            if(*in_tag->words[i]==qsl("hair")){
-                                if(editorTag)
-                                    editorTag->destroyWord(i,false);
-                                else{
-                                    delete in_tag->words[i];
-                                    in_tag->words.erase(in_tag->words.begin()+i);
-                                }
-                                removed=true;
-                            }
-                        if(removed)
-                            in_tag->edited_with_layout();
+                            editorTag->destroyWord(i,false);
+                        else{
+                            delete in_tag->words[i];
+                            in_tag->words.erase(in_tag->words.begin()+i);
+                        }
+                        removed=true;
                     }
-                },Qt::DirectConnection);
-                widget->insertExtraWidgets(this,hairbow_btn);
+                if(removed)
+                    in_tag->edited_with_layout();
             }
-        }
-        void refreshState()override{
-
-        }
-
+        },Qt::DirectConnection);
+        widget->insertExtraWidgets(this,hairbow_btn);
+    }
 };

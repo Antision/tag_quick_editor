@@ -86,18 +86,42 @@ private:
     std::atomic<bool> onDestroyCalled{false};
 };
 
+class obj_callback_function_base;
+
+/// See teLiveCallbackObjects() below; defined in teobject.cpp.
+void teCountLiveCallbackObject(int delta, const char* receiverType, int type);
+
 class obj_callback_function_base {
 public:
     int type;
     QString info;
+    /// `typeid` of the receiver, for the leak diagnostics (see teLiveCallbackBreakdown).
+    const char* receiverType = "?";
     /// Set to false by teDisconnect(); a dispatch in flight checks it so a
     /// callback disconnected during the same emit is not invoked.
     std::atomic<bool> connected{true};
 
     explicit obj_callback_function_base(int in_type) : type(in_type) {}
     virtual void operator()() = 0;
-    virtual ~obj_callback_function_base() = default;
+    virtual ~obj_callback_function_base();
 };
+
+/**
+ * @brief Number of connection objects currently alive.
+ *
+ * A connection object is shared by the sender's and the receiver's map, so this
+ * is exactly "how many teConnect() calls are still in effect". Every editor link
+ * makes three of them (destroy / edit / edit_with_layout), which makes this the
+ * cheapest possible sentinel for the one thing a per-image leak would hit first:
+ * the connection bookkeeping that runs on every picture switch.
+ */
+long teLiveCallbackObjects();
+/// The same number, split by (receiver class, callback type). Used to attribute a
+/// connection leak to the class that forgot to unlink.
+std::map<std::string,long> teLiveCallbackBreakdown();
+/// Turns the per-class bookkeeping on or off (off by default: it costs a map
+/// lookup per connection). Clearing on enable keeps the numbers comparable.
+void teSetCallbackBreakdownEnabled(bool enabled);
 
 template <typename T, typename RET, typename... Args>
 class obj_callback_function : public obj_callback_function_base {
@@ -107,7 +131,10 @@ public:
     std::tuple<Args...> params;
 
     obj_callback_function(int type, T* reciver, RET (T::*in_func_ptr)(Args...), Args... args)
-        : obj_callback_function_base(type), obj_ptr(reciver), func_ptr(in_func_ptr), params(std::make_tuple(args...)) {}
+        : obj_callback_function_base(type), obj_ptr(reciver), func_ptr(in_func_ptr), params(std::make_tuple(args...)) {
+        receiverType = typeid(T).name();
+        teCountLiveCallbackObject(1, receiverType, type);
+    }
 
     template <std::size_t... Indexes>
     RET call_impl(std::index_sequence<Indexes...>) {

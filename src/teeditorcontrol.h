@@ -21,10 +21,10 @@ public:
     /// "Is this my tag?" - deliberately still a plain question, not a TagHandling:
     /// it changes nothing and only the control itself decides what to do with the
     /// answer (that is read()).
-    virtual bool filter(std::shared_ptr<teTag>tag)=0;
+    virtual bool filter(std::shared_ptr<teTag> tag) const =0;
     /// Calls filter() from outside. Only the regression check uses it, to
     /// attribute the cost of reading a tag list to the control causing it.
-    bool filterForTiming(std::shared_ptr<teTag> tag){ return filter(tag); }
+    bool filterForTiming(std::shared_ptr<teTag> tag) const { return filter(tag); }
     /// Same for refreshState().
     void refreshStateForTiming(){ refreshState(); }
     /// Re-checks a tag this control already linked (it was edited).
@@ -67,6 +67,95 @@ public:
     virtual ~EditorControl(){};
 };
 
+/**
+ * @brief The "which buttons may be on together" rules of a button group, as data.
+ *
+ * Every group used to encode the same three ideas in its own if-chain over
+ * button indices: "only one of these may be on", "this one implies that one",
+ * and "that one is meaningless on its own". Written down instead of coded, the
+ * rules can be read as a whole and applied by one function (applyButtonRules),
+ * which is also what makes them checkable without clicking anything.
+ *
+ * A group fills `rules` in its constructor and needs no reform() at all; the two
+ * groups whose rules are order dependent (ponytail, hair length) keep their own
+ * pure functions and are pinned by the regression harness.
+ */
+struct ButtonRuleSet {
+    /// At most one member of each group may be on. The one that was clicked wins.
+    QVector<QVector<int>> exclusive;
+    /// One button implies another.
+    struct Implication {
+        int first;
+        int second;
+        /// Buttons that cancel the implication when one of them is on: "very long
+        /// hair" implies "long hair" only when the hair is not short.
+        QVector<int> unless;
+    };
+    QVector<Implication> implies;
+    /// A button that is meaningless while none of `others` is on.
+    struct Requirement {
+        int button;
+        QVector<int> others;
+    };
+    QVector<Requirement> needsOneOf;
+};
+
+/**
+ * @brief The button states after `clicked` was toggled, with `rules` applied.
+ *
+ * Pure: `checkedIn` is the state Qt delivered (the clicked button already has its
+ * new state) and the result is what the buttons have to be set to. The order is
+ * what a user expects from a click: the button just turned off takes the ones
+ * that imply it with it, the exclusivity of the button just turned on wins, and
+ * only then are implications followed - so a rule can never re-check a button the
+ * user just unchecked.
+ */
+inline QVector<bool> applyButtonRules(int clicked,const QVector<bool>& checkedIn,
+                                      const ButtonRuleSet& rules)
+{
+    QVector<bool> checked = checkedIn;
+    auto on=[&](int i){ return i>=0&&i<checked.size()&&checked[i]; };
+    auto set=[&](int i,bool state){ if(i>=0&&i<checked.size()) checked[i]=state; };
+
+    // 1. The clicked button was turned off: nothing that implies it may stay on.
+    if(!on(clicked))
+        for(const ButtonRuleSet::Implication& rule:rules.implies)
+            if(rule.second==clicked)
+                set(rule.first,false);
+
+    // 2. Exclusivity: the clicked button wins its groups.
+    if(on(clicked))
+        for(const QVector<int>& group:rules.exclusive)
+            if(group.contains(clicked))
+                for(int other:group)
+                    if(other!=clicked)
+                        set(other,false);
+
+    // 3. What the clicked button implies.
+    if(on(clicked))
+        for(const ButtonRuleSet::Implication& rule:rules.implies){
+            if(rule.first!=clicked)
+                continue;
+            bool blocked=false;
+            for(int unless:rule.unless)
+                blocked = blocked||on(unless);
+            if(!blocked)
+                set(rule.second,true);
+        }
+
+    // 4. A button that needs company.
+    for(const ButtonRuleSet::Requirement& rule:rules.needsOneOf){
+        if(!on(rule.button))
+            continue;
+        bool has=false;
+        for(int other:rule.others)
+            has = has||on(other);
+        if(!has)
+            set(rule.button,false);
+    }
+    return checked;
+}
+
 class teTagButtonGroup:public QWidget,public EditorControl{
     Q_OBJECT
 public:
@@ -92,22 +181,27 @@ public:
     virtual void reset()override;
     virtual void onClicked(int id);
     virtual void clear()override;
-    virtual bool filter(std::shared_ptr<teTag>tag)override;
+    virtual bool filter(std::shared_ptr<teTag> tag) const override;
     virtual void refreshState()override;
-    virtual void reform(int id){};
+    /// The group's rules; a subclass fills this in and gets reform() for free.
+    ButtonRuleSet rules;
     /**
-     * @brief Unchecks every button in `others` except `keep`.
+     * @brief Sets the buttons to the states the group's rules ask for.
      *
-     * "Only one of these may be on" was hand written in several button groups
-     * (mouth, ears, breast): the same loop over their indices, each time with a
-     * different set. Using a QButtonGroup for it is not possible because these
-     * groups must allow *no* selection as well, which an exclusive group forbids.
+     * This is the whole of "reforming" a group: read the states, apply the rules,
+     * write back the ones that differ. Groups whose rules are order dependent
+     * (ponytail, hair length) override reform() with their own pure function.
      */
-    void uncheckOthers(int keep,std::initializer_list<int> others){
-        for(int i:others)
-            if(i!=keep&&i>=0&&i<buttons.size())
-                buttons[i]->setChecked(false);
+    void applyRules(int id){
+        QVector<bool> checked(buttons.size());
+        for(int i=0;i<buttons.size();++i)
+            checked[i]=buttons[i]->isChecked();
+        const QVector<bool> after = applyButtonRules(id,checked,rules);
+        for(int i=0;i<buttons.size();++i)
+            if(buttons[i]->isChecked()!=after[i])
+                buttons[i]->setChecked(after[i]);
     }
+    virtual void reform(int id){ applyRules(id); }
     std::unordered_set<QString> defaultFiltStrings;
     virtual void getDefaultFiltStrings();
 };
@@ -123,7 +217,7 @@ public:
     virtual void clearString();
     virtual void select();
     virtual void unselect();
-    virtual bool filter(std::shared_ptr<teTag>tag)override;
+    virtual bool filter(std::shared_ptr<teTag> tag) const override;
     virtual void onStateChanged(bool state);
     virtual void refreshState()override;
 };
@@ -153,7 +247,7 @@ public:
     int excute=1;
     QString default_text="...";
     teTagComboBox(QList<QPair<QString,QStringList>>&& string_datas,QString&&default_text, QWidget *parent = nullptr,QString*styleSheet=nullptr);
-    virtual bool filter(std::shared_ptr<teTag>tag)override;
+    virtual bool filter(std::shared_ptr<teTag> tag) const override;
     virtual void clear()override;
     virtual void reset()override;
     virtual void onIndexChanged(int index);
@@ -214,7 +308,7 @@ public:
     /// Optional extra test, used together with `vocabulary`.
     std::function<bool(const teTag&)> accept;
     /// teEditorControl: the shared word-list filter (override for real patterns).
-    bool filter(std::shared_ptr<teTag> tag) override;
+    bool filter(std::shared_ptr<teTag> tag) const override;
     colorsWidget*onEdit_widget;
     QHBoxLayout* buttonLayout= new QHBoxLayout();
     teTagListControl(colorsWidget*in_onEdit_widget,teTagListView*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr,QString title = QString{});
