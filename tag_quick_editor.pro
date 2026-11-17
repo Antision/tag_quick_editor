@@ -96,8 +96,7 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 
 RESOURCES += \
     LICENSES/licenses.qrc \
-    src/res.qrc \
-    res/adult-check/websiteIcon.qrc
+    src/res.qrc
 
 DISTFILES +=
 
