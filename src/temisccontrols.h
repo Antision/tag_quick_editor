@@ -125,41 +125,45 @@
         }
     };
 
+    /**
+     * @brief "multiple people": one box that stands for `multiple girls` and is
+     *        informed by the counted spellings (`2girls`, `5boys`).
+     */
     struct multipeople_CheckBox : public teTagCheckBoxPlus {
-                                                    multipeople_CheckBox(QString key_string1, QWidget* parent = nullptr, QString* stylesheet = nullptr) :
-                                                        teTagCheckBoxPlus({ key_string1 }, parent, stylesheet) {
-                                                        }
-                                                    bool filter(std::shared_ptr<teTag> tag) const override {
-                                                                                          static QRegularExpression reg(QStringLiteral(R"(^multiple\s?(girl(s)?|boy(s)?|other(s)?)$)"));
-    if (reg.match(*tag).hasMatch()) {
-        return true;
-    }else
-        return false;
-}
-bool filter2(std::shared_ptr<teTag> tag)override {
-    static QRegularExpression reg(QStringLiteral(R"(^(2|[3-9]|\d{2,}|\d+\+)(girls|boys|others)$)"));
-    if (reg.match(*tag).hasMatch()) {
-        return true;
-    }
-    else
-        return false;
-}
-void onStateChanged(bool state)override {
-    if (excute>0) {
-        if(!state){
-            while(linked_tags.size()>0){
-                taglistwidget->tagErase(*linked_tags.begin());
-            }
-            linked_tags.clear();
-        }else{
-            for (std::shared_ptr<teTag> tag : second_tags) {
-                static QRegularExpression reg(QStringLiteral(R"(^\d+\+?([a-zA-Z]+)$)"));
-                taglistwidget->tagInsertAbove(false, std::make_shared<teTag>(QString(QStringLiteral("multiple ") + reg.match(*tag).captured(1))),1);
-            }
+        multipeople_CheckBox(QString key_string1,QWidget* parent=nullptr,QString* stylesheet=nullptr)
+            :teTagCheckBoxPlus({key_string1},parent,stylesheet){}
+
+        /// "multiple girls" / "multiple boy" / "multiple others", spaced or not.
+        bool filter(std::shared_ptr<teTag> tag) const override {
+            static const QRegularExpression reg(QStringLiteral(R"(^multiple\s?(girl(s)?|boy(s)?|other(s)?)$)"));
+            return reg.match(*tag).hasMatch();
         }
-    }
-}
-};
+        /// "2girls", "5boys", "10+others" - what the count is written as.
+        bool filter2(std::shared_ptr<teTag> tag) const override {
+            static const QRegularExpression reg(QStringLiteral(R"(^(2|[3-9]|\d{2,}|\d+\+)(girls|boys|others)$)"));
+            return reg.match(*tag).hasMatch();
+        }
+
+        void onStateChanged(bool state)override {
+            if(excute>0){
+                if(!state)
+                    eraseOwnedTags();           // unticking removes what ticking wrote
+                else{
+                    // One "multiple <nouns>" per counted tag: "2girls" becomes
+                    // "multiple girls". The count itself is not written - the
+                    // counted tag stays in the list and still says how many.
+                    static const QRegularExpression reg(QStringLiteral(R"(^\d+\+?([a-zA-Z]+)$)"));
+                    for(const std::shared_ptr<teTag>& tag : counted_tags)
+                        taglistwidget->tagInsertAbove(false,
+                            std::make_shared<teTag>(QStringLiteral("multiple ")+reg.match(*tag).captured(1)),1);
+                }
+            }
+            // The group above shows what this box stands for and listens to this
+            // signal; without it the label kept saying "(nobody)" until something
+            // else happened to refresh it.
+            edited();
+        }
+    };
 
     struct Object_list : public teTagListControl{
         std::shared_ptr<teTag>editcore=nullptr;

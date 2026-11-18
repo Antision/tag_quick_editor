@@ -45,8 +45,14 @@ void EditorControl::link(std::shared_ptr<teTag>in_tag){
 }
 
 void EditorControl::unlink(std::shared_ptr<teTag>in_tag){
+    dropClaim(in_tag,linked_tags);
+}
+
+void EditorControl::dropClaim(std::shared_ptr<teTag>in_tag,std::set<std::shared_ptr<teTag>>&tags){
+    if(!in_tag)
+        return;
     in_tag->teDisconnect(this);
-    linked_tags.erase(in_tag);
+    tags.erase(in_tag);
     if(ifrefreshState)
         refreshState();
 }
@@ -71,10 +77,18 @@ void EditorControl::edited(){
     teemit(teCallbackType::edit,false);
 }
 
+void EditorControl::dropAll(std::set<std::shared_ptr<teTag>>&tags,teObject*owner){
+    // One at a time, with the tag held alive by a local shared_ptr: a disconnect
+    // must not run on a tag whose last reference the erase just dropped.
+    while(!tags.empty()){
+        std::shared_ptr<teTag> tag = *tags.begin();
+        tags.erase(tags.begin());
+        tag->teDisconnect(owner);
+    }
+}
+
 void EditorControl::clearLinks(){
-    for(std::shared_ptr<teTag>tag:linked_tags)
-        tag->teDisconnect(this);
-    linked_tags.clear();
+    dropAll(linked_tags,this);
 }
 teTagComboBox::teTagComboBox(QList<QPair<QString,QStringList>>&& string_datas,QString&&in_default_text, QWidget *parent, QString *styleSheet)
     :QComboBox(parent),default_text(std::move(in_default_text)){
@@ -440,13 +454,25 @@ bool teTagCheckBox::filter(std::shared_ptr<teTag>tag) const{
     }return false;
 }
 
+void teTagCheckBox::eraseOwnedTags(){
+    if(!taglistwidget||!taglistwidget->showing_list)
+        return;
+    // A copy: erasing a tag destroys it, and its destroy callback removes it from
+    // linked_tags - looping over the live set would mutate what it walks.
+    const std::set<std::shared_ptr<teTag>> owned = linked_tags;
+    for(const std::shared_ptr<teTag>& tag : owned)
+        if(taglistwidget->showing_list->find(tag)>=0)
+            taglistwidget->tagErase(tag);
+    // Anything left was never shown in the list, so no erase will announce it.
+    if(!linked_tags.empty())
+        clearLinks();
+}
+
 void teTagCheckBox::onStateChanged(bool state){
     if(!taglistwidget->showing_list)return;
     if(excute>0){
         if(!state){
-            while(linked_tags.size()>0){
-                taglistwidget->tagErase((*linked_tags.begin()));
-            }
+            eraseOwnedTags();
         }
         else{
             for(QString&string:strings){
@@ -466,63 +492,63 @@ void teTagCheckBox::refreshState(){
     }
 }
 
-void teTagCheckBoxPlus::link2(std::shared_ptr<teTag>in_tag){
-    in_tag->teConnect(teCallbackType::destroy,this,&teTagCheckBoxPlus::unlink2,in_tag);
-    in_tag->teConnect(teCallbackType::edit,qsl("teTagCheckBoxPlus::link2"),this,&teTagCheckBoxPlus::re_readGroup,in_tag,2);
-    in_tag->teConnect(teCallbackType::edit_with_layout,this,&teTagCheckBoxPlus::re_readGroup,in_tag,2);
-    second_tags.insert(in_tag);
+void teTagCheckBoxPlus::linkCounted(std::shared_ptr<teTag>in_tag){
+    in_tag->teConnect(teCallbackType::destroy,this,&teTagCheckBoxPlus::unlinkCounted,in_tag);
+    in_tag->teConnect(teCallbackType::edit,qsl("teTagCheckBoxPlus::linkCounted"),this,&teTagCheckBoxPlus::re_readCounted,in_tag);
+    in_tag->teConnect(teCallbackType::edit_with_layout,this,&teTagCheckBoxPlus::re_readCounted,in_tag);
+    counted_tags.insert(in_tag);
 }
 
-void teTagCheckBoxPlus::unlink2(std::shared_ptr<teTag>tag){
-    tag->teDisconnect(this);
-    second_tags.erase(tag);
-    refreshState();
+void teTagCheckBoxPlus::unlinkCounted(std::shared_ptr<teTag>tag){
+    dropClaim(tag,counted_tags);
 }
 
 TagHandling teTagCheckBoxPlus::read(std::shared_ptr<teTag>tag){
-    bool linked_here=false;
+    if(!tag)
+        return TagHandling::NotMine;
+
+    bool claimed = false;
     if(filter(tag)){
         if(taglistwidget)
             taglistwidget->ensureWidgetFor(tag);
         link(tag);
-        linked_here=true;
+        claimed = true;
     }else if(filter2(tag)){
         if(taglistwidget)
             taglistwidget->ensureWidgetFor(tag);
-        link2(tag);
-        linked_here=true;
-        if(isChecked()){
+        linkCounted(tag);
+        claimed = true;
+        // A counted tag only matters while the box is ticked: it is the list of
+        // "how many there are", which is what ticking the box writes out.
+        if(isChecked())
             onStateChanged(true);
-        }
     }
     if(tag->retired){
         if(taglistwidget)
             taglistwidget->retire(tag);
         return TagHandling::Consumed;
     }
-    return linked_here?TagHandling::Linked:TagHandling::NotMine;
+    return claimed?TagHandling::Linked:TagHandling::NotMine;
 }
 
-void teTagCheckBoxPlus::re_readGroup(std::shared_ptr<teTag>tag, int taggroup){
-    if(taggroup==1&&!filter(tag)){
+void teTagCheckBoxPlus::re_readOwned(std::shared_ptr<teTag>tag){
+    if(!filter(tag))
         unlink(tag);
-    }
-    else if(taggroup==2&&!filter2(tag)){
-        unlink2(tag);
-    }
-    if(tag->retired){
-        if(taglistwidget)
-            taglistwidget->retire(tag);
-    }
+    if(tag->retired&&taglistwidget)
+        taglistwidget->retire(tag);
+}
+
+void teTagCheckBoxPlus::re_readCounted(std::shared_ptr<teTag>tag){
+    if(!filter2(tag))
+        unlinkCounted(tag);
+    if(tag->retired&&taglistwidget)
+        taglistwidget->retire(tag);
 }
 
 void teTagCheckBoxPlus::clear(){
     setStyleSheetOnce(this,"color:white;");
     clearLinks();
-    for(std::shared_ptr<teTag>tag:second_tags){
-        tag->teDisconnect(this);
-    }
-    second_tags.clear();
+    EditorControl::dropAll(counted_tags,this);
     reset();
 }
 

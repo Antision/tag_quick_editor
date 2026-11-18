@@ -64,13 +64,23 @@ public:
      */
     teTagWidgetBase* tagWidgetFor(std::shared_ptr<teTag> core) const;
     /**
-     * @brief Drops every connection this control holds on its linked tags.
+     * @brief Drops the claim on one tag: disconnect it, forget it, refresh.
+     *
+     * This is what unlink() is, and it is what a control with a second set of
+     * claimed tags needs as well (see teTagCheckBoxPlus), so it takes the set to
+     * drop it from instead of assuming linked_tags.
+     */
+    void dropClaim(std::shared_ptr<teTag> tag,std::set<std::shared_ptr<teTag>>& tags);
+    /**
+     * @brief Drops every connection this control holds on `tags`, then empties it.
      *
      * Every control's clear() spelled this loop out (four copies, in four
-     * slightly different orders). Doing it in one place is what makes "a cleared
-     * control is never called again" a property of the base class instead of a
-     * habit that has to be remembered.
+     * slightly different orders), and the second set a check box plus claims
+     * needed a fifth. Doing it in one place is what makes "a cleared control is
+     * never called again" a property of the base class instead of a habit that
+     * has to be remembered.
      */
+    static void dropAll(std::set<std::shared_ptr<teTag>>& tags,teObject* owner);
     void clearLinks();
     /**
      * @brief While this is alive the control ignores its own state changes.
@@ -240,6 +250,14 @@ public:
     virtual void clear()override;
     virtual void addString(QList<QString> in_strings);
     virtual void clearString();
+    /**
+     * @brief Deletes every tag this control owns from the tag list.
+     *
+     * "Unticking the box removes what ticking it wrote." The erased tags announce
+     * their destruction and unlink() drops each one from linked_tags as it goes,
+     * which is why this loops on the container instead of copying it first.
+     */
+    void eraseOwnedTags();
     virtual void select();
     virtual void unselect();
     virtual bool filter(std::shared_ptr<teTag> tag) const override;
@@ -247,22 +265,39 @@ public:
     virtual void refreshState()override;
 };
 
+/**
+ * @brief A check box that claims two kinds of tag.
+ *
+ * "Multiple people" is the only user: the box stands for `multiple girls` (the
+ * tags it *is*, filter()) and is informed by `2girls` / `5boys` (the tags it
+ * *counts*, filter2()). Ticking it writes one `multiple <nouns>` per counted tag;
+ * unticking it deletes the tags it owns.
+ *
+ * Both sets are claims - a tag in either one is not another control's business -
+ * so linked() covers both. What is *not* shared is what they mean, which is why
+ * the two sets stay separate rather than being merged into one with a flag: the
+ * owned set drives the check state, the counted set never does.
+ */
 class teTagCheckBoxPlus:public teTagCheckBox{
     Q_OBJECT
 public:
     using teTagCheckBox::teTagCheckBox;
-    std::set<std::shared_ptr<teTag>>second_tags;
-    virtual void link2(std::shared_ptr<teTag> tag);
-    virtual void unlink2(std::shared_ptr<teTag> tag);
-    virtual bool filter2(std::shared_ptr<teTag>tag)=0;
+    /// Tags that say how many rather than what (the counterpart of linked_tags).
+    std::set<std::shared_ptr<teTag>>counted_tags;
+    /// The second claim rule: is this a "how many" tag? Pure.
+    virtual bool filter2(std::shared_ptr<teTag>tag) const =0;
+    /// Claims `tag` as counted - the counterpart of link(), for what it means.
+    virtual void linkCounted(std::shared_ptr<teTag> tag);
+    /// Drops a counted claim - the counterpart of unlink().
+    virtual void unlinkCounted(std::shared_ptr<teTag> tag);
     TagHandling read(std::shared_ptr<teTag>tag)override;
-    /// Re-checks one of the two groups this control watches (`taggroup` is 1 for
-    /// the first, 2 for the second). It returns nothing: it is used as a callback
-    /// and nobody ever looked at the result.
-    virtual void re_readGroup(std::shared_ptr<teTag>tag,int taggroup);
+    /// An owned tag was edited: drop it if it is no longer one of ours.
+    virtual void re_readOwned(std::shared_ptr<teTag>tag);
+    /// A counted tag was edited: same, against filter2().
+    virtual void re_readCounted(std::shared_ptr<teTag>tag);
     virtual void clear()override;
     bool linked(std::shared_ptr<teTag>tag)override{
-        return linked_tags.find(tag)!=linked_tags.end()||second_tags.find(tag)!=second_tags.end();
+        return EditorControl::linked(tag)||counted_tags.find(tag)!=counted_tags.end();
     }
 };
 
