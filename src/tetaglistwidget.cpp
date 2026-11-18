@@ -810,132 +810,147 @@ teTagWidgetBase* teTagListView::taginsert(int index, std::shared_ptr<teTag>in_ta
 extern bool MergeSwitch;
 
 namespace {
-/// Undo/redo must not feed itself back onto the undo stack, and the auto-merge
-/// of the editors must stay disabled while the operation is applied.
-/// The previous code toggled two globals by hand in every branch; a single
-/// early return or exception left them in the wrong state.
-struct UndoRedoGuard{
-    teTagList::ChangeSuppressor suppressor;
+/// While a snapshot is being applied the editors must not merge anything: the
+/// snapshot is a state the user had, and re-merging it would undo the undo (a
+/// merge that is undone would immediately happen again on the re-read).
+struct SnapshotGuard{
     bool savedMergeSwitch;
-    explicit UndoRedoGuard(teTagList* list) : suppressor(list), savedMergeSwitch(MergeSwitch) {
-        MergeSwitch = false;
-    }
-    ~UndoRedoGuard(){ MergeSwitch = savedMergeSwitch; }
-    UndoRedoGuard(const UndoRedoGuard&) = delete;
-    UndoRedoGuard& operator=(const UndoRedoGuard&) = delete;
+    SnapshotGuard():savedMergeSwitch(MergeSwitch){ MergeSwitch=false; }
+    ~SnapshotGuard(){ MergeSwitch=savedMergeSwitch; }
+    SnapshotGuard(const SnapshotGuard&)=delete;
+    SnapshotGuard& operator=(const SnapshotGuard&)=delete;
 };
 }
 
-void teTagListView::undo(){
-    if(!showing_list)return;
-    try{
-        teTagOperation&lastOp = showing_list->operationlist.take();
-        UndoRedoGuard guard(showing_list);
-        switch(lastOp.type){
-        case teTagOperation::taginsert:{
-            std::shared_ptr<teTag>tagptr = lastOp.tag_ptr.lock();
-            if(tagptr)
-                tagErase(tagptr);
-            break;
-        }
-        case teTagOperation::tagedit:{
-            int previousOp =showing_list->operationlist.previousEditOperation(lastOp.tag_ptr.lock());
-            if(previousOp<0)throw std::exception("[teTagListView::undo]:coult not find previous operation for edit operation");
-            teTagOperation&lastEditOp = showing_list->operationlist.operations[previousOp];
-            *lastOp.tag_ptr.lock()=lastEditOp.nowCore;
-            break;
-        }
-        case teTagOperation::tagmove:{
-            if(lastOp.idp>=showing_list->tags.size()){
-                telog("[teTagListView::undo]:position in opereationList is out of range");
-                lastOp.idp=showing_list->tags.size()-1;
-            }
-            if(lastOp.idn<0||lastOp.idn>=showing_list->tags.size()||lastOp.idp<0){
-                telog("[teTagListView::undo]:position in opereationList is out of range");
-                break;
-            }
-            if(showing_list->tags[lastOp.idn]!=lastOp.tag_ptr.lock()){
-                telog("[teTagListView::undo]:position in opereationList is wrong");
-                lastOp.idn=showing_list->find(lastOp.tag_ptr.lock());
-                if(lastOp.idn<0)
-                    break;
-            }
-            // Keep the selection on the tag the user had selected: the reorder
-            // only moves rows, not the tag identities.
-            const std::shared_ptr<teTag> currentTag = currentCore();
-            showing_list->tags.insert(lastOp.idp,showing_list->tags.takeAt(lastOp.idn));
-            // The order changed behind the model's back; the old code moved the
-            // widget in the layout, the view has to be told instead.
-            m_model->notifyExternalReorder();
-            if(currentTag)
-                setSelectCurrentCore(currentTag);
-            break;
-        }
-        case teTagOperation::tagerase:{
-            std::shared_ptr<teTag> newcore(new teTag{lastOp.prevCore});
-            showing_list->operationlist.replaceTag(lastOp.tag_ptr.lock(),newcore);
-            if(!taginsert(lastOp.idp,newcore,1)){
-                telog(QString("[teTagListView::undo]:insert tag failed, inserting a new tagerase operation at %1").arg(lastOp.idp));
-                showing_list->operationlist.addEraseOperation(newcore,lastOp.idp,lastOp.prevCore);
-            }
-            break;
-        }
-        default:break;
-        }
-    }catch(std::exception&){
+/**
+ * @brief Puts the list content back to `snapshot` and makes everyone re-read.
+ *
+ * The tags are rebuilt, so this is a heavier operation than the old per-tag
+ * undo - and it is also the only one that is correct: a gesture can touch
+ * several tags (a merge rewrites one and erases another), and replaying the
+ * individual operations left the list half merged whenever one of them no
+ * longer applied. Rebuilding also means the editors can simply be asked to read
+ * the list again, which is the same path a freshly loaded picture takes.
+ */
+void teTagListView::applySnapshot(const teTagSnapshotList& snapshot)
+{
+    if(!showing_list||!m_model)
         return;
+    // The snapshot is applied through the list's ordinary row operations: the model
+    // keeps its row bookkeeping, the editors see the destroy / insert callbacks
+    // they always see, and the widget pool hands its widgets back on the way out.
+    // Rebuilding the tags behind the model's back (the first attempt) left all
+    // three of them looking at tags that were no longer in the list.
+    teTagList::ChangeSuppressor suppress(showing_list);     // this is not an edit
+    SnapshotGuard guard;                                    // and it must not merge
+    hideTagDisplay();
+    if(m_delegate)
+        m_delegate->stopEditing();
+    // The selection is a property of the view, not of the state being restored:
+    // keep it on the same tag when that tag survives the step.
+    const std::shared_ptr<teTag> selected=currentCore();
+
+    // Only what differs is touched. A snapshot that differs in one tag - which is
+    // what an undo almost always is - costs one erase and one insert, instead of
+    // rebuilding a list of sixty.
+    const QVector<std::shared_ptr<teTag>> current=showing_list->getTags();
+    QVector<bool> kept(current.size(),false);
+    QVector<std::shared_ptr<teTag>> target;
+    target.reserve(snapshot.size());
+    for(const teTagSnapshot& one : snapshot){
+        std::shared_ptr<teTag> found;
+        for(int i=0;i<current.size();++i){
+            if(kept[i]||current[i]->wordTexts()!=one.words)
+                continue;
+            kept[i]=true;
+            found=current[i];
+            // The words match, the rest comes from the snapshot (a fake edit clears
+            // the merge mark without changing a word).
+            found->type=teTag::teTagType(one.type);
+            found->weight=one.weight;
+            found->mergeSuppressed=one.mergeSuppressed;
+            break;
+        }
+        target.append(found);                   // nullptr: this one has to be built
     }
+
+    // Tags the snapshot does not contain: erase them (from the end, so the row
+    // indexes of the ones still to be looked at stay valid).
+    for(int i=int(current.size())-1;i>=0;--i){
+        if(kept[i])
+            continue;
+        const int row=showing_list->find(current[i]);
+        if(row>=0)
+            tagErase(row);
+    }
+    // Tags the snapshot has and the list does not: build and insert them. Neither
+    // the insert nor the erase above may move the selection (an insert selects by
+    // default): the one the user had is restored at the end.
+    for(int i=0;i<target.size();++i){
+        if(target[i])
+            continue;
+        auto tag=std::make_shared<teTag>();
+        for(const QString& word : snapshot[i].words)
+            tag->words.append(new teWord{word});
+        tag->type=teTag::teTagType(snapshot[i].type);
+        tag->weight=snapshot[i].weight;
+        tag->mergeSuppressed=snapshot[i].mergeSuppressed;
+        target[i]=tag;
+        taginsert(int(showing_list->size()),tag,0,false);
+    }
+    // The set is right; the order may not be. Setting it is one assignment plus a
+    // refresh - the editors' own lists keep their own order and are not touched.
+    bool ordered=true;
+    const QVector<std::shared_ptr<teTag>> now=showing_list->getTags();
+    for(int i=0;i<target.size()&&i<now.size();++i){
+        if(now[i]!=target[i]){
+            ordered=false;
+            break;
+        }
+    }
+    if(!ordered){
+        showing_list->reorderTo(target);
+        m_model->notifyExternalReorder();
+    }
+    if(selected&&showing_list->find(selected)>=0)
+        setSelectCurrentCore(selected);
+    // The state the next step starts from is what is on screen now.
+    showing_list->syncUndoBaseline();
+    showing_list->isSaved=false;
 }
-void teTagListView::redo(){
-    if(!showing_list)return;
-    try{
-        teTagOperation&nextOp = showing_list->operationlist.forward();
-        UndoRedoGuard guard(showing_list);
-        switch(nextOp.type){
-        case teTagOperation::taginsert:{
-            std::shared_ptr<teTag> newcore(new teTag{nextOp.nowCore});
-            showing_list->operationlist.replaceTag(nextOp.tag_ptr.lock(),newcore);
-            if(!taginsert(nextOp.idn,newcore,1)){
-                telog(QString("[teTagListView::redo]:insert tag failed at %1").arg(nextOp.idn));
-                --showing_list->operationlist.rwp;
-            }
-            break;
-        }
-        case teTagOperation::tagedit:{
-            *nextOp.tag_ptr.lock()=nextOp.nowCore;
-            break;
-        }
-        case teTagOperation::tagmove:{
-            if(nextOp.idn>=showing_list->tags.size()){
-                telog("[teTagListView::redo]:position in opereationList is out of range");
-                nextOp.idn=showing_list->tags.size()-1;
-            }
-            if(nextOp.idp<0||nextOp.idp>=showing_list->tags.size()||nextOp.idn<0){
-                telog("[teTagListView::redo]:position in opereationList is out of range");
-                break;
-            }
-            if(showing_list->tags[nextOp.idp]!=nextOp.tag_ptr.lock()){
-                telog("[teTagListView::redo]:position in opereationList is wrong");
-                nextOp.idp=showing_list->find(nextOp.tag_ptr.lock());
-                if(nextOp.idp<0)
-                    throw std::exception("[teTagListView::redo]:tag in opereationList is disappered");
-            }
-            const std::shared_ptr<teTag> currentTag = currentCore();
-            showing_list->tags.insert(nextOp.idn,showing_list->tags.takeAt(nextOp.idp));
-            m_model->notifyExternalReorder();
-            if(currentTag)
-                setSelectCurrentCore(currentTag);
-            break;
-        }
-        case teTagOperation::tagerase:{
-            tagErase(nextOp.tag_ptr.lock());
-            break;
-        }
-        default:break;
-        }
-    }catch(std::exception&){
+
+bool teTagListView::canUndo() const{
+    return showing_list&&showing_list->canUndo();
+}
+
+bool teTagListView::canRedo() const{
+    return showing_list&&showing_list->canRedo();
+}
+
+void teTagListView::undo(){
+    if(!showing_list)
         return;
-    }
+    // A gesture that is still open belongs to this undo: a click followed by
+    // Ctrl+Z before the event loop came back is one step, not zero.
+    showing_list->commitChange();
+    const teUndoHistory::Step* step=showing_list->history.stepToUndo();
+    if(!step)
+        return;
+    const teTagSnapshotList before=step->before;
+    showing_list->history.stepUndone();
+    applySnapshot(before);
+}
+
+void teTagListView::redo(){
+    if(!showing_list)
+        return;
+    showing_list->commitChange();
+    const teUndoHistory::Step* step=showing_list->history.stepToRedo();
+    if(!step)
+        return;
+    const teTagSnapshotList after=step->after;
+    showing_list->history.stepRedone();
+    applySnapshot(after);
 }
 
 void teTagListWidgetBase::onTagRightButtonClicked(teTagWidgetBase *tag, QPoint point, int modifiers){

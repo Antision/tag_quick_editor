@@ -3,8 +3,6 @@
 #include "tetaglistwidget.h"
 class teTagWidget;
 class teTagList;
-struct teTagOperation;
-class teTagOperationList;
 class teTag;
 class EditorControl;
 class teEditorList;

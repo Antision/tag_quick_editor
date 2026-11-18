@@ -94,6 +94,15 @@ bool absorb(std::shared_ptr<teTag> in){
         return false;
     if(in->words.front()->text==qsl("animal")){
         if(explicit_ear){
+            // "animal ears" gives way to the kind already there - unless the two
+            // were merged once and undo brought them both back.
+            std::shared_ptr<teTag> specific = linked_tags.empty()?nullptr:*linked_tags.begin();
+            if(specific&&!mergeAllowed(*specific,*in)){
+                animal_ears_ptr=in;
+                return false;
+            }
+            if(specific)
+                markMerged(*specific,*in);
             in->retired=true;
             animal_ears_ptr=nullptr;
             return true;
@@ -104,8 +113,13 @@ bool absorb(std::shared_ptr<teTag> in){
     if(animal_ears_ptr){
         std::shared_ptr<teTag> generic = animal_ears_ptr;
         animal_ears_ptr=nullptr;
-        if(generic!=in&&taglistwidget)
-            taglistwidget->retire(generic);
+        if(generic!=in&&mergeAllowed(*in,*generic)){
+            markMerged(*in,*generic);
+            if(taglistwidget)
+                taglistwidget->retire(generic);
+        }else if(generic!=in){
+            animal_ears_ptr=generic;            // both stay: see above
+        }
     }
     explicit_ear=true;
     return false;

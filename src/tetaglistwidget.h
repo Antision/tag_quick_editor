@@ -370,8 +370,17 @@ public:
     void load(teTagList* newlist=nullptr);
     void loadFile(tePictureFile*f);
     void onTagEdited(std::shared_ptr<teTag>tag);
+    /**
+     * @brief Replaces the shown list's content and makes everyone re-read it.
+     *
+     * Only undo/redo uses it; it is the equivalent of loading the picture again,
+     * with the tags taken from the snapshot instead of the caption file.
+     */
+    void applySnapshot(const teTagSnapshotList& snapshot);
     void undo();
     void redo();
+    bool canUndo() const;
+    bool canRedo() const;
     void tagErase(int index);
     void tagErase(std::shared_ptr<teTag> tag=nullptr);
     /**

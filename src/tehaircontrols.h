@@ -271,7 +271,8 @@ struct hair_and_eyes_color_list : public teTagListControl{
             if(still_valid==HairKind::None)
                 return;                     // not a mergeable hair tag any more
             std::shared_ptr<teTag> new_target = find_merge_target(edited_tag,still_valid);
-            if(new_target) {
+            if(new_target&&mergeAllowed(*new_target,*edited_tag)) {
+                markMerged(*new_target,*edited_tag);
                 edited_tag->retired=true;
                 perform_merge(new_target, edited_tag,still_valid);
             }
@@ -339,6 +340,9 @@ struct hair_and_eyes_color_list : public teTagListControl{
             std::shared_ptr<teTag> target_tag = find_merge_target(in_tag,new_type);
             if(!target_tag)
                 return false;
+            if(!mergeAllowed(*target_tag,*in_tag))
+                return false;
+            markMerged(*target_tag,*in_tag);
             in_tag->retired=true;
             perform_merge(target_tag,in_tag,new_type);
             return true;
@@ -626,6 +630,9 @@ struct ponytail_buttongroup : public teTagButtonGroup {
     bool merge(std::shared_ptr<teTag>tag){
         if(*tag->words.back()==QString("twintails")){
             if(twintailsTag&&twintailsTag!=tag){
+                if(!mergeAllowed(*twintailsTag,*tag))
+                    return false;
+                markMerged(*twintailsTag,*tag);
                 getPrefix(tag,kindOfTwintails);
                 tag->retired=true;
                 taglistwidget->tagErase(tag);
@@ -640,6 +647,9 @@ struct ponytail_buttongroup : public teTagButtonGroup {
             }
         }else if(*tag->words.back()==QString("ponytail")){
             if(ponytailTag&&ponytailTag!=tag){
+                if(!mergeAllowed(*ponytailTag,*tag))
+                    return false;
+                markMerged(*ponytailTag,*tag);
                 getPrefix(tag,kindOfPonytail);
                 tag->retired=true;
                 taglistwidget->tagErase(tag);
@@ -766,6 +776,11 @@ struct HairLength_Buttongroup : public teTagButtonGroup {
             if(very_long_hair_ptr==tag)
                 very_long_hair_ptr=nullptr;
             if(very_long_hair_ptr){
+                if(!mergeAllowed(*very_long_hair_ptr,*tag)){
+                    long_hair_ptr=tag;          // both kept, both marked: no merge
+                    return;
+                }
+                markMerged(*very_long_hair_ptr,*tag);
                 tag->retired=true;
                 long_hair_ptr=nullptr;
                 return;
@@ -778,8 +793,11 @@ struct HairLength_Buttongroup : public teTagButtonGroup {
             if(long_hair_ptr){
                 std::shared_ptr<teTag> superseded = long_hair_ptr;
                 long_hair_ptr=nullptr;
-                if(tag!=superseded&&taglistwidget)
-                    taglistwidget->retire(superseded);
+                if(tag!=superseded&&mergeAllowed(*tag,*superseded)){
+                    markMerged(*tag,*superseded);
+                    if(taglistwidget)
+                        taglistwidget->retire(superseded);
+                }
             }
         }
     }

@@ -39,8 +39,8 @@ struct teTagListWidgetBase;
 template<typename TagType,typename WordType,size_t total_tags_count,size_t total_words_count>
 requires (std::derived_from<TagType,teTagWidgetBase>&&std::derived_from<WordType,teWordWidgetBase>)
 struct WidgetPool:public teObject{
-    QWidget* parent=nullptr;///< Initialization widget; also the fallback parking parent
-    QBoxLayout* parent_layout=nullptr;///< Layout the widgets will be shown in
+    QPointer<QWidget> parent;///< Initialization widget; also the fallback parking parent
+    QPointer<QBoxLayout> parent_layout;///< Layout the widgets will be shown in
 
     WidgetPool(){}
     /// Does nothing on purpose: the widgets belong to the widget tree.
@@ -59,21 +59,33 @@ struct WidgetPool:public teObject{
     /**
      * @brief Binds the pool to the widget its widgets belong to.
      *
+     * Both handles are QPointers: the pool is a global and outlives the window it
+     * was bound to (a second main window, a closed file, a test harness), and a
+     * raw pointer here turned into "new widget parented to freed memory" - the
+     * widget was created into a dead parent and Qt crashed on the way out.
+     *
      * No widget is created here; the pool grows on demand.
      */
     void initialize(QWidget* in_parent,QBoxLayout* in_layout){
         parent = in_parent;
         parent_layout = in_layout;
+        parking = nullptr;
     }
 
     /// Widget recycled widgets are parked under until they are shown again.
+    ///
+    /// Returns nullptr when the pool was never bound or the widget it was bound
+    /// to is gone; the caller then creates an unparented widget (which is fine -
+    /// it is reparented into the layout before it is ever shown).
     QWidget* parkingParent() const {
         if(!parking.isNull())
             return parking;
-        if(parent_layout&&parent_layout->parentWidget())
-            parking = parent_layout->parentWidget();
-        else
-            parking = parent;
+        QWidget* candidate = parent_layout ? parent_layout->parentWidget() : nullptr;
+        if(!candidate)
+            candidate = parent.data();
+        if(!candidate)
+            return nullptr;
+        parking = candidate;
         return parking;
     }
 

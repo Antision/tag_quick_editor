@@ -260,8 +260,11 @@ int teTagList::initialize_push_back(std::shared_ptr<teTag> tag)
     } else {
         tags.append(tag);
         connectTag(tag);
-        operationlist.addEditOperation(tag, *tag);
-        ++operationlist.inip;
+        // Building a list (a caption being loaded) is not an edit: it must not
+        // land on the undo stack, and the state the first real edit starts from
+        // has to include it. The old code pushed an "edit" record and advanced
+        // inip past it, which is the same statement with more moving parts.
+        syncUndoBaseline();
         return tags.size() - 1;
     }
 }
@@ -346,6 +349,11 @@ int teTagList::edit(std::shared_ptr<teTag> core, QString text, int removeDuplica
         return -1;
 
     {
+        // Whether this is a change the user made - asked before the suppressor
+        // below turns recording off for the duration of the call. A normalisation
+        // pass (a list being read) rewrites words too, and that must not count as
+        // the user touching the tag.
+        const bool userGesture = recordingChanges();
         // read() announces the change itself (edit_with_layout), which is what
         // makes the tag widgets, the editors and the list view react at once -
         // an in-place text change used to be visible in the list only after the
@@ -353,6 +361,11 @@ int teTagList::edit(std::shared_ptr<teTag> core, QString text, int removeDuplica
         // own reaction to that signal is suppressed while it runs.
         ChangeSuppressor suppressor(this);
         std::lock_guard<std::recursive_mutex> lg(tagsMt);
+        // Editing a tag - even entering the editor and confirming without changing
+        // a word - is the user taking it back: the automatic merge that produced it
+        // may happen again (see teTag::mergeSuppressed).
+        if(userGesture)
+            core->mergeSuppressed=false;
         core->read(text);
     }
 
@@ -456,10 +469,9 @@ void teTagList::reorderBlock(int from, int count, int insertAt)
     }
 
     isSaved = false;
-    for (int i = 0; i < count; ++i) {
-        if (recordingChanges())
-            operationlist.addMoveOperation(block[i], from + i, insertAt + i);
-    }
+    // One step for the whole block move, not one per row: a multi-row drag is a
+    // single gesture, and undoing half of it makes no sense.
+    ChangeRecorder recorder(this);
     emit tagMoved(block.first());
 }
 

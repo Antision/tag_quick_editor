@@ -78,6 +78,13 @@ struct Breast_Buttongroup : public teTagButtonGroup {
                 auto linked = *linked_tags.begin();
                 if (linked && !linked->words.empty()
                     && (*linked->words.begin())->text != qsl("breasts")) {
+                    // "breasts" gives way to the size already there - unless the two
+                    // were merged once and undo brought both back.
+                    if(!mergeAllowed(*linked,*tag)){
+                        breasts_ptr = tag;
+                        return false;
+                    }
+                    markMerged(*linked,*tag);
                     tag->retired=true;
                     breasts_ptr.reset();
                     return true;
@@ -92,8 +99,12 @@ struct Breast_Buttongroup : public teTagButtonGroup {
         if (breasts_ptr && breasts_ptr != tag) {
             std::shared_ptr<teTag> generic = breasts_ptr;
             breasts_ptr.reset();
-            if(taglistwidget)
-                taglistwidget->retire(generic);
+            if(mergeAllowed(*tag,*generic)){
+                markMerged(*tag,*generic);
+                if(taglistwidget)
+                    taglistwidget->retire(generic);
+            }else
+                breasts_ptr = generic;          // both stay: see above
         }
         return false;
     }

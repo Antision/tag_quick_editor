@@ -83,6 +83,23 @@ public:
     static void dropAll(std::set<std::shared_ptr<teTag>>& tags,teObject* owner);
     void clearLinks();
     /**
+     * @brief May these two tags still be merged automatically?
+     *
+     * No when both were merged together once already: that is what makes undoing a
+     * merge stick (see teTag::mergeSuppressed). One unmarked side is enough to
+     * allow it again, which is what editing either tag produces.
+     */
+    static bool mergeAllowed(const teTag& first,const teTag& second){
+        return !(first.mergeSuppressed&&second.mergeSuppressed);
+    }
+    /**
+     * @brief Marks both sides of a merge that is happening now.
+     *
+     * The mark has to reach the state undo will restore, not only the live tags:
+     * the step was opened before this merge, so its copies are marked as well.
+     */
+    void markMerged(teTag& survivor,teTag& absorbed);
+    /**
      * @brief While this is alive the control ignores its own state changes.
      *
      * Several controls guard their own updates with an `excute` counter and a

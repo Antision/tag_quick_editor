@@ -87,6 +87,13 @@ void EditorControl::dropAll(std::set<std::shared_ptr<teTag>>&tags,teObject*owner
     }
 }
 
+void EditorControl::markMerged(teTag& survivor,teTag& absorbed){
+    survivor.mergeSuppressed=true;
+    absorbed.mergeSuppressed=true;
+    if(taglistwidget&&taglistwidget->showing_list)
+        taglistwidget->showing_list->noteMergedForUndo(survivor,absorbed);
+}
+
 void EditorControl::clearLinks(){
     dropAll(linked_tags,this);
 }

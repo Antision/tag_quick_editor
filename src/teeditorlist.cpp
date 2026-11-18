@@ -152,6 +152,12 @@ void teEditorList::readList(teTagList *input_taglist){
     unloadList();
     if(input_taglist)
         connectedList = input_taglist;
+    // Reading a list is not editing it. The controls normalise what they read
+    // (two mergeable clothes tags become one), and those merges must neither land
+    // on the undo stack nor count as "the user changed something" - they were
+    // undo steps before, so the first Ctrl+Z after opening a picture undid a merge
+    // nobody had asked for.
+    teTagList::ChangeSuppressor suppressor(connectedList);
     // Tags absorbed below are erased when this goes out of scope, not while the
     // editors are still reading the list.
     teTagList::RetireDeferrer retireDeferrer(connectedList);
@@ -181,6 +187,10 @@ void teEditorList::readList(teTagList *input_taglist){
         if(co->retired)
             connectedList->retire(co);
     }
+    // Whatever the controls changed while reading is the state the first edit of
+    // this picture starts from.
+    if(connectedList)
+        connectedList->syncUndoBaseline();
 }
 
 void teEditorList::unloadList(){

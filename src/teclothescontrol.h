@@ -515,7 +515,13 @@ struct ClothesList : public teTagListControl {
                 continue;
             if(!clothesMergeable(parts,*incoming))
                 continue;
+            // Two tags that were merged once already are not merged again by
+            // themselves: that is what makes undoing the merge stick. Editing
+            // either of them clears the mark and allows it again.
+            if(!mergeAllowed(*target,*incoming))
+                continue;
             const QStringList words = clothesMergedWords(parts,*incoming);
+            markMerged(*target,*incoming);
             incoming->retired = true;
             writeWords(target,words);
             return true;
