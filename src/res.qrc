@@ -37,5 +37,7 @@
          ../res/style/list.qss 会变成 :/style/res/style/list.qss。 -->
     <qresource prefix="/style">
         <file alias="list.qss">../res/style/list.qss</file>
+        <file alias="editor.qss">../res/style/editor.qss</file>
+        <file alias="editor_custom.qss">../res/style/editor_custom.qss</file>
     </qresource>
 </RCC>

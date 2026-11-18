@@ -1,6 +1,7 @@
 #include "teeditor.h"
 #include "tetag.h"
 #include "teeditorcontrol.h"
+#include "testyle.h"
 teEditor::teEditor(teTagListView*in_taglistwidget,const QString& name,QWidget *parent):QFrame(parent),name(name),taglistwidget(in_taglistwidget){
     setObjectName(name);
 }
@@ -8,6 +9,15 @@ teEditor::teEditor(teTagListView*in_taglistwidget,const QString& name,QWidget *p
 void teEditor::reset(){
     for(EditorControl*control:controls)
         control->reset();
+}
+
+void teEditor::registerControl(EditorControl* control){
+    if(!control)
+        return;
+    // The control reads tags from this list and mirrors its selection into it;
+    // setting it here means a row can never forget it.
+    control->setTaglistwidget(taglistwidget);
+    controls.push_back(control);
 }
 
 TagHandling teEditor::read(std::shared_ptr<teTag>tag){
@@ -61,8 +71,13 @@ void teEditor::setTagListWidget(teTagListView *listwidget){
     }
 }
 
-teEditor_standard::teEditor_standard(teTagListView*in_taglistwidget,const QString &name, QString *styleSheet, QWidget *parent):teEditor(in_taglistwidget,name,parent){
+teEditor_standard::teEditor_standard(teTagListView*in_taglistwidget,const QString &name, const QString &accent, QWidget *parent):teEditor(in_taglistwidget,name,parent){
     editor_switch->setObjectName("editor_switch");
+    // The accent is read by a property selector in the sheet, so it has to be set
+    // before the sheet is applied (Qt resolves property selectors while polishing).
+    if(!accent.isEmpty())
+        editor_switch->setProperty("accent",accent);
+    setStyleSheet(teStyle::sheet(QStringLiteral("editor")));
     editor_switch->setText(name);
     editor_switch->setCheckable(true);
     editor_switch->setChecked(true);
@@ -75,68 +90,90 @@ QPushButton{font-size:16pt;font-style:bold;padding:0px;margin:0px;}
 QPushButton:!hover{border:2px solid #4c399e;}
 QPushButton:hover{border:2px solid #ad5dff;})"));
     back_to_main_page->hide();
-    connect(back_to_main_page,&QPushButton::clicked,this,&teEditor_standard::showInterface,Qt::DirectConnection);
+    connect(back_to_main_page,&QPushButton::clicked,this,&teEditor_standard::showMainPage,Qt::DirectConnection);
     titleLayout->addWidget(back_to_main_page);
     mainLayout->addLayout(titleLayout);
-    mainLayout->addLayout(contentLayout);
+    mainLayout->addWidget(content);
+    contentLayout->setContentsMargins(0,0,0,0);
+    contentLayout->setSpacing(0);
     mainLayout->setSpacing(1);
     mainLayout->setContentsMargins(1,1,1,1);
-    if(styleSheet)
-        setStyleSheet(*styleSheet);
     connect(editor_switch,&QPushButton::clicked,this,&teEditor_standard::onSwitchToggled,Qt::DirectConnection);
 }
-void setLayoutWidgetsVisible(QLayout* layout, bool visible) {
-    if (!layout) return;
 
-    for (int i = 0; i < layout->count(); ++i) {
-        QLayoutItem* item = layout->itemAt(i);
-        if (!item) continue;
-
-        if (QWidget* widget = item->widget()) {
-            if (visible) {
-                widget->show();
-            } else {
-                widget->hide();
-            }
-        }
-
-        if (QLayout* childLayout = item->layout()) {
-            setLayoutWidgetsVisible(childLayout, visible);
+void teEditor_standard::addRowTo(QBoxLayout* layout, teEditorRow row){
+    if(!layout)
+        return;
+    if(!row.title.isEmpty()){
+        auto* title = new QLabel(row.title);
+        title->setProperty("type","title");
+        title->setStyleSheet(QStringLiteral("font:italic 14px;color:rgb(200,200,200);"));
+        layout->addWidget(title);
+    }
+    auto* line = new QHBoxLayout;
+    line->setSpacing(1);
+    line->setContentsMargins(0,0,0,0);
+    if(!row.lead.isEmpty()){
+        line->addWidget(new QLabel(row.lead));
+    }
+    bool hasWidget = !row.lead.isEmpty();
+    for(EditorControl* control : row.controls){
+        if(!control)
+            continue;
+        registerControl(control);
+        if(auto* widget = dynamic_cast<QWidget*>(control)){
+            line->addWidget(widget);
+            hasWidget = true;
         }
     }
+    if(hasWidget)
+        layout->addLayout(line);
+    else
+        delete line;                    // a control that is not a widget has no row
 }
-void teEditor_standard::showInterface(int index){
-    if(index){
-        fold();
-        back_to_main_page->show();
-        extraInterfaces[index-1]->show();
-        showing_interface=index;
-    }else{
-        unfold();
-        back_to_main_page->hide();
-        extraInterfaces[showing_interface-1]->hide();
-        showing_interface=0;
-    }
+
+void teEditor_standard::addSubPage(QPushButton* trigger, QWidget* panel){
+    if(!panel)
+        return;
+    subPages.push_back(panel);
+    mainLayout->addWidget(panel);
+    panel->hide();
+    if(trigger)
+        connect(trigger,&QPushButton::clicked,this,[this,panel]{showSubPage(panel);},Qt::DirectConnection);
+}
+
+void teEditor_standard::showSubPage(QWidget* panel){
+    if(!panel||!subPages.contains(panel))
+        return;
+    fold();
+    back_to_main_page->show();
+    panel->show();
+    openPage = panel;
+}
+
+void teEditor_standard::showMainPage(){
+    if(openPage)
+        openPage->hide();
+    openPage = nullptr;
+    back_to_main_page->hide();
+    unfold();
 }
 
 void teEditor_standard::onSwitchToggled(bool checked){
-    if(checked){
+    ifrun = checked;
+    if(checked)
         unfold();
-        ifrun=true;
-    }
-    else if(!checked){
+    else
         fold();
-        ifrun=false;
-    }
 }
 
 void teEditor_standard::fold(){
-    setLayoutWidgetsVisible(contentLayout,false);
-    for(QWidget*w:extraInterfaces)
-        w->hide();
+    content->hide();
+    for(QWidget* page : subPages)
+        page->hide();
     back_to_main_page->hide();
 }
 
 void teEditor_standard::unfold(){
-    setLayoutWidgetsVisible(contentLayout,true);
+    content->show();
 }

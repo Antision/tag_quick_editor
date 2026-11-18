@@ -1,0 +1,37 @@
+/*
+ * 编辑器列的通用样式(teEditor_standard 及其页面共用)。
+ *
+ * 原来每个 editor 的构造函数里都塞了一份几乎一样的 QSS:title 栏那个
+ * editor_switch 按钮的字体、边框、选中态四行完全一致,只有按钮*文字*的渐变
+ * (每个页面的主题色)不同。五份复制粘贴的后果是:改一次边框要改五处,而且已经
+ * 有一处对不上了。
+ *
+ * 现在颜色抽成一个属性:页面在构造时给自己的 editor_switch 设
+ *     editor_switch->setProperty("accent", "nsfw");
+ * 具体渐变在下面按 accent 取值分列。加一个页面 = 加一条 accent 规则。
+ */
+QPushButton#editor_switch{
+    font-size:16pt;
+    background:black;
+}
+QPushButton#editor_switch:!checked{
+    border:1px solid rgb(50,50,50);
+    background:transparent;
+}
+QPushButton#editor_switch:checked{
+    border:2px solid #008b46;
+}
+
+/* 主题色:每个页面的按钮文字渐变 */
+QPushButton#editor_switch[accent="pretreat"]{
+    color:qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 rgba(0, 0, 0, 255), stop:1 rgba(255, 255, 255, 255));
+}
+QPushButton#editor_switch[accent="hair"]{
+    color:qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 rgba(255, 146, 235, 255), stop:0.497207 rgba(235, 239, 195, 255), stop:1 rgba(176, 246, 244, 255));
+}
+QPushButton#editor_switch[accent="clothes"]{
+    color:qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 rgba(0, 255, 170, 255), stop:0.49162 rgba(191, 255, 0, 255), stop:1 rgba(0, 238, 255, 255));
+}
+QPushButton#editor_switch[accent="nsfw"]{
+    color:qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 rgba(255, 0, 0, 255), stop:0.536313 rgba(217, 0, 255, 255), stop:1 rgba(98, 0, 255, 255));
+}

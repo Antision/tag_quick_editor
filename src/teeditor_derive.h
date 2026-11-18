@@ -33,17 +33,14 @@ public:
 
 class teEditor_pretreat:public teEditor_standard{
 public:
-    teEditor_pretreat(teTagListView*in_taglistwidget,QString&& name=QStringLiteral("pretreat"),QString*styleSheet=nullptr,QWidget*parent=nullptr);
+    teEditor_pretreat(teTagListView*in_taglistwidget,QString&& name=QStringLiteral("pretreat"),QWidget*parent=nullptr);
     ~teEditor_pretreat(){}
-    enum{
-        peoplePage=1
-    };
 };
 
 class teEditor_hair_and_eyes : public teEditor_standard
 {
 public:
-    teEditor_hair_and_eyes(teTagListView*in_taglistwidget,QString&& name=QStringLiteral("hair and eyes"),QString*styleSheet=nullptr,QWidget*parent=nullptr);
+    teEditor_hair_and_eyes(teTagListView*in_taglistwidget,QString&& name=QStringLiteral("hair and eyes"),QWidget*parent=nullptr);
     ~teEditor_hair_and_eyes(){}
 };
 
@@ -51,12 +48,12 @@ public:
 class teEditor_clothes:public teEditor_standard
 {
 public:
-    teEditor_clothes(teTagListView*in_taglistwidget,QString &&name=QStringLiteral("clothes"), QString *styleSheet=nullptr, QWidget *parent=nullptr);
+    teEditor_clothes(teTagListView*in_taglistwidget,QString &&name=QStringLiteral("clothes"), QWidget *parent=nullptr);
 };
 
 class teEditor_nsfw:public teEditor_standard
 {
 public:
-    teEditor_nsfw(teTagListView*in_taglistwidget,QString &&name=QStringLiteral("nsfw"), QString *styleSheet=nullptr, QWidget *parent=nullptr);
+    teEditor_nsfw(teTagListView*in_taglistwidget,QString &&name=QStringLiteral("nsfw"), QWidget *parent=nullptr);
 };
 #endif // TEEDITOR_DERIVE_H

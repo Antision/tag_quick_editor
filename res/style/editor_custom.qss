@@ -1,0 +1,35 @@
+/*
+ * 自定义标签页(custom editor)的样式。
+ *
+ * 这一个页面和其余页面结构不同:它的按钮是一整排可拖拽的自定义标签,没有
+ * editor_switch 标题栏,所以样式也自成一份(原来就写死在 teeditor_derive.cpp
+ * 的 teEditor_custom_style 里)。
+ */
+QPushButton#addNewTagButton{
+    font-size:11pt;color:white;
+}
+QPushButton#addNewTagButton:!hover{
+    border:1px solid rgb(50,50,50);background:qlineargradient(spread:pad, x1:0, y1:1, x2:0, y2:0, stop:0 rgba(0, 23, 175, 255), stop:1 rgba(37, 135, 255, 255));
+}
+QPushButton#addNewTagButton:hover{
+    border:1px solid white;background:qlineargradient(spread:pad, x1:0, y1:1, x2:0, y2:0, stop:0 rgba(0, 60, 255, 255), stop:1 rgba(126, 216, 255, 255));
+}
+
+QPushButton{
+    outline: 0px solid black;
+    border: 1px solid #2c5ea9;
+    background-color:transparent;
+    padding: 2px 0px;
+}
+QPushButton:hover{
+    border: 1px solid #3071d1;
+    background-color:rgba(46,92,162,20);
+}
+QPushButton:checked{
+    border: 1px solid #3183ff;
+    background-color:rgba(60,130,235,150);
+}
+QPushButton:checked:hover{
+    border: 1px solid #4c94ff;
+    background-color:rgba(60,130,235,255);
+}

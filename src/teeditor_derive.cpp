@@ -9,6 +9,7 @@
 #include "temisccontrols.h"
 #include "tetaglistwidget.h"
 #include "tesignalwidget.h"
+#include "testyle.h"
 QSet<QString> all_colors = { "red","blue","green","orange","yellow",
                     "blonde","purple","white","black","brown","pink","aqua"
                     ,"grey" };
@@ -64,39 +65,9 @@ extern bool autoMerge;
 extern bool MergeSwitch;
 extern QStringList custom_tags;
 extern teCustomControlList* custom_controls;
-QString teEditor_custom_style = QStringLiteral(R"(
-QPushButton#addNewTagButton{
-font-size:11pt;color:white;
-}
-QPushButton#addNewTagButton:!hover{
-border:1px solid rgb(50,50,50);background:qlineargradient(spread:pad, x1:0, y1:1, x2:0, y2:0, stop:0 rgba(0, 23, 175, 255), stop:1 rgba(37, 135, 255, 255));
-}
-QPushButton#addNewTagButton:hover{
-border:1px solid white;background:qlineargradient(spread:pad, x1:0, y1:1, x2:0, y2:0, stop:0 rgba(0, 60, 255, 255), stop:1 rgba(126, 216, 255, 255));
-}
-
-QPushButton{
-    outline: 0px solid black;
-    border: 1px solid #2c5ea9;
-    background-color:transparent;
-    padding: 2px 0px;
-}
-QPushButton:hover{
-    border: 1px solid #3071d1;
-    background-color:rgba(46,92,162,20);
-}
-QPushButton:checked{
-    border: 1px solid #3183ff;
-    background-color:rgba(60,130,235,150);
-}
-QPushButton:checked:hover{
-    border: 1px solid #4c94ff;
-    background-color:rgba(60,130,235,255);
-}
-)");
 teEditor_custom::teEditor_custom(teTagListView*in_taglistwidget,QString&& name, QString* styleSheet, QWidget* parent):teEditor(in_taglistwidget,name, parent) {
     if(!styleSheet)
-        setStyleSheet(teEditor_custom_style);
+        setStyleSheet(teStyle::sheet(QStringLiteral("editor_custom")));
     QPushButton* newtagButton = new QPushButton("add custom tags");
     mainLayout->setContentsMargins(1,1,1,1);
     mainLayout->setSpacing(1);
@@ -155,9 +126,10 @@ void teEditor_custom::removeControl(const QString &str){
 
 void teEditor_custom::addControl(const QString &str){
     teTagCheckBox* cbptr=new teTagCheckBox({str,str});
-    cbptr->setTaglistwidget(taglistwidget);
     string_controls.append({str,cbptr});
-    controls.push_back(cbptr);
+    // Registers it (it learns the tag list there) instead of two hand-written
+    // lines that had to agree with each other.
+    registerControl(cbptr);
     if(taglist)
         for(std::shared_ptr<teTag>tc:*taglist)
             cbptr->read(tc);
@@ -247,128 +219,95 @@ void teEditor_custom::setControls(const QStringList& order){
     updateGeometry();
 }
 
-QString teEditor_pretreat_style = QStringLiteral(R"(
-QPushButton#editor_switch{
-font-size:16pt;color:qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 rgba(0, 0, 0, 255), stop:1 rgba(255, 255, 255, 255)); background:black;
-}
-QPushButton#editor_switch:!checked{
-border:1px solid rgb(50,50,50);
-background:transparent;
-}
-QPushButton#editor_switch:checked{
-border:2px solid #008b46;
-})");
-teEditor_pretreat::teEditor_pretreat(teTagListView*in_taglistwidget,QString&& name, QString* styleSheet, QWidget* parent) :teEditor_standard(in_taglistwidget,name, &teEditor_pretreat_style, parent) {
-    QPushButton* girls_btn = new QPushButton;
-    contentLayout->addWidget(girls_btn);
-    QWidget* people_widget = new QWidget;
-    QVBoxLayout* people_widget_layout = new QVBoxLayout(people_widget);
-    {
-        teTagLineedit_people* girls_lnedt = new teTagLineedit_people(QStringLiteral("girl"), QStringLiteral("girl(s)"));
-        controls.push_back(girls_lnedt);
-        teTagLineedit_people* boys_lnedt = new teTagLineedit_people(QStringLiteral("boy"), QStringLiteral("boy(s)"));
-        controls.push_back(boys_lnedt);
-        teTagLineedit_people* other_lnedt = new teTagLineedit_people(QStringLiteral("other"), QStringLiteral("other(s)"));
-        controls.push_back(other_lnedt);
-        people_widget_layout->addWidget(girls_lnedt);
-        people_widget_layout->addWidget(boys_lnedt);
-        people_widget_layout->addWidget(other_lnedt);
-        QHBoxLayout*line1 = new QHBoxLayout;
-        teTagCheckBox*furry_cbb = new teTagCheckBox({qsl("furry")});
-        teTagCheckBox*magical_girl_cb =new teTagCheckBox({"magical girl"});
-        teTagCheckBox*elf_cb =new teTagCheckBox({"elf"});
-        teTagCheckBox*mesugaki_cb =new teTagCheckBox({"mesugaki"});
-        {
-            line1->addWidget(furry_cbb);
-            line1->addWidget(magical_girl_cb);
-            line1->addWidget(elf_cb);
-            line1->addWidget(mesugaki_cb);
-            controls.push_back(furry_cbb);
-            controls.push_back(magical_girl_cb);
-            controls.push_back(elf_cb);
-            controls.push_back(mesugaki_cb);
-            people_widget_layout->addLayout(line1);
-        }
-        mainLayout->addWidget(people_widget);
-        people_widget_layout->setSpacing(1);
-        people_widget_layout->setContentsMargins(0,0,0,0);
-        people_widget->hide();
-        page1_button_link*page1link = new page1_button_link(girls_btn,{girls_lnedt,boys_lnedt,other_lnedt,furry_cbb,magical_girl_cb,elf_cb,mesugaki_cb},this);
-        extraInterfaces.push_back(people_widget);
-        connect(girls_btn,&QPushButton::clicked,this,[this]{showInterface(1);},Qt::DirectConnection);
-    }
-    QHBoxLayout* secondline_layout = new QHBoxLayout;
-    secondline_layout->setSpacing(1);
-    teTagCheckBox* loli_cb = new teTagCheckBox({ "loli" });
-    teTagCheckBox* shota_cb = new teTagCheckBox({ "shota" });
-    teTagCheckBox* chibi_cb = new teTagCheckBox({ "chibi" });
-    teTagCheckBox* solo_cb = new teTagCheckBox({ "solo" });
-    {
-        secondline_layout->addWidget(loli_cb);
-        secondline_layout->addWidget(shota_cb);
-        secondline_layout->addWidget(chibi_cb);
-        secondline_layout->addWidget(solo_cb);
-        controls.push_back(loli_cb);
-        controls.push_back(shota_cb);
-        controls.push_back(chibi_cb);
-        controls.push_back(solo_cb);
-        contentLayout->addLayout(secondline_layout);
-    }
-Mature_Buttongroup* mature_bgop = new Mature_Buttongroup;
-contentLayout->addWidget(mature_bgop);
-controls.push_back(mature_bgop);
 
-multipeople_CheckBox* mcb = new multipeople_CheckBox(QStringLiteral("multiple (people)s"));
-contentLayout->addWidget(mcb);
-controls.push_back(mcb);
+/**
+ * @brief The people editor: a page of coarse tags plus a sub-page of details.
+ *
+ * The rows below are the whole page. Every control is created and handed to
+ * addRow()/addRowTo(), which is what puts it on screen and registers it with the
+ * editor - there is no second list to keep in step, and no `controls.push_back`
+ * to forget (a forgotten one used to be a control that silently never saw a tag).
+ */
+teEditor_pretreat::teEditor_pretreat(teTagListView*in_taglistwidget,QString&& name, QWidget* parent) :teEditor_standard(in_taglistwidget,name, QStringLiteral("pretreat"), parent) {
+    // --- the people sub-page -------------------------------------------------
+    auto* peopleButton = new QPushButton;
+    contentLayout->addWidget(peopleButton);
 
-teTagComboBox* quality_cbb = new teTagComboBox({
-    {qsl("(none)"),{}},
-    {qsl("masterpiece,best quality"),{qsl("masterpiece"),qsl("best quality")}},
-    {qsl("mst,bst,absurdres,very aesthetic"),{qsl("masterpiece"),qsl("best quality"),qsl("absurdres"),qsl("very aesthetic")}},
-    {qsl("score_9,score_8_up"),{qsl("score_9"),qsl("score_8_up")}},
-    {qsl("low quality,worst quality"),{qsl("low quality"),qsl("worst quality")}}
-                                               },QStringLiteral("(quality)"));
-contentLayout->addWidget(quality_cbb);
-controls.push_back(quality_cbb);
-quality_cbb->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);
+    auto* peoplePanel = new QWidget;
+    auto* peopleLayout = new QVBoxLayout(peoplePanel);
+    peopleLayout->setSpacing(1);
+    peopleLayout->setContentsMargins(0,0,0,0);
 
-teTagComboBox* camara_cbb = new teTagComboBox({
-    {qsl("(none)"),{}},
-    {qsl("full body"),{qsl("full body")}},
-    {qsl("upper body"),{qsl("upper body")}},
-    {qsl("cowboy shot"),{qsl("cowboy shot")}},
-    {qsl("pov"),{qsl("pov")}},
-    {qsl("close-up"),{qsl("close-up")}},
-    {qsl("face focus"),{qsl("face focus")}},
-    {qsl("eyes focus"),{qsl("eyes focus")}},
-    {qsl("foot focus"),{qsl("foot focus")}},
-    {qsl("ass focus"),{qsl("ass focus")}},
-},QStringLiteral("(framing)"));
-contentLayout->addWidget(camara_cbb);
-controls.push_back(camara_cbb);
+    auto* girls = new teTagLineedit_people(qsl("girl"),qsl("girl(s)"));
+    auto* boys  = new teTagLineedit_people(qsl("boy"),qsl("boy(s)"));
+    auto* others= new teTagLineedit_people(qsl("other"),qsl("other(s)"));
+    addRowTo(peopleLayout,{{},{},{girls}});
+    addRowTo(peopleLayout,{{},{},{boys}});
+    addRowTo(peopleLayout,{{},{},{others}});
 
-teTagComboBox* bodydirection_cbb = new teTagComboBox({
-    {qsl("(none)"),{}},
-    {qsl("looking at viewer"),{qsl("looking at viewer")}},
-    {qsl("facing viewer"),{qsl("facing viewer")}},
-    {qsl("lookingat&facing viewer"),{qsl("looking at viewer"),qsl("facing viewer")}},
-    {qsl("looking back"),{qsl("looking back")}},
-    {qsl("looking to the side"),{qsl("looking to the side")}},
-    {qsl("facing to the side"),{qsl("facing to the side")}},
-    {qsl("looking away"),{qsl("looking away")}},
-    {qsl("facing away"),{qsl("facing away")}},
-    {qsl("looking&facing away"),{qsl("looking away"),qsl("facing away")}},
-    {qsl("looking up"),{qsl("looking up")}},
-    {qsl("looking down"),{qsl("looking down")}},
-    {qsl("looking at object"),{qsl("looking at object")}}
-},QStringLiteral("(facing)"));
-contentLayout->addWidget(bodydirection_cbb);
-controls.push_back(bodydirection_cbb);
-bodydirection_cbb->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);
+    auto* furry = new teTagCheckBox({qsl("furry")});
+    auto* magicalGirl = new teTagCheckBox({qsl("magical girl")});
+    auto* elf = new teTagCheckBox({qsl("elf")});
+    auto* mesugaki = new teTagCheckBox({qsl("mesugaki")});
+    addRowTo(peopleLayout,{{},{},{furry,magicalGirl,elf,mesugaki}});
 
-teTagComboBox* posture_cbb = new teTagComboBox(
-    {
+    addSubPage(peopleButton,peoplePanel);
+    // The sub-page controls are still editor controls: the group below is what
+    // makes the three counts behave like one line ("1girl, 2boys, ...").
+    new page1_button_link(peopleButton,{girls,boys,others,furry,magicalGirl,elf,mesugaki},this);
+
+    // --- the main page -------------------------------------------------------
+    auto* loli = new teTagCheckBox({"loli"});
+    auto* shota = new teTagCheckBox({"shota"});
+    auto* chibi = new teTagCheckBox({"chibi"});
+    auto* solo = new teTagCheckBox({"solo"});
+    addRow({{},{},{loli,shota,chibi,solo}});
+
+    addControl(new Mature_Buttongroup);
+    addControl(new multipeople_CheckBox(qsl("multiple (people)s")));
+
+    auto* quality = new teTagComboBox({
+        {qsl("(none)"),{}},
+        {qsl("masterpiece,best quality"),{qsl("masterpiece"),qsl("best quality")}},
+        {qsl("mst,bst,absurdres,very aesthetic"),{qsl("masterpiece"),qsl("best quality"),qsl("absurdres"),qsl("very aesthetic")}},
+        {qsl("score_9,score_8_up"),{qsl("score_9"),qsl("score_8_up")}},
+        {qsl("low quality,worst quality"),{qsl("low quality"),qsl("worst quality")}}
+    },QStringLiteral("(quality)"));
+    quality->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);
+    addControl(quality);
+
+    addControl(new teTagComboBox({
+        {qsl("(none)"),{}},
+        {qsl("full body"),{qsl("full body")}},
+        {qsl("upper body"),{qsl("upper body")}},
+        {qsl("cowboy shot"),{qsl("cowboy shot")}},
+        {qsl("pov"),{qsl("pov")}},
+        {qsl("close-up"),{qsl("close-up")}},
+        {qsl("face focus"),{qsl("face focus")}},
+        {qsl("eyes focus"),{qsl("eyes focus")}},
+        {qsl("foot focus"),{qsl("foot focus")}},
+        {qsl("ass focus"),{qsl("ass focus")}},
+    },QStringLiteral("(framing)")));
+
+    auto* facing = new teTagComboBox({
+        {qsl("(none)"),{}},
+        {qsl("looking at viewer"),{qsl("looking at viewer")}},
+        {qsl("facing viewer"),{qsl("facing viewer")}},
+        {qsl("lookingat&facing viewer"),{qsl("looking at viewer"),qsl("facing viewer")}},
+        {qsl("looking back"),{qsl("looking back")}},
+        {qsl("looking to the side"),{qsl("looking to the side")}},
+        {qsl("facing to the side"),{qsl("facing to the side")}},
+        {qsl("looking away"),{qsl("looking away")}},
+        {qsl("facing away"),{qsl("facing away")}},
+        {qsl("looking&facing away"),{qsl("looking away"),qsl("facing away")}},
+        {qsl("looking up"),{qsl("looking up")}},
+        {qsl("looking down"),{qsl("looking down")}},
+        {qsl("looking at object"),{qsl("looking at object")}}
+    },QStringLiteral("(facing)"));
+    facing->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);
+    addControl(facing);
+
+    addControl(new teTagComboBox({
         {qsl("(none)"),{}},
         {qsl("sitting"),{qsl("sitting")}},
         {qsl("wariza"),{qsl("wariza")}},
@@ -377,242 +316,145 @@ teTagComboBox* posture_cbb = new teTagComboBox(
         {qsl("on side"),{qsl("on side")}},
         {qsl("on stomach"),{qsl("on stomach")}},
         {qsl("kneeling"),{qsl("kneeling")}},
-     {qsl("knees up"),{qsl("knees up")}},
-     {qsl("knee up"),{qsl("knee up")}},
+        {qsl("knees up"),{qsl("knees up")}},
+        {qsl("knee up"),{qsl("knee up")}},
         {qsl("all fours"),{qsl("all fours")}},
         {qsl("pose"),{qsl("pose")}},
-     {qsl("fetal position"),{qsl("fetal position")}},
+        {qsl("fetal position"),{qsl("fetal position")}},
         {qsl("floating"),{qsl("floating")}},
         {qsl("standing"),{qsl("standing")}},
-     {qsl("top-down bottom-up"),{qsl("top-down bottom-up")}}
+        {qsl("top-down bottom-up"),{qsl("top-down bottom-up")}}
+    },QStringLiteral("(posture)")));
 
-    },QStringLiteral("(posture)"));
-contentLayout->addWidget(posture_cbb);
-controls.push_back(posture_cbb);
+    addControl(new teTagComboBox({
+        {qsl("(none)"),{}},
+        {qsl("from above"),{qsl("from above")}},
+        {qsl("from side"),{qsl("from side")}},
+        {qsl("front view"),{qsl("front view")}},
+        {qsl("from below"),{qsl("from below")}},
+        {qsl("from behind"),{qsl("from behind")}},
+        {qsl("mtu virus"),{qsl("mtu virus")}},
+        {qsl("pantyshot"),{qsl("pantyshot")}}
+    },QStringLiteral("(angle)")));
 
-teTagComboBox* angle_cbb = new teTagComboBox({
-    {qsl("(none)"),{}},
-    {qsl("from above"),{qsl("from above")}},
-    {qsl("from side"),{qsl("from side")}},
-    {qsl("front view"),{qsl("front view")}},
-    {qsl("from below"),{qsl("from below")}},
-    {qsl("from behind"),{qsl("from behind")}},
-    {qsl("mtu virus"),{qsl("mtu virus")}},
-    {qsl("pantyshot"),{qsl("pantyshot")}}
-},QStringLiteral("(angle)"));
-contentLayout->addWidget(angle_cbb);
-controls.push_back(angle_cbb);
+    addControl(new teTagCheckBox({ "multiple views" }));
 
-teTagCheckBox* multipleviews_cb = new teTagCheckBox({ "multiple views" });
-contentLayout->addWidget(multipleviews_cb);
-controls.push_back(multipleviews_cb);
+    addControl(new teTagComboBox({
+        {qsl("(none)"),{}},
+        {qsl("front lighting"),{qsl("front lighting")}},
+        {qsl("side lighting"),{qsl("side lighting")}},
+        {qsl("backlighting"),{qsl("backlighting")}},
+        {qsl("rim light"),{qsl("rim light")}},
+        {qsl("dim lighting"),{qsl("dim lighting")}},
+        {qsl("sunbeam"),{qsl("sunbeam")}}
+    },QStringLiteral("(lighting)")));
 
-teTagComboBox* light_cbb = new teTagComboBox(
-    {{qsl("(none)"),{}},
-     {qsl("front lighting"),{qsl("front lighting")}},
-     {qsl("side lighting"),{qsl("side lighting")}},
-     {qsl("backlighting"),{qsl("backlighting")}},
-     {qsl("rim light"),{qsl("rim light")}},
-     {qsl("dim lighting"),{qsl("dim lighting")}},
-     {qsl("sunbeam"),{qsl("sunbeam")}}
-    },QStringLiteral("(lighting)"));
-contentLayout->addWidget(light_cbb);
-controls.push_back(light_cbb);
-
-teTagComboBox* scene_cbb = new teTagComboBox(
-    {{qsl("(none)"),{}},
+    addControl(new teTagComboBox({
+        {qsl("(none)"),{}},
         {qsl("scenery"),{qsl("scenery")}},
         {qsl("landscape"),{qsl("landscape")}},
         {qsl("cityscape"),{qsl("cityscape")}},
         {qsl("indoors"),{qsl("indoors")}},
         {qsl("outdoors"),{qsl("outdoors")}},
         {qsl("on bed"),{qsl("on bed"),qsl("indoors")}}
-    },QStringLiteral("(scene)"));
-contentLayout->addWidget(scene_cbb);
-controls.push_back(scene_cbb);
+    },QStringLiteral("(scene)")));
 
-teTagComboBox* type_cbb = new teTagComboBox({
-    {qsl("(none)"),{}},
-    {qsl("comic"),{qsl("comic")}},
-    {qsl("comic,greyscale,monochrome"),{qsl("comic"),qsl("greyscale"),qsl("monochrome")}},
-    {qsl("game cg"),{qsl("game cg")}},
-    {qsl("doujin cover"),{qsl("doujin cover"),qsl("cover page")}},
-    {qsl("tachi-e"),{qsl("tachi-e")}},
-    {qsl("pixel art"),{qsl("pixel art")}},
-    {qsl("lineart"),{qsl("lineart")}},
-    {qsl("dakimakura"),{qsl("dakimakura ( medium )")}},
+    addControl(new teTagComboBox({
+        {qsl("(none)"),{}},
+        {qsl("comic"),{qsl("comic")}},
+        {qsl("comic,greyscale,monochrome"),{qsl("comic"),qsl("greyscale"),qsl("monochrome")}},
+        {qsl("game cg"),{qsl("game cg")}},
+        {qsl("doujin cover"),{qsl("doujin cover"),qsl("cover page")}},
+        {qsl("tachi-e"),{qsl("tachi-e")}},
+        {qsl("pixel art"),{qsl("pixel art")}},
+        {qsl("lineart"),{qsl("lineart")}},
+        {qsl("dakimakura"),{qsl("dakimakura ( medium )")}},
+    },QStringLiteral("(format)")));
 
-},QStringLiteral("(format)"));
-contentLayout->addWidget(type_cbb);
-controls.push_back(type_cbb);
+    addRow({{},{},{new teTagCheckBox({ "blush" }),
+                    new teTagCheckBox({ "nose blush" }),
+                    new teTagCheckBox({ "tears" })}});
 
-QHBoxLayout* tenthline_layout = new QHBoxLayout;
-tenthline_layout->setSpacing(1);
-teTagCheckBox* blush_cb = new teTagCheckBox({ "blush" });
-teTagCheckBox* nose_blush_cb = new teTagCheckBox({ "nose blush" });
-teTagCheckBox* tears_cb = new teTagCheckBox({ "tears" });
-{
-    tenthline_layout->addWidget(blush_cb);
-    tenthline_layout->addWidget(nose_blush_cb);
-    tenthline_layout->addWidget(tears_cb);
-    controls.push_back(blush_cb);
-    controls.push_back(tears_cb);
-    controls.push_back(nose_blush_cb);
-    contentLayout->addLayout(tenthline_layout);
-}
+    addControl(new smile_buttongroup);
+    addControl(new ClosedEyes_Buttongroup);
 
-smile_buttongroup* smile_bgop = new smile_buttongroup;
-contentLayout->addWidget(smile_bgop);
-controls.push_back(smile_bgop);
+    addControl(new teTagComboBox({
+        {qsl("(none)"),{}},
+        {qsl("surprised"),{qsl("surprised")}},
+        {qsl("scared"),{qsl("scared")}},
+        {qsl("smug"),{qsl("smug")}},
+        {qsl("confused"),{qsl("confused")}},
+        {qsl("annoyed"),{qsl("annoyed")}},
+        {qsl("sad"),{qsl("sad")}},
+        {qsl("flustered"),{qsl("flustered")}},
+        {qsl("crying"),{qsl("crying")}},
+        {qsl("angry"),{qsl("angry")}},
+        {qsl("exhausted"),{qsl("exhausted")}},
+        {qsl("embarrassed"),{qsl("embarrassed")}},
+        {qsl("grin"),{qsl("grin")}},
+        {qsl("expressionless"),{qsl("expressionless")}},
+    },QStringLiteral("(expression)")));
 
-ClosedEyes_Buttongroup* closedeyes_bgop = new ClosedEyes_Buttongroup;
-contentLayout->addWidget(closedeyes_bgop);
-controls.push_back(closedeyes_bgop);
+    addControl(new teTagComboBox({
+        {qsl("empty eyes"),{qsl("empty eyes")}},
+        {qsl("constricted pupils"),{qsl("constricted pupils")}},
+        {qsl("wide-eyed"),{qsl("wide-eyed")}},
+        {qsl("sparkling"),{qsl("sparkling")}},
+        {qsl("one eye closed"),{qsl("one eye closed")}},
+        {qsl("dashed eyes"),{qsl("dashed eyes")}},
+        {qsl("squiggle eyes"),{qsl("squiggle eyes")}}
+    },QStringLiteral("(eye)")));
 
-teTagComboBox* expression_cbb = new teTagComboBox(
-    {
-     {qsl("(none)"),{}},
-     {qsl("surprised"),{qsl("surprised")}},
-     {qsl("scared"),{qsl("scared")}},
-     {qsl("smug"),{qsl("smug")}},
-     {qsl("confused"),{qsl("confused")}},
-     {qsl("annoyed"),{qsl("annoyed")}},
-     {qsl("sad"),{qsl("sad")}},
-     {qsl("flustered"),{qsl("flustered")}},
-     {qsl("crying"),{qsl("crying")}},
-     {qsl("angry"),{qsl("angry")}},
-     {qsl("exhausted"),{qsl("exhausted")}},
-     {qsl("embarrassed"),{qsl("embarrassed")}},
-     {qsl("grin"),{qsl("grin")}},
-     {qsl("expressionless"),{qsl("expressionless")}},
-     },QStringLiteral("(expression)"));
-contentLayout->addWidget(expression_cbb);
-controls.push_back(expression_cbb);
-teTagComboBox* eye_cbb = new teTagComboBox(
-    {
-     {qsl("empty eyes"),{qsl("empty eyes")}},
-     {qsl("constricted pupils"),{qsl("constricted pupils")}},
-     {qsl("wide-eyed"),{qsl("wide-eyed")}},
-     {qsl("sparkling"),{qsl("sparkling")}},
-     {qsl("one eye closed"),{qsl("one eye closed")}},
-     {qsl("dashed eyes"),{qsl("dashed eyes")}},
-     {qsl("squiggle eyes"),{qsl("squiggle eyes")}}
-     },QStringLiteral("(eye)"));
-contentLayout->addWidget(eye_cbb);
-controls.push_back(eye_cbb);
-teTagComboBox* eye_shape_cbb = new teTagComboBox(
-    {
+    addControl(new teTagComboBox({
         {qsl("jitome"),{qsl("jitome")}},
         {qsl("tareme"),{qsl("tareme")}},
         {qsl("tsurime"),{qsl("tsurime")}},
         {qsl("sanpaku"),{qsl("sanpaku")}},
-    },QStringLiteral("(eye shape)"));
-contentLayout->addWidget(eye_shape_cbb);
-controls.push_back(eye_shape_cbb);
+    },QStringLiteral("(eye shape)")));
 
-mouth_buttongroup* mouth_bgop = new mouth_buttongroup;
-contentLayout->addWidget(mouth_bgop);
-controls.push_back(mouth_bgop);
-
-Breast_Buttongroup* hairlength_bgop = new Breast_Buttongroup;
-contentLayout->addWidget(hairlength_bgop);
-controls.push_back(hairlength_bgop);
+    addControl(new mouth_buttongroup);
+    addControl(new Breast_Buttongroup);
 }
 
-QString teEditor_hair_and_eyes_style = QStringLiteral(R"(
-QPushButton#editor_switch{
-font-size:16pt;color:qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 rgba(255, 146, 235, 255), stop:0.497207 rgba(235, 239, 195, 255), stop:1 rgba(176, 246, 244, 255)); background:black;
-}
-QPushButton#editor_switch:!checked{
-border:1px solid rgb(50,50,50);
-background:transparent;
-}
-QPushButton#editor_switch:checked{
-border:2px solid #008b46;
-})");
-teEditor_hair_and_eyes::teEditor_hair_and_eyes(teTagListView*in_taglistwidget,QString &&name, QString *styleSheet, QWidget *parent):teEditor_standard(in_taglistwidget,name, &teEditor_hair_and_eyes_style, parent){
-hair_and_eyes_color_list* colors_list = new hair_and_eyes_color_list(new colorsWidget({{{qsl("gradient"),qsl("streaked")},true},{{qsl("hair"),qsl("eyes")},true}},nullptr),taglistwidget);
-    contentLayout->addWidget(colors_list);
-    controls.push_back(colors_list);
+teEditor_hair_and_eyes::teEditor_hair_and_eyes(teTagListView*in_taglistwidget,QString &&name, QWidget *parent):teEditor_standard(in_taglistwidget,name, QStringLiteral("hair"), parent){
+    addControl(new hair_and_eyes_color_list(
+        new colorsWidget({{{qsl("gradient"),qsl("streaked")},true},{{qsl("hair"),qsl("eyes")},true}},nullptr),
+        taglistwidget));
 
-    teTagCheckBox* heterochromia_cb = new teTagCheckBox({ "heterochromia" });
-    contentLayout->addWidget(heterochromia_cb);
-    controls.push_back(heterochromia_cb);
+    addControl(new teTagCheckBox({ "heterochromia" }));
 
-    QHBoxLayout* multicolored_layout = new QHBoxLayout;
-    QLabel*multicolored_label = new QLabel("multicolored");
-    multicolored_layout->addWidget(multicolored_label);
-    teTagCheckBox* multicolored_eyes_cb = new teTagCheckBox({ "eyes","multicolored eyes" });
-    multicolored_layout->addWidget(multicolored_eyes_cb);
-    controls.push_back(multicolored_eyes_cb);
+    auto* multicoloredEyes = new teTagCheckBox({ "eyes","multicolored eyes" });
+    auto* multicoloredHair = new teTagCheckBox({ "hair","multicolored hair" });
+    addRow({{},QStringLiteral("multicolored"),{multicoloredEyes,multicoloredHair}});
 
-    teTagCheckBox* multicolored_hair_cb = new teTagCheckBox({ "hair","multicolored hair" });
-    multicolored_layout->addWidget(multicolored_hair_cb);
-    controls.push_back(multicolored_hair_cb);
+    addControl(new ponytail_buttongroup);
+    addControl(new teTagCheckBox({ "two side up" }));
 
-    contentLayout->addLayout(multicolored_layout);
+    addControl(new BangsList(
+        new colorsWidget({
+                          {{qsl("long"),qsl("short")},true},
+                          {{qsl("asymmetrical"),qsl("double-parted"),qsl("crossed"),qsl("blunt"),qsl("parted"),qsl("choppy"),qsl("swept"),qsl("braided"),qsl("diagonal"),qsl("center-flap"),qsl("wispy"),qsl("arched"),qsl("dyed"),qsl("curtained"),qsl("fanged"),qsl("flipped"),qsl("sideless"),qsl("loosely tucked")},false},
+                          {{qsl("bangs")},true}
+                         },
+                         nullptr,-1,
+                         {{
+                           qsl("hair between eyes"),
+                           qsl("hair over one eye"),
+                           qsl("hair over eyes")
+                         }}
+                         ),taglistwidget));
 
-ponytail_buttongroup* ponytail_bgop = new ponytail_buttongroup;
-contentLayout->addWidget(ponytail_bgop);
-controls.push_back(ponytail_bgop);
+    addRow({{},{},{new teTagCheckBox({ "forehead" }),
+                    new teTagCheckBox({ "ahoge" }),
+                    new teTagCheckBox({ "hairband" }),
+                    new teTagCheckBox({ "hood" })}});
 
-teTagCheckBox* two_side_up_cb = new teTagCheckBox({ "two side up" });
-contentLayout->addWidget(two_side_up_cb);
-controls.push_back(two_side_up_cb);
-
-BangsList* bangs_list = new BangsList(
-    new colorsWidget({
-                      {{qsl("long"),qsl("short")},true},
-                      {{qsl("asymmetrical"),qsl("double-parted"),qsl("crossed"),qsl("blunt"),qsl("parted"),qsl("choppy"),qsl("swept"),qsl("braided"),qsl("diagonal"),qsl("center-flap"),qsl("wispy"),qsl("arched"),qsl("dyed"),qsl("curtained"),qsl("fanged"),qsl("flipped"),qsl("sideless"),qsl("loosely tucked")},false},
-                      {{qsl("bangs")},true}
-                     },
-                     nullptr,-1,
-                     {{
-                       qsl("hair between eyes"),
-                       qsl("hair over one eye"),
-                       qsl("hair over eyes")
-                     }}
-                     ),taglistwidget);
-contentLayout->addWidget(bangs_list);
-controls.push_back(bangs_list);
-
-QHBoxLayout* seventhline_layout = new QHBoxLayout;
-seventhline_layout->setSpacing(1);
-teTagCheckBox* forehead = new teTagCheckBox({ "forehead" });
-teTagCheckBox* ahoge_cb = new teTagCheckBox({ "ahoge" });
-teTagCheckBox* hairband_cb = new teTagCheckBox({ "hairband" });
-teTagCheckBox* hood_cb = new teTagCheckBox({ "hood" });
-{
-    seventhline_layout->addWidget(forehead);
-    seventhline_layout->addWidget(ahoge_cb);
-    seventhline_layout->addWidget(hairband_cb);
-    seventhline_layout->addWidget(hood_cb);
-    controls.push_back(forehead);
-    controls.push_back(ahoge_cb);
-    controls.push_back(hairband_cb);
-    controls.push_back(hood_cb);
-    contentLayout->addLayout(seventhline_layout);
+    addControl(new HairLength_Buttongroup);
 }
 
-HairLength_Buttongroup* hairlength_bgop = new HairLength_Buttongroup;
-contentLayout->addWidget(hairlength_bgop);
-controls.push_back(hairlength_bgop);
-}
 
-QString teEditor_clothes_style = QStringLiteral(R"(
-QPushButton#editor_switch{
-font-size:16pt;color:qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 rgba(0, 255, 170, 255), stop:0.49162 rgba(191, 255, 0, 255), stop:1 rgba(0, 238, 255, 255)); background:black;
-}
-QPushButton#editor_switch:!checked{
-border:1px solid rgb(50,50,50);
-background:transparent;
-}
-QPushButton#editor_switch:checked{
-border:2px solid #008b46;
-})");
-
-teEditor_clothes::teEditor_clothes(teTagListView*in_taglistwidget,QString &&name, QString *styleSheet, QWidget *parent):teEditor_standard(in_taglistwidget,name, &teEditor_clothes_style, parent){
-ClothesList* clothes_list = new ClothesList(new colorsWidget(
+teEditor_clothes::teEditor_clothes(teTagListView*in_taglistwidget,QString &&name, QWidget *parent):teEditor_standard(in_taglistwidget,name, QStringLiteral("clothes"), parent){
+    addControl(new ClothesList(new colorsWidget(
         {
             { {qsl("torn"),qsl("striped"),qsl("fishnet"),qsl("frilled")}, false },
             { headAndNeckClothesTypes, true },
@@ -633,258 +475,158 @@ ClothesList* clothes_list = new ClothesList(new colorsWidget(
         // this dialog square instead of a tall strip.
         new QButtonGroup(nullptr),
         false,
-        { 0, 1, 1, 1, 1, 1, 1, 1 }),taglistwidget);
-    contentLayout->addWidget(clothes_list);
-    controls.push_back(clothes_list);
+        { 0, 1, 1, 1, 1, 1, 1, 1 }),taglistwidget));
 
-    QHBoxLayout* secondline_layout = new QHBoxLayout;
-    QHBoxLayout* thirdline_layout = new QHBoxLayout;
-    secondline_layout->setSpacing(1);
-    thirdline_layout->setSpacing(1);
-    teTagCheckBox* torn_cb = new teTagCheckBox({ "torn clothes" });
-    teTagCheckBox* fishnets_cb = new teTagCheckBox({ "fishnets" });
-    teTagCheckBox* frills_cb = new teTagCheckBox({ "frills" });
-    teTagCheckBox* striped_cb = new teTagCheckBox({ "striped clothes" });
-    {
-        secondline_layout->addWidget(torn_cb);
-        secondline_layout->addWidget(fishnets_cb);
-        controls.push_back(torn_cb);
-        controls.push_back(fishnets_cb);
-        contentLayout->addLayout(secondline_layout);
+    addRow({{},{},{new teTagCheckBox({ "torn clothes" }),
+                    new teTagCheckBox({ "fishnets" })}});
+    addRow({{},{},{new teTagCheckBox({ "frills" }),
+                    new teTagCheckBox({ "striped clothes" })}});
 
-        thirdline_layout->addWidget(frills_cb);
-        thirdline_layout->addWidget(striped_cb);
-        controls.push_back(frills_cb);
-        controls.push_back(striped_cb);
-        contentLayout->addLayout(thirdline_layout);
-    }
-
-Ears_Buttongroup* ears_Buttongroup = new Ears_Buttongroup;
-contentLayout->addWidget(ears_Buttongroup);
-controls.push_back(ears_Buttongroup);
-
+    addControl(new Ears_Buttongroup);
 }
 
 
-QString teEditor_nsfw_style = QStringLiteral(R"(
-QPushButton#editor_switch{
-font-size:16pt;color:qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 rgba(255, 0, 0, 255), stop:0.536313 rgba(217, 0, 255, 255), stop:1 rgba(98, 0, 255, 255)); background:black;
-}
-QPushButton#editor_switch:!checked{
-border:1px solid rgb(50,50,50);
-background:transparent;
-}
-QPushButton#editor_switch:checked{
-border:2px solid #008b46;
-})");
-teEditor_nsfw::teEditor_nsfw(teTagListView*in_taglistwidget,QString &&name, QString *styleSheet, QWidget *parent):teEditor_standard(in_taglistwidget,name, &teEditor_nsfw_style, parent){
+teEditor_nsfw::teEditor_nsfw(teTagListView*in_taglistwidget,QString &&name, QWidget *parent):teEditor_standard(in_taglistwidget,name, QStringLiteral("nsfw"), parent){
+    addControl(new Object_list(new colorsWidget({{QStringList{object1.begin(),object1.end()},true},{QStringList{preposwords.begin(),preposwords.end()},true},{QStringList{bodyparts.begin(),bodyparts.end()},true}},nullptr,-1),taglistwidget));
 
-Object_list* object_list = new Object_list(new colorsWidget({{QStringList{object1.begin(),object1.end()},true},{QStringList{preposwords.begin(),preposwords.end()},true},{QStringList{bodyparts.begin(),bodyparts.end()},true}},nullptr,-1),taglistwidget);
-    contentLayout->addWidget(object_list);
-    controls.push_back(object_list);
+    addRow({{qsl("type")},{},{new teTagCheckBox({ "sex" }),
+                                new teTagCheckBox({ "nude" }),
+                                new teTagCheckBox({ "vaginal" }),
+                                new teTagCheckBox({ "anal" }),
+                                new teTagCheckBox({ "oral" })}});
 
-    {
-        const int layout_count = 32;
-        QHBoxLayout* layouts[layout_count];
-        for(int i =0;i<layout_count;++i){
-            layouts[i] = new QHBoxLayout;
-            layouts[i]->setSpacing(1);
-        }
-        auto insertToEditor = [this](QBoxLayout*layout,QVector<EditorControl*>&controls_array,QVector<EditorControl*>controls,QString title={}){
-            if(!title.isEmpty()){
-                QLabel*titleLabel = new QLabel(title);
-                titleLabel->setProperty("type","title");
-                titleLabel->setStyleSheet(qsl("font:italic 14px;color:rgb(200,200,200);"));
-                contentLayout->addWidget(titleLabel);
-            }
-            for(auto control:controls){
-                layout->addWidget(dynamic_cast<QWidget*>(control));
-                controls_array.push_back(control);
-            }
-            contentLayout->addLayout(layout);
-        };
-        int i=-1;
+    addRow({{},{},{new teTagButtonGroup{{{qsl("aft"),qsl("after"),true},{qsl("imm"),qsl("imminent"),true},{qsl("vaginal"),qsl("vaginal"),false}}},
+                    new teTagButtonGroup{{{qsl("aft"),qsl("after"),true},{qsl("imm"),qsl("imminent"),true},{qsl("rape"),qsl("rape"),false}}}}}); 
 
+    addRow({{},{},{new teTagCheckBox({ "paizuri" }),
+                    new teTagCheckBox({ "footjob" }),
+                    new teTagCheckBox({ "fingering" }),
+                    new teTagCheckBox({ "group","group sex" })}});
 
-        teTagCheckBox* sex_cb = new teTagCheckBox({ "sex" });
-        teTagCheckBox* nude_cb = new teTagCheckBox({ "nude" });
-        teTagCheckBox* vaginal_cb = new teTagCheckBox({ "vaginal" });
-        teTagCheckBox* anal_cb = new teTagCheckBox({ "anal" });
-        teTagCheckBox* oral_cb = new teTagCheckBox({ "oral" });
-        insertToEditor(layouts[++i],controls,{sex_cb,nude_cb,vaginal_cb,anal_cb,oral_cb},"type");
+    addControl(new teTagCheckBox({ "cervical penetration" }));
 
-        teTagButtonGroup* vaginal_bg = new teTagButtonGroup{{{qsl("aft"),qsl("after"),true},{qsl("imm"),qsl("imminent"),true},{qsl("vaginal"),qsl("vaginal"),false}}};
-        teTagButtonGroup* rape_bg = new teTagButtonGroup{{{qsl("aft"),qsl("after"),true},{qsl("imm"),qsl("imminent"),true},{qsl("rape"),qsl("rape"),false}}};
-        insertToEditor(layouts[++i],controls,{vaginal_bg,rape_bg});
+    addRow({{},{},{new teTagCheckBox({"(female)", "female masturbation" }),
+                    new teTagCheckBox({ "(male)", "male masturbation"  }),
+                    new teTagCheckBox({ "masturbation" })}});
 
-        teTagCheckBox* paizuri_cb = new teTagCheckBox({ "paizuri" });
-        teTagCheckBox* footjob_cb = new teTagCheckBox({ "footjob" });
-        teTagCheckBox* fingering_cb = new teTagCheckBox({ "fingering" });
-        teTagCheckBox* group_cb = new teTagCheckBox({ "group","group sex" });
-        insertToEditor(layouts[++i],controls,{paizuri_cb,footjob_cb,fingering_cb,group_cb});
+    addRow({{qsl("gender")},{},{new teTagCheckBox({qsl("futanari")}),
+                                  new teTagCheckBox({qsl("tomgirl")}),
+                                  new teTagCheckBox({qsl("otoko no ko")}),
+                                  new teTagCheckBox({qsl("trap")})}});
 
-        teTagCheckBox*cervical_penetration_cb =new teTagCheckBox({ "cervical penetration" });
-        insertToEditor(layouts[++i],controls,{cervical_penetration_cb});
+    addRow({{qsl("liquid")},{},{new teTagCheckBox({ "cum inside" }),
+                                  new teTagCheckBox({ "lactation" }),
+                                  new teTagCheckBox({ "sweat" })}});
 
-        teTagCheckBox*female_masturbation_cb =new teTagCheckBox({"(female)", "female masturbation" });
-        teTagCheckBox*male_masturbation_cb =new teTagCheckBox({ "(male)", "male masturbation"  });
-        teTagCheckBox*masturbation_cb =new teTagCheckBox({ "masturbation" });
-        insertToEditor(layouts[++i],controls,{female_masturbation_cb,male_masturbation_cb,masturbation_cb});
+    addRow({{},{},{new teTagCheckBox({ "(female)", "female ejaculation" }),
+                    new teTagCheckBox({ "ejaculation" })}});
 
-        teTagCheckBox*futanari_cb = new teTagCheckBox({qsl("futanari")});
-        teTagCheckBox*tomgirl_cb = new teTagCheckBox({qsl("tomgirl")});
-        teTagCheckBox*otoko_no_ko_cb = new teTagCheckBox({qsl("otoko no ko")});
-        teTagCheckBox*trap = new teTagCheckBox({qsl("trap")});
-        insertToEditor(layouts[++i],controls,{futanari_cb,tomgirl_cb,otoko_no_ko_cb,trap},"gender");
+    addRow({{qsl("expression")},{},{new teTagCheckBox({ "orgasm" }),
+                                      new teTagCheckBox({ "face", "orgasm face" }),
+                                      new teTagCheckBox({ "furrowed brow" })}});
+    addRow({{},{},{new teTagCheckBox({ "torogao" }),
+                    new teTagCheckBox({ "ahegao" }),
+                    new teTagCheckBox({ "moaning" })}});
 
-        teTagCheckBox* nakadashi_cb = new teTagCheckBox({ "cum inside" });
-        teTagCheckBox* lacatation_cb = new teTagCheckBox({ "lactation" });
-        teTagCheckBox* sweat_cb = new teTagCheckBox({ "sweat" });
-        insertToEditor(layouts[++i],controls,{nakadashi_cb,lacatation_cb,sweat_cb},"liquid");
+    addRow({{qsl("comic elements")},{},{new teTagCheckBox({ "trembling" }),
+                                              new teTagCheckBox({ "spch bubble","speech bubble" }),
+                                              new teTagCheckBox({ "sd effects" , "sound effects" })}});
+    addRow({{},{},{new teTagCheckBox({ "text" }),
+                    new teTagCheckBox({ "x-ray" }),
+                    new teTagCheckBox({ "emphasis lines" })}});
 
-        teTagCheckBox* female_ejaculation_cb = new teTagCheckBox({ "(female)", "female ejaculation" });
-        teTagCheckBox* ejaculation_cb = new teTagCheckBox({ "ejaculation" });
-        insertToEditor(layouts[++i],controls,{female_ejaculation_cb,ejaculation_cb});
+    addRow({{},{},{new teTagCheckBox({ "internal cumshot" }),
+                    new teTagCheckBox({ "cross-section" })}});
 
-        teTagCheckBox* orgasm_cb = new teTagCheckBox({ "orgasm" });
-        teTagCheckBox* orgasm_face_cb = new teTagCheckBox({ "face", "orgasm face" });
-        teTagCheckBox* furrowed_brow_cb = new teTagCheckBox({ "furrowed brow" });
-        insertToEditor(layouts[++i],controls,{orgasm_cb,orgasm_face_cb,furrowed_brow_cb},"expression");
-        teTagCheckBox* torogao_cb = new teTagCheckBox({ "torogao" });
-        teTagCheckBox* ahegao_cb = new teTagCheckBox({ "ahegao" });
-        teTagCheckBox* moaning_cb = new teTagCheckBox({ "moaning" });
-        insertToEditor(layouts[++i],controls,{torogao_cb,ahegao_cb,moaning_cb});
+    addRow({{},{},{new teTagCheckBox({ "impregnation" }),
+                    new teTagCheckBox({ "fertilization" })}});
 
-        teTagCheckBox* trembling_cb = new teTagCheckBox({ "trembling" });
-        teTagCheckBox* speech_bubble_cb = new teTagCheckBox({ "spch bubble","speech bubble" });
-        teTagCheckBox* sound_effects_cb = new teTagCheckBox({ "sd effects" , "sound effects" });
-        insertToEditor(layouts[++i],controls,{trembling_cb,speech_bubble_cb,sound_effects_cb},"comic elements");
-        teTagCheckBox* text_cb = new teTagCheckBox({ "text" });
-        teTagCheckBox* xray_cb = new teTagCheckBox({ "x-ray" });
-        teTagCheckBox* emphasis_lines_cb = new teTagCheckBox({ "emphasis lines" });
-        insertToEditor(layouts[++i],controls,{text_cb,xray_cb,emphasis_lines_cb});
+    addRow({{qsl("physical traits")},{},{new teTagCheckBox({ "(female)", "female pubic hair" }),
+                                             new teTagCheckBox({  "(male)","male pubic hair" }),
+                                             new teTagCheckBox({ "pubic hair" })}});
 
-        teTagCheckBox* internal_cumshot_cb = new teTagCheckBox({ "internal cumshot" });
-        teTagCheckBox* cross_section_cb = new teTagCheckBox({ "cross-section" });
-        insertToEditor(layouts[++i],controls,{internal_cumshot_cb,cross_section_cb});
+    addRow({{},{},{new teTagCheckBox({ "large penis"  }),
+                    new teTagCheckBox({ "large insertion"  })}});
 
-        teTagCheckBox*impregnation_cb =new teTagCheckBox({ "impregnation" });
-        teTagCheckBox*fertilization_cb =new teTagCheckBox({ "fertilization" });
-        insertToEditor(layouts[++i],controls,{impregnation_cb,fertilization_cb});
+    addRow({{},{},{new teTagCheckBox({ "smalldom" }),
+                    new teTagCheckBox({ "size diff","size difference" }),
+                    new teTagCheckBox({ "mounting" })}});
 
-        teTagCheckBox* female_pubic_hair_cb = new teTagCheckBox({ "(female)", "female pubic hair" });
-        teTagCheckBox* male_pubic_hair_cb = new teTagCheckBox({  "(male)","male pubic hair" });
-        teTagCheckBox* pubic_hair_cb = new teTagCheckBox({ "pubic hair" });
-        insertToEditor(layouts[++i],controls,{female_pubic_hair_cb,male_pubic_hair_cb,pubic_hair_cb},"physical traits");
+    addRow({{},{},{new teTagCheckBox({ "pregnant" }),
+                    new teTagCheckBox({ "cum inflation" })}});
 
-        teTagCheckBox*large_penis_cb = new teTagCheckBox({ "large penis"  });
-        teTagCheckBox*large_insertion_cb = new teTagCheckBox({ "large insertion"  });
-        insertToEditor(layouts[++i],controls,{large_penis_cb,large_insertion_cb});
+    addRow({{qsl("object")},{},{new teTagCheckBox({"ride","riding machine" }),
+                                  new teTagCheckBox({"machine","sex machine" }),
+                                  new teTagCheckBox({"toy", "sex toy"  }),
+                                  new teTagCheckBox({"dildo"}),
+                                  new teTagCheckBox({ "gap","gaping"  })}});
 
-        teTagCheckBox*smalldom_cb =new teTagCheckBox({ "smalldom" });
-        teTagCheckBox*size_difference_cb =new teTagCheckBox({ "size diff","size difference" });
-        teTagCheckBox*mounting_cb =new teTagCheckBox({ "mounting" });
-        insertToEditor(layouts[++i],controls,{smalldom_cb,size_difference_cb,mounting_cb});
+    addRow({{},{},{new teTagCheckBox({"vaginal","vaginal object insertion" }),
+                    new teTagCheckBox({"anal", "anal object insertion"  }),
+                    new teTagCheckBox({ "object insertion", "object insertion"  })}});
 
-        teTagCheckBox* pregnant_cb = new teTagCheckBox({ "pregnant" });
-        teTagCheckBox* cum_inflation_cb = new teTagCheckBox({ "cum inflation" });
-        insertToEditor(layouts[++i],controls,{pregnant_cb,cum_inflation_cb});
+    addRow({{},{},{new teTagCheckBox({ "giving birth" }),
+                    new teTagCheckBox({ "unbirth" }),
+                    new teTagCheckBox({ "prolapse" })}});
 
+    addRow({{},{},{new teTagCheckBox({ "bestiality" }),
+                    new teTagCheckBox({ "🐶","dog" }),
+                    new teTagCheckBox({ "🐴","horse" }),
+                    new teTagCheckBox({ "🐷","pig" }),
+                    new teTagCheckBox({ "🐸","frog" })}});
+    addRow({{},{},{new teTagCheckBox({ "🐍","snake" }),
+                    new teTagCheckBox({ "🦍","orangutan" }),
+                    new teTagCheckBox({ "🐵","monkey" }),
+                    new teTagCheckBox({ "🦋","insect" }),
+                    new teTagCheckBox({ "🐛","worm" }),
+                    new teTagCheckBox({ "💧","slime" }),
+                    new teTagCheckBox({ "👺","goblin" })}});
 
-        teTagCheckBox*riding_machine_cb =new teTagCheckBox({"ride","riding machine" });
-        teTagCheckBox*sex_machine_cb =new teTagCheckBox({"machine","sex machine" });
-        teTagCheckBox*sex_toy_cb =new teTagCheckBox({"toy", "sex toy"  });
-        teTagCheckBox*dildo_cb =new teTagCheckBox({"dildo"});
-        teTagCheckBox*gaping_cb = new teTagCheckBox({ "gap","gaping"  });
-        insertToEditor(layouts[++i],controls,{riding_machine_cb,sex_machine_cb,sex_toy_cb,dildo_cb,gaping_cb},"object");
+    addRow({{},{},{new teTagCheckBox({"living clothes"}),
+                    new teTagCheckBox({"bondage"}),
+                    new teTagCheckBox({"tickling"})}});
 
-        teTagCheckBox*vaginal_object_cb =new teTagCheckBox({"vaginal","vaginal object insertion" });
-        teTagCheckBox*anal_object_cb =new teTagCheckBox({"anal", "anal object insertion"  });
-        teTagCheckBox*object_cb = new teTagCheckBox({ "object insertion", "object insertion"  });
-        insertToEditor(layouts[++i],controls,{vaginal_object_cb,anal_object_cb,object_cb});
+    addRow({{},{},{new teTagCheckBox({"plant", "plant tentacles" }),
+                    new teTagCheckBox({ "tentacles" }),
+                    new teTagCheckBox({ "ovipositor" }),
+                    new teTagCheckBox({ "egg" })}});
 
-        teTagCheckBox* birth_cb = new teTagCheckBox({ "giving birth" });
-        teTagCheckBox* unbirth_cb = new teTagCheckBox({ "unbirth" });
-        teTagCheckBox* prolapse_cb =new teTagCheckBox({ "prolapse" });
-        insertToEditor(layouts[++i],controls,{birth_cb,unbirth_cb,prolapse_cb});
+    addRow({{qsl("sexual positions")},{},{new teTagCheckBox({ "cowgirl","cowgirl position" }),
+                                              new teTagCheckBox({ "from behind","sex from behind" }),
+                                              new teTagCheckBox({ "leg lock" })}});
 
-        teTagCheckBox*bestiality_cb =new teTagCheckBox({ "bestiality" });
-        teTagCheckBox*dog_cb =new teTagCheckBox({ "🐶","dog" });
-        teTagCheckBox*horse_cb =new teTagCheckBox({ "🐴","horse" });
-        teTagCheckBox*pig_cb =new teTagCheckBox({ "🐷","pig" });
-        teTagCheckBox*frog_cb =new teTagCheckBox({ "🐸","frog" });
-        insertToEditor(layouts[++i],controls,{bestiality_cb,dog_cb,horse_cb,pig_cb,frog_cb});
-        teTagCheckBox*snake_cb =new teTagCheckBox({ "🐍","snake" });
-        teTagCheckBox*orangutan_cb =new teTagCheckBox({ "🦍","orangutan" });
-        teTagCheckBox*monkey_cb =new teTagCheckBox({ "🐵","monkey" });
-        teTagCheckBox*insect_cb =new teTagCheckBox({ "🦋","insect" });
-        teTagCheckBox*worm_cb =new teTagCheckBox({ "🐛","worm" });
-        teTagCheckBox*slime_cb =new teTagCheckBox({ "💧","slime" });
-        teTagCheckBox*goblin_cb =new teTagCheckBox({ "👺","goblin" });
-        insertToEditor(layouts[++i],controls,{snake_cb,orangutan_cb,monkey_cb,insect_cb,worm_cb,slime_cb,goblin_cb});
+    addRow({{},{},{new teTagCheckBox({ "doggystyle" }),
+                    new teTagCheckBox({ "spooning" }),
+                    new teTagCheckBox({ "piledriver","piledriver (sex)" })}});
 
-        teTagCheckBox*living_clothes_cb =new teTagCheckBox({"living clothes"});
-        teTagCheckBox*bondage_cb =new teTagCheckBox({"bondage"});
-        teTagCheckBox*tickling_cb =new teTagCheckBox({"tickling"});
-        insertToEditor(layouts[++i],controls,{living_clothes_cb,bondage_cb,tickling_cb});
+    addRow({{},{},{new legUp_Buttongroup,
+                    new teTagCheckBox({ "spread" ,qsl("spread legs")}),
+                    new teTagCheckBox({ "folded" ,qsl("folded")})}});
 
-        teTagCheckBox*plant_tentacles_cb =new teTagCheckBox({"plant", "plant tentacles" });
-        teTagCheckBox*tentacles_cb =new teTagCheckBox({ "tentacles" });
-        teTagCheckBox*ovipositor_cb =new teTagCheckBox({ "ovipositor" });
-        teTagCheckBox*egg_cb =new teTagCheckBox({ "egg" });
-        insertToEditor(layouts[++i],controls,{plant_tentacles_cb,tentacles_cb,ovipositor_cb,egg_cb});
+    addRow({{qsl("misc")},{},{new teTagCheckBox({ "toddlercon" }),
+                              new teTagCheckBox({ "diaper" })}});
+    addRow({{},{},{new teTagCheckBox({"fisting"}),
+                    new teTagCheckBox({"omorashi"}),
+                    new teTagCheckBox({"peeing"}),
+                    new teTagCheckBox({"fart"})}});
+    addRow({{},{},{new teTagCheckBox({"vore"}),
+                    new teTagCheckBox({"vomit"}),
+                    new teTagCheckBox({"enema"}),
+                    new teTagCheckBox({"scat"})}});
 
-        teTagCheckBox* cowgirl_position = new teTagCheckBox({ "cowgirl","cowgirl position" });
-        teTagCheckBox* from_behind_cb=  new teTagCheckBox({ "from behind","sex from behind" });
-        teTagCheckBox* leg_lock_cb = new teTagCheckBox({ "leg lock" });
-        insertToEditor(layouts[++i],controls,{cowgirl_position,from_behind_cb,leg_lock_cb},"sexual positions");
+    addRow({{},{},{new teTagCheckBox({"guro"}),
+                    new teTagCheckBox({"snuff"}),
+                    new teTagCheckBox({"amputee"}),
+                    new teTagCheckBox({"netorare"})}});
 
-        teTagCheckBox* doggystyle_cb = new teTagCheckBox({ "doggystyle" });
-        teTagCheckBox* spooning_cb = new teTagCheckBox({ "spooning" });
-        teTagCheckBox* piledriver_cb = new teTagCheckBox({ "piledriver","piledriver (sex)" });
-        insertToEditor(layouts[++i],controls,{doggystyle_cb,spooning_cb,piledriver_cb});
-legUp_Buttongroup* legup_bgop = new legUp_Buttongroup;
-contentLayout->addWidget(legup_bgop);
-controls.push_back(legup_bgop);
-teTagCheckBox* spread_legs_cb = new teTagCheckBox({ "spread" ,qsl("spread legs")});
-teTagCheckBox* folded_cb = new teTagCheckBox({ "folded" ,qsl("folded")});
-insertToEditor(layouts[++i],controls,{legup_bgop,spread_legs_cb,folded_cb});
-
-
-teTagCheckBox* toddlercon_cb = new teTagCheckBox({ "toddlercon" });
-teTagCheckBox* diaper_cb = new teTagCheckBox({ "diaper" });
-insertToEditor(layouts[++i],controls,{toddlercon_cb,diaper_cb},"misc");
-        teTagCheckBox*fisting_cb =new teTagCheckBox({"fisting"});
-        teTagCheckBox*omorashi_cb =new teTagCheckBox({"omorashi"});
-        teTagCheckBox*urination_cb =new teTagCheckBox({"peeing"});
-        teTagCheckBox*fart_cb =new teTagCheckBox({"fart"});
-        insertToEditor(layouts[++i],controls,{fisting_cb,omorashi_cb,urination_cb,fart_cb});
-        teTagCheckBox*vore_cb =new teTagCheckBox({"vore"});
-        teTagCheckBox*vomit_cb =new teTagCheckBox({"vomit"});
-        teTagCheckBox*enema_cb =new teTagCheckBox({"enema"});
-        teTagCheckBox*scat_cb =new teTagCheckBox({"scat"});
-        insertToEditor(layouts[++i],controls,{vore_cb,vomit_cb,enema_cb,scat_cb});
-
-
-        teTagCheckBox*guro_cb =new teTagCheckBox({"guro"});
-        teTagCheckBox*snuff_cb =new teTagCheckBox({"snuff"});
-        teTagCheckBox*amputee_cb =new teTagCheckBox({"amputee"});
-        teTagCheckBox*netorare_cb =new teTagCheckBox({"netorare"});
-        insertToEditor(layouts[++i],controls,{guro_cb,snuff_cb,amputee_cb,netorare_cb});
-    }
-
-
-teTagComboBox* censor_cbb = new teTagComboBox(
-        {{qsl("(none)"),{}},
-            {qsl("bar censor"),{qsl("bar censor"),qsl("censored")}},
-            {qsl("blank censor"),{qsl("blank censor"),qsl("censored")}},
-            {qsl("heart censor"),{qsl("heart censor"),qsl("censored")}},
-            {qsl("blur censor"),{qsl("blur censor"),qsl("censored")}},
-            {qsl("mosaic censoring"),{qsl("mosaic censoring"),qsl("censored")}},
-         {qsl("light censor"),{qsl("light censor"),qsl("censored")}},
-            {qsl("censored"),{qsl("censored")}}
-        },QStringLiteral("(censor)"));
-
-contentLayout->addWidget(censor_cbb);
-controls.push_back(censor_cbb);
+    addControl(new teTagComboBox({
+        {qsl("(none)"),{}},
+        {qsl("bar censor"),{qsl("bar censor"),qsl("censored")}},
+        {qsl("blank censor"),{qsl("blank censor"),qsl("censored")}},
+        {qsl("heart censor"),{qsl("heart censor"),qsl("censored")}},
+        {qsl("blur censor"),{qsl("blur censor"),qsl("censored")}},
+        {qsl("mosaic censoring"),{qsl("mosaic censoring"),qsl("censored")}},
+        {qsl("light censor"),{qsl("light censor"),qsl("censored")}},
+        {qsl("censored"),{qsl("censored")}}
+    },QStringLiteral("(censor)")));
 }
