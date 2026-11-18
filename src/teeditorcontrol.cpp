@@ -38,10 +38,26 @@ TagHandling EditorControl::read(std::shared_ptr<teTag>tag){
 
 void EditorControl::link(std::shared_ptr<teTag>in_tag){
     in_tag->teConnect(teCallbackType::destroy,this,&EditorControl::unlink,in_tag);
-    in_tag->teConnect(teCallbackType::edit,qsl("EditorControl::link"),this,&EditorControl::re_read,in_tag);
+    in_tag->teConnect(teCallbackType::edit,this,&EditorControl::re_read,in_tag);
     in_tag->teConnect(teCallbackType::edit_with_layout,this,&EditorControl::re_read,in_tag);
     linked_tags.insert(in_tag);
     refreshState();
+}
+
+QString EditorControl::controlId() const{
+    // The widget's object name, when there is one: the secondary menus are named
+    // after it and the pages already use it for the QSS.
+    if(const auto* widget=dynamic_cast<const QWidget*>(this))
+        return widget->objectName();
+    return QString();
+}
+
+QRect EditorControl::visualRect() const{
+    // Every control is added to a page, but the mixin cannot assume which widget
+    // that is - a control that is drawn inside another one overrides this.
+    if(const auto* widget=dynamic_cast<const QWidget*>(this))
+        return QRect(widget->mapToGlobal(QPoint(0,0)),widget->size());
+    return QRect();
 }
 
 void EditorControl::unlink(std::shared_ptr<teTag>in_tag){
@@ -74,7 +90,7 @@ teTagWidgetBase* EditorControl::tagWidgetFor(std::shared_ptr<teTag> core) const
 }
 
 void EditorControl::edited(){
-    teemit(teCallbackType::edit,false);
+    teemit(teCallbackType::edit);
 }
 
 void EditorControl::dropAll(std::set<std::shared_ptr<teTag>>&tags,teObject*owner){
@@ -97,6 +113,7 @@ void EditorControl::markMerged(teTag& survivor,teTag& absorbed){
 void EditorControl::clearLinks(){
     dropAll(linked_tags,this);
 }
+
 teTagComboBox::teTagComboBox(QList<QPair<QString,QStringList>>&& string_datas,QString&&in_default_text, QWidget *parent, QString *styleSheet)
     :QComboBox(parent),default_text(std::move(in_default_text)){
     addItem(default_text,QStringList{});
@@ -501,7 +518,7 @@ void teTagCheckBox::refreshState(){
 
 void teTagCheckBoxPlus::linkCounted(std::shared_ptr<teTag>in_tag){
     in_tag->teConnect(teCallbackType::destroy,this,&teTagCheckBoxPlus::unlinkCounted,in_tag);
-    in_tag->teConnect(teCallbackType::edit,qsl("teTagCheckBoxPlus::linkCounted"),this,&teTagCheckBoxPlus::re_readCounted,in_tag);
+    in_tag->teConnect(teCallbackType::edit,this,&teTagCheckBoxPlus::re_readCounted,in_tag);
     in_tag->teConnect(teCallbackType::edit_with_layout,this,&teTagCheckBoxPlus::re_readCounted,in_tag);
     counted_tags.insert(in_tag);
 }
@@ -606,6 +623,9 @@ void teTagListControl::link(std::shared_ptr<teTag> in_tag){
 }
 
 void teTagListControl::unlink(std::shared_ptr<teTag> in_tag){
+    // One call for two sets: the control's claim and the tag widget this list
+    // built for the tag both subscribe from the same teObject (the virtual base),
+    // so disconnecting this object from the tag drops both.
     teDisconnect(in_tag.get());
     linked_tags.erase(in_tag);
     tagErase(in_tag);

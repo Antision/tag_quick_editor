@@ -333,7 +333,7 @@ void teTagList::notifyErased(std::shared_ptr<teTag> core,int id,bool ifemit)
         teemit(teCallbackType::edit);
     }
     core->teDisconnect(this);
-    core->teemit(teCallbackType::destroy, false);
+    core->teemit(teCallbackType::destroy);
 }
 
 void teTagList::erase(int id)

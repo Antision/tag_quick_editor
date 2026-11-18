@@ -800,7 +800,7 @@ teTagWidgetBase* teTagListView::taginsert(int index, std::shared_ptr<teTag>in_ta
         // undo stack for it. Rejected tags are destroyed like before, which is
         // what tells the editors that linked to it to let go.
         if(in_tag)
-            in_tag->teemit(teCallbackType::destroy,false);
+            in_tag->teemit(teCallbackType::destroy);
         return nullptr;
     }
     if(select)

@@ -570,7 +570,7 @@ struct ClothesList : public teTagListControl {
         // old wrapper read the tag in, so the widget is built from the final words
         // instead of being rewritten right after it was created.
         applyWords(in_tag);
-        in_tag->teConnect(teCallbackType::edit,qsl("ClothesList::link"),this,&ClothesList::onTagEdited,in_tag);
+        in_tag->teConnect(teCallbackType::edit,this,&ClothesList::onTagEdited,in_tag);
         in_tag->teConnect(teCallbackType::edit_with_layout,this,&ClothesList::onTagEdited,in_tag);
         teTagWidgetBase*widget =taginsert(-1,in_tag,taglistwidget->showing_list);
         extraWidgetPushBack(in_tag,widget);

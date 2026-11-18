@@ -17,7 +17,7 @@ void teRefTagWidget::readCore(std::shared_ptr<teTag>in_core){
     // word plumbing of teTagBase installs the words of *that* list). The editors
     // resolve their own tag widget through teTagListWidgetBase::widgetForCore(),
     // which finds this widget in their layout.
-    core->teConnect(teCallbackType::edit,qsl("teRefTag::readCore"),this,&teRefTagWidget::load);
+    core->teConnect(teCallbackType::edit,this,&teRefTagWidget::load);
     core->teConnect(teCallbackType::edit_with_layout,this,&teRefTagWidget::load);
     load();
 }

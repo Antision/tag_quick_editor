@@ -12,6 +12,21 @@ struct anytype{
     operator T&&(){}
 };
 
+/**
+ * @brief What every editor control has in common: tags it claimed, and nothing
+ *        else.
+ *
+ * A teObject because a tag is not a QObject and cannot connect to one: a tag
+ * announces "I was edited" / "I am going away" through teObject, so whoever wants
+ * to hear it has to be one. Nothing else about this class needs the base - it
+ * owns no signal of its own (edited() relays teCallbackType::edit).
+ *
+ * Concrete controls add this to a widget (a `QPushButton`, a `QComboBox`, ...) or
+ * to `teRefTagListWidget`, which is a teObject itself. The virtual base is what
+ * makes the two halves of a tag list control share one teObject, so a tag sees a
+ * single receiver whether the list half or the control half subscribed. That is
+ * also why teDisconnect(tag) on such a control drops both sets.
+ */
 class EditorControl:virtual public teObject{
 public:
     std::set<std::shared_ptr<teTag>>linked_tags;
@@ -72,7 +87,7 @@ public:
      */
     void dropClaim(std::shared_ptr<teTag> tag,std::set<std::shared_ptr<teTag>>& tags);
     /**
-     * @brief Drops every connection this control holds on `tags`, then empties it.
+     * @brief Drops every subscription this control holds on `tags`, then empties it.
      *
      * Every control's clear() spelled this loop out (four copies, in four
      * slightly different orders), and the second set a check box plus claims
@@ -115,8 +130,40 @@ public:
         UpdateGuard(const UpdateGuard&)=delete;
         UpdateGuard& operator=(const UpdateGuard&)=delete;
     };
+    /**
+     * @brief Announces that this control changed one of its tags.
+     *
+     * teCallbackType::edit - the same thing a tag says when its text changed, so
+     * the group around a control (the label above the "multiple people" row)
+     * listens to the control exactly the way it listens to a tag.
+     */
     void edited();
-    virtual ~EditorControl(){};
+
+    /**
+     * @brief A stable name for this control.
+     *
+     * The secondary button menus name their .ui file after it (SC-10) and the
+     * mark rules address controls by it, so it has to come from the control, not
+     * from an index in a page. Defaults to the widget's object name.
+     */
+    virtual QString controlId() const;
+    /**
+     * @brief Where this control is on screen, in global coordinates.
+     *
+     * The connection lines (S7) start at the control, and a control is not
+     * necessarily the widget it is drawn in, so it answers for itself.
+     */
+    virtual QRect visualRect() const;
+    /**
+     * @brief Extension point: repaint the marks this control puts on its tags.
+     *
+     * Nothing marks anything yet, so nothing calls it: a control claims tags
+     * today and the marks arrive with the mark registry (S6), which is also what
+     * decides when a claim change is worth a repaint. It exists now so the
+     * controls have one agreed place for it instead of each growing its own.
+     */
+    virtual void applyMarks(){}
+    virtual ~EditorControl(){}
 };
 
 /**
@@ -360,9 +407,8 @@ public:
     QWidget*linked_widget=nullptr;
     QVector<EditorControl*>children;
     teTagControlGroup(QWidget*in_widget,QVector<EditorControl*>&&in_children,QWidget* parent=nullptr):QObject(parent),linked_widget(in_widget),children(std::move(in_children)){
-        for(EditorControl*control:children){
+        for(EditorControl*control:children)
             control->teConnect(teCallbackType::edit,this,&teTagControlGroup::onChildControlEdited,control);
-        }
     }
     virtual void onChildControlEdited(EditorControl*)=0;
     virtual ~teTagControlGroup(){}

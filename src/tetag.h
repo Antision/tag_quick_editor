@@ -324,12 +324,8 @@ public:
             delete w;
         extra_widgets.clear();
         std::vector<teCallbackPtr> notify;
-        if(ifnotify){
-            std::lock_guard<std::recursive_mutex> lg(teCallbackMutex());
-            for(auto&[obj,func]:linked_callback_call)
-                if(func&&func->type==teCallbackType::extraWidget_removed&&func->connected)
-                    notify.push_back(func);
-        }
+        if(ifnotify)
+            notify = teCollectCallbacks(teCallbackType::extraWidget_removed);
         // Invoke before disconnecting: disconnecting first would mark the
         // callbacks as dead and they would never run.
         for(teCallbackPtr&f:notify)
