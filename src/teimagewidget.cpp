@@ -251,9 +251,10 @@ void ImageDisplayWidget::resizeEvent(QResizeEvent *ev)
 }
 
 teImageWidget::teImageWidget(QWidget *parent)
-    : teWidget(parent)
+    : LiteWidget2(parent)
 {
-    content_layout = new QVBoxLayout(content);
+    applyLiteWindowStyle(this);
+    content_layout = new QVBoxLayout(contentWidget());
     content_layout->setContentsMargins(0, 0, 0, 0);
     content_layout->setSpacing(0);
 
@@ -283,10 +284,10 @@ void teImageWidget::keyPressEvent(QKeyEvent *event)
         return;
     }
 
-    teWidget::keyPressEvent(event);
+    LiteWidget2::keyPressEvent(event);
 }
 
 void teImageWidget::resizeEvent(QResizeEvent *event)
 {
-    teWidget::resizeEvent(event);
+    LiteWidget2::resizeEvent(event);
 }

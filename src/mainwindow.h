@@ -29,7 +29,20 @@ bool is_image_file(const std::filesystem::path& file);
 extern std::vector<ctag> ctags;
 extern QWidget* global_window;
 
+class QMessageBox;
+
+/**
+ * @brief 把 About Qt 那个 QMessageBox 刷成和程序一致的深色。
+ *
+ * MainWindow 的样式表里有 `QWidget{color:white}`;对话框以 MainWindow 为 parent,
+ * 这条规则会顺着 parent 链漏进去,而标准对话框的底是白的 —— 白底白字。
+ * `QMessageBox::aboutQt()` 是静态函数,没法只给它一个人套样式,所以 About Qt
+ * 改成自己建 QMessageBox 再调这里。
+ */
+void applyAboutQtStyle(QMessageBox& box);
+
 class tePictureFileModel;
+class WindowGlyphButton;
 class teSelectionTagListView;
 class teSelectionTagModel;
 class LogWidget;
@@ -68,9 +81,9 @@ public:
     MainWindow(QWidget *parent = nullptr);
     Ui::MainWindow *ui;
 
-    QPushButton*close_btn;
-    QPushButton*maximize_btn;
-    QPushButton*minimize_btn;
+    WindowGlyphButton*close_btn;
+    WindowGlyphButton*maximize_btn;
+    WindowGlyphButton*minimize_btn;
     int boundaryWidth=6;
     QSplitter* splitter;
     tePictureFileModel*picturefileModel;
@@ -106,6 +119,8 @@ public:
     /// the same thing. Nothing here (or anywhere else) may call setGeometry while
     /// the window is maximized — see the comment on the implementation.
     void toggleMaximize();
+    /// 最大化时中间那颗按钮换成"还原"图形(LW-06)。
+    void updateWindowGlyphs();
     /// 最大化时窗口矩形会比工作区每边多出"看不见的边框"(实测 9 物理像素)。客户区
     /// 不能靠 WM_NCCALCSIZE 收窄(半透明窗口会把 Qt 的画布钉死在旧尺寸、只剩左上角
     /// 一块有画面),所以让内容自己往里让这么多。

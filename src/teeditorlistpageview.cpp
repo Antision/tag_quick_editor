@@ -164,8 +164,10 @@ void teEditorListPageDelegate::paint(QPainter *painter, const QStyleOptionViewIt
     painter->restore();
 }
 
-EditorListLayoutWidget::EditorListLayoutWidget(editorListLayout *in_editorlistlayout, QWidget *parent):teSignalWidget(parent),editorlistlayout(in_editorlistlayout){
-    content->setLayout(layout);
+EditorListLayoutWidget::EditorListLayoutWidget(editorListLayout *in_editorlistlayout, QWidget *parent):LiteWidget2(parent),editorlistlayout(in_editorlistlayout){
+    applyLiteWindowStyle(this);
+    contentWidget()->setLayout(layout);
+    connect(this,&LiteWidget2::closed,this,&EditorListLayoutWidget::cancelSignal,Qt::DirectConnection);
     layout->setContentsMargins(0,0,0,0);
     layout->setSpacing(2);
     addPageButton = new QPushButton;

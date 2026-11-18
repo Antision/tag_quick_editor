@@ -565,9 +565,9 @@ teTagListControl::teTagListControl(colorsWidget *in_onEdit_widget, teTagListView
     // link() needs the main tag list to reach the teTagList it mirrors; it is
     // known here already, so it can never be left unset.
     setTaglistwidget(parentlist);
-    connect(onEdit_widget,&teSignalWidget::stringSignal,this,&teTagListControl::reciveWidgetSignal,Qt::DirectConnection);
-    connect(onEdit_widget,&teSignalWidget::destroySignal,this,&teTagListControl::reciveDestroySignal,Qt::DirectConnection);
-    connect(onEdit_widget,&teSignalWidget::cancelSignal,this,&teTagListControl::reciveCancelSignal,Qt::DirectConnection);
+    connect(onEdit_widget,&colorsWidget::stringSignal,this,&teTagListControl::reciveWidgetSignal,Qt::DirectConnection);
+    connect(onEdit_widget,&colorsWidget::destroySignal,this,&teTagListControl::reciveDestroySignal,Qt::DirectConnection);
+    connect(onEdit_widget,&colorsWidget::cancelSignal,this,&teTagListControl::reciveCancelSignal,Qt::DirectConnection);
 
     if(styleSheet!=nullptr)
         setStyleSheet(*styleSheet);

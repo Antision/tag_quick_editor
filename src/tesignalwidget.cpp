@@ -1,5 +1,8 @@
 #include "tesignalwidget.h"
-#include "windows_frame.h"
+
+// 一组互斥按钮里只留一个勾选;colorsWidget 的构造函数里的 lambda 要用,
+// 所以先声明(定义在文件后半段)。
+static void buttons_mutual_exclusion(QAbstractButton* btn, bool checked, QButtonGroup* btn_gop);
 
 void addButtonsToGridLayout(QGridLayout *gridLayout, QButtonGroup *buttonGroup, QStringList &stringList) {
     if (!gridLayout || !buttonGroup || stringList.isEmpty()) {
@@ -71,7 +74,17 @@ void colorsWidget::uncheckAllButtons(){
     otherWords.clear();
 }
 
-colorsWidget::colorsWidget(QVector<QPair<QStringList, bool> > &&objects, QWidget *parent, int colorListPos, std::optional<QStringList> extraButtons, QVector<QString> headings, QButtonGroup* sharedExclusiveGroup, bool verticalSections, QVector<int> sectionColumns):teSignalWidget(parent){
+colorsWidget::colorsWidget(QVector<QPair<QStringList, bool> > &&objects, QWidget *parent, int colorListPos, std::optional<QStringList> extraButtons, QVector<QString> headings, QButtonGroup* sharedExclusiveGroup, bool verticalSections, QVector<int> sectionColumns):LiteWidget2(parent){
+    applyLiteWindowStyle(this);
+    // 每个窗口类各自记住自己上次的尺寸/位置。颜色窗和服饰窗都是 colorsWidget,
+    // 内容差得多,用第一段的第一个词当后缀区分开。
+    {
+        QString geometryKey = QStringLiteral("colorsWidget");
+        if (!objects.isEmpty() && !objects.first().first.isEmpty())
+            geometryKey += QLatin1Char('|') + objects.first().first.first();
+        setGeometryKey(geometryKey);
+    }
+    layout = new QVBoxLayout(contentWidget());
     // Three arrangements:
     //  - sectionColumns given: that many columns, each section stacked inside its
     //    column (the clothes dialog puts the colours/features left and the
@@ -99,7 +112,7 @@ colorsWidget::colorsWidget(QVector<QPair<QStringList, bool> > &&objects, QWidget
     objectLayoutList.reserve(objects.size()+3);
     if(extraButtons){
         extra_buttongroup= new QButtonGroup(this);
-        extra_layout=new QHBoxLayout(this);
+        extra_layout=new QHBoxLayout;
     }
 
     const bool sharedGroup = (sharedExclusiveGroup != nullptr);
@@ -110,7 +123,7 @@ colorsWidget::colorsWidget(QVector<QPair<QStringList, bool> > &&objects, QWidget
         QLayout* object_layout;
         if(stringlist.size()==1&&ifExclusive){
             QLabel* label = new QLabel(stringlist.first());
-            object_layout=new QVBoxLayout(this);
+            object_layout=new QVBoxLayout;
             object_layout->addWidget(label);
             objectLayoutList.push_back({object_layout,nullptr});
             addSectionToContent(object_layout,sectionIndex<headings.size()?headings[sectionIndex]:QString(),
@@ -228,8 +241,9 @@ colorsWidget::colorsWidget(QVector<QPair<QStringList, bool> > &&objects, QWidget
     connect(destroy_btn,&QPushButton::clicked,this,[this](){
         emit destroySignal();this->hide();uncheckAllButtons();
     },Qt::DirectConnection);
-    connect(close_btn,&QPushButton::pressed,this,[this]{
-        this->hide();uncheckAllButtons();
+    connect(this,&LiteWidget2::closed,this,[this]{
+        emit cancelSignal();
+        uncheckAllButtons();
     },Qt::DirectConnection);
 
     destroy_btn->setFixedSize(60,40);
@@ -394,7 +408,7 @@ void colorsWidget::input_and_show(std::shared_ptr<teTag> in_tag){
     }
     showNearCursor();
 }
-QString teWidgetStyle = QStringLiteral(R"(
+QString liteWindowStyle = QStringLiteral(R"(
 QWidget{
     background-color:rgb(27,27,27);
     color:white;
@@ -437,6 +451,12 @@ QPlainTextEdit{
 background-color:rgb(35,35,35);
 border-radius:4px;
 border:1px solid rgb(100,100,100);
+}
+/* License 窗用的是只读 QTextEdit:它自己按调色板画底,不写这条会是白底白字。 */
+QTextEdit{
+background-color:rgb(27,27,27);
+color:white;
+border:1px solid rgb(64,64,64);
 }
 QLabel{
     background-color:black;
@@ -589,137 +609,18 @@ border:1px solid #00eb77;
 }
 )");
 
-teWidget::teWidget(QWidget *parent):QWidget(parent){
-    setStyleSheet(teWidgetStyle);
-    HWND hwnd = reinterpret_cast<HWND>(winId());
-    DWORD style = GetWindowLong(hwnd, GWL_STYLE);
-    SetWindowLongPtr(hwnd, GWL_STYLE, style | WS_MAXIMIZEBOX | WS_THICKFRAME | WS_CAPTION);
-    setWindowIcon(QIcon(":/res/icon.ico"));
-
-    content->setObjectName(qsl("content"));
-    setLayout(&vlayout);
-    vlayout.addWidget(titleWidget);
-    vlayout.addWidget(content);
-
-    vlayout.setSpacing(0);
-    vlayout.setContentsMargins(0,0,0,0);
-
-    titleWidget->setObjectName("title");
-    titleWidget->setFixedHeight(20);
-    titleWidget->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Fixed);
-    titleWidget->setLayout(titlelayout);
-
-    {
-        QSpacerItem *titlespacer = new QSpacerItem(0,0,QSizePolicy::Expanding,QSizePolicy::Fixed);
-        titlelayout->addItem(titlespacer);
-        titlelayout->setContentsMargins(0,0,0,0);
-        titlelayout->setSpacing(0);
-        close_btn = new QPushButton(titleWidget);
-        maximize_btn = new QPushButton(titleWidget);
-        minimize_btn = new QPushButton(titleWidget);
-        close_btn->setStyleSheet(QStringLiteral(R"(QPushButton{
-border-image:url(:/res/close_sleep.png);}
-QPushButton:hover{border-image:url(:/res/close.png);})"));
-        maximize_btn->setStyleSheet(QStringLiteral(R"(QPushButton{
-border-image:url(:/res/maximize_sleep.png);}
-QPushButton:hover{border-image:url(:/res/maximize.png);})"));
-        minimize_btn->setStyleSheet(QStringLiteral(R"(QPushButton{
-border-image:url(:/res/minimize_sleep.png);}
-QPushButton:hover{border-image:url(:/res/minimize.png);})"));
-        close_btn->setFixedWidth(30);
-        maximize_btn->setFixedWidth(30);
-        minimize_btn->setFixedWidth(30);
-        connect(close_btn,&QPushButton::clicked,this,&QWidget::hide,Qt::DirectConnection);
-        connect(maximize_btn,&QPushButton::clicked,this,[this]{if(isMaximized())showNormal(); else showMaximized();},Qt::DirectConnection);
-        connect(minimize_btn,&QPushButton::clicked,this,&QWidget::showMinimized,Qt::DirectConnection);
-        titlelayout->addWidget(minimize_btn);
-        titlelayout->addWidget(maximize_btn);
-        titlelayout->addWidget(close_btn);
-        minimize_btn->setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Preferred);
-        maximize_btn->setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Preferred);
-        close_btn->setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Preferred);
-    }
-}
-
-bool teWidget::nativeEvent(const QByteArray &eventType, void *message, qintptr *result)
+void applyLiteWindowStyle(LiteWidget2* window)
 {
-    if (eventType != "windows_generic_MSG")
-        return false;
-
-    MSG* msg = static_cast<MSG*>(message);
-    QWidget* widget = QWidget::find(reinterpret_cast<WId>(msg->hwnd));
-    if (!widget)
-        return false;
-
-    switch (msg->message) {
-    case WM_NCCALCSIZE: {
-        if (msg->wParam) {
-            // 无边框窗口:整窗都是客户区;最大化时客户区只取工作区,否则内容被
-            // 系统撑出的边框推到屏幕外(见 windows_frame.h)。
-            teClampMaximizedClientArea(msg);
-            *result = 0;
-            return true;
-        }
-        break;
-    }
-    case WM_NCHITTEST: {
-        // The coordinates provided by Win32 are physical screen pixels.
-        // First convert them to Qt logical global coordinates, then mapFromGlobal.
-        int physX = GET_X_LPARAM(msg->lParam);
-        int physY = GET_Y_LPARAM(msg->lParam);
-
-        double scale = getWindowScale(msg->hwnd); // e.g. 1.0, 1.5, 2.0
-        QPoint globalLogical(qRound(physX / scale), qRound(physY / scale)); // Convert to Qt global logical coordinates
-
-        // Convert to widget local coordinates (same unit as this->width()/height()/control positions)
-        QPoint local = this->mapFromGlobal(globalLogical);
-        int xPos = local.x();
-        int yPos = local.y();
-
-        // Get the x coordinate of minimize_btn relative to this (ensure consistent units)
-        int minimizeBtnX = minimize_btn ? minimize_btn->mapTo(this, QPoint(0,0)).x() : width();
-
-        // 标题栏 = 标题栏控件这条横带里按钮左边的部分。用控件自己的矩形,而且不在
-        // 顶上留死角:窗口贴在屏幕顶端时用户正是按在最上面那几像素,那里若判成
-        // 客户区,按住就拖不动(最大化窗口也没法拖下来还原)。
-        const QRect titleRect(titleWidget->mapTo(this, QPoint(0, 0)), titleWidget->size());
-        if (titleRect.contains(local) && xPos > titleRect.x() && xPos < minimizeBtnX) {
-            // 最大化时也要给 HTCAPTION:系统靠"按住标题栏往下拖"还原最大化窗口
-            *result = HTCAPTION;
-            return true;
-        }
-        // 最大化时没有可拖的边框(和普通 Windows 窗口一致)
-        if (IsZoomed(msg->hwnd))
-            return false;
-
-        if (xPos < boundaryWidth && yPos < boundaryWidth)
-            *result = HTTOPLEFT;
-        else if (xPos >= width() - boundaryWidth && yPos < boundaryWidth)
-            *result = HTTOPRIGHT;
-        else if (xPos < boundaryWidth && yPos >= height() - boundaryWidth)
-            *result = HTBOTTOMLEFT;
-        else if (xPos >= width() - boundaryWidth && yPos >= height() - boundaryWidth)
-            *result = HTBOTTOMRIGHT;
-        else if (xPos < boundaryWidth)
-            *result = HTLEFT;
-        else if (xPos >= width() - boundaryWidth)
-            *result = HTRIGHT;
-        else if (yPos < boundaryWidth)
-            *result = HTTOP;
-        else if (yPos >= height() - boundaryWidth)
-            *result = HTBOTTOM;
-        else {
-            return false;
-        }
-        return true;
-    }
-    default:
-        break;
-    }
-    return QWidget::nativeEvent(eventType, message, result);
+    if (!window || !window->contentWidget())
+        return;
+    // 旧的整套窗口配色(深色底、白字、滚动条、按钮)搬到内容面板上。
+    // `QWidget#content` 那条规则不会再命中 —— 面板叫 litewidget2Content,
+    // 所以不会在 LiteWidget2 自己的轮廓里再套一圈紫色边框。
+    window->contentWidget()->setStyleSheet(liteWindowStyle);
+    window->setWindowIcon(QIcon(":/res/icon.ico"));
 }
 
-void teSignalWidget::buttons_mutual_exclusion(QAbstractButton *btn, bool checked, QButtonGroup *btn_gop){
+static void buttons_mutual_exclusion(QAbstractButton *btn, bool checked, QButtonGroup *btn_gop){
     if(checked){
         auto buttons = btn_gop->buttons();
         for(QAbstractButton* the_btn:buttons){
@@ -729,19 +630,29 @@ void teSignalWidget::buttons_mutual_exclusion(QAbstractButton *btn, bool checked
     }
 }
 
-teInputWidget::teInputWidget(QWidget *parent):teSignalWidget(parent){
-    contentLayout = new QVBoxLayout(content);
+teInputWidget::teInputWidget(QWidget *parent):LiteWidget2(parent){
+    applyLiteWindowStyle(this);
+    inputLayout = new QVBoxLayout(contentWidget());
     plainTextEdit = new QPlainTextEdit;
-    content->setLayout(contentLayout);
-    contentLayout->setAlignment(Qt::AlignRight);
+    inputLayout->setAlignment(Qt::AlignRight);
     QPushButton* Ok_btn = new QPushButton;
     Ok_btn->setStyleSheet(OkButtonStyle);
     connect(Ok_btn,&QPushButton::pressed,this,&teInputWidget::onOkClicked,Qt::DirectConnection);
     Ok_btn->setFixedSize(60,40);
-    contentLayout->setContentsMargins(3,3,3,3);
-    contentLayout->addWidget(plainTextEdit);
-    contentLayout->addWidget(Ok_btn,Qt::AlignHCenter);
+    inputLayout->setContentsMargins(3,3,3,3);
+    inputLayout->addWidget(plainTextEdit);
+    inputLayout->addWidget(Ok_btn,Qt::AlignHCenter);
+    connect(this,&LiteWidget2::closed,this,[this]{
+        emit cancelSignal();
+    },Qt::DirectConnection);
     resize(400,300);
+}
+
+void teInputWidget::onOkClicked()
+{
+    hide();
+    emit stringSignal(plainTextEdit->toPlainText(), false);
+    plainTextEdit->clear();
 }
 
 void teFilteredPictureModel::clear() {
@@ -819,11 +730,12 @@ void FilterTagWidget::addTag(const QString &text) {
 }
 
 void filterWidget::initializeUI() {
-    QVBoxLayout* mainLayout = new QVBoxLayout(content);
+    applyLiteWindowStyle(this);
+    QVBoxLayout* mainLayout = new QVBoxLayout(contentWidget());
 
     const QStringList rules = {"Must include", "At least one", "Does not include", "Includes only one"};
     for(int i = 0; i < 4; ++i) {
-        QHBoxLayout* ruleLayout = new QHBoxLayout(this);
+        QHBoxLayout* ruleLayout = new QHBoxLayout;
 
         QLabel* ruleLabel = new QLabel(rules[i]);
         ruleLabel->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
@@ -840,6 +752,7 @@ void filterWidget::initializeUI() {
     }
     filterBtn = new QPushButton("filt");
     mainLayout->addWidget(filterBtn);
+    myview->setMinimumHeight(360);
     mainLayout->addWidget(myview);
 
     myview->setItemDelegate(&pictureFileDelegate);
@@ -995,8 +908,9 @@ void filterWidget::performFilter() {
 }
 
 void customControlWidget::initializeUI() {
+    applyLiteWindowStyle(this);
     resize(300,250);
-    QVBoxLayout* mainLayout = new QVBoxLayout(content);
+    QVBoxLayout* mainLayout = new QVBoxLayout(contentWidget());
     customTagsLayout->addWidget(tagWidget);
     lineEdit->setPlaceholderText("Press Enter after entering");
     lineEdit->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);

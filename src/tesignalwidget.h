@@ -1,71 +1,36 @@
 #ifndef TESIGNALWIDGET_H
 #define TESIGNALWIDGET_H
 #include "tepicturelistview.h"
+#include "litewidget2.h"
 #include "pch.h"
 
-class teWidget: public QWidget, public teObject {
-    Q_OBJECT
-public:
-    QWidget* titleWidget = new QWidget(this);
-    QWidget* content = new QWidget(this);
-    QVBoxLayout vlayout;
-    QHBoxLayout* titlelayout = new QHBoxLayout;
-    QPushButton* close_btn;
-    QPushButton* maximize_btn;
-    QPushButton* minimize_btn;
+extern QString destroyButtonStyle, OkButtonStyle, addButtonStyle;
 
-    teWidget(QWidget* parent = nullptr);
+/// 给 LiteWidget2 的内容面板套上原来的窗口配色(深色底、白字、滚动条)。
+/// 面板会被窗口裁成圆角,所以不再画 `QWidget#content` 那圈紫色边框。
+void applyLiteWindowStyle(LiteWidget2* window);
 
-    ~teWidget() {
-        delete titlelayout;
-    }
-
-    int boundaryWidth = 6; // 逻辑像素
-
-    bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result) override;
-};
-extern QString destroyButtonStyle,OkButtonStyle,addButtonStyle;
-class teSignalWidget:public teWidget
+class teInputWidget : public LiteWidget2
 {
     Q_OBJECT
 public:
-    teSignalWidget(QWidget*parent=nullptr):teWidget(parent){
-        connect(close_btn,&QPushButton::pressed,this,&teSignalWidget::onCancelClicked,Qt::DirectConnection);
-    };
-    static void buttons_mutual_exclusion(QAbstractButton* btn,bool checked,QButtonGroup*btn_gop);
-    void onCancelClicked(){
-        emit cancelSignal();
-        this->hide();
-    }
+    QVBoxLayout* inputLayout = nullptr;
+    QPlainTextEdit* plainTextEdit = nullptr;
+    teInputWidget(QWidget* parent = nullptr);
+    void start(const QString& in_str) { plainTextEdit->setPlainText(in_str); }
+    void onOkClicked();
 signals:
-    void stringSignal(QString data,bool ifadd);
+    void stringSignal(QString data, bool ifadd);
     void destroySignal();
     void cancelSignal();
 };
 
-class teInputWidget:public teSignalWidget
-{
-    Q_OBJECT
-public:
-    QVBoxLayout* contentLayout=nullptr;
-    QPlainTextEdit* plainTextEdit=nullptr;
-    teInputWidget(QWidget*parent=nullptr);;
-    void start(const QString& in_str){
-        plainTextEdit->setPlainText(in_str);
-    }
-    void onOkClicked(){
-        this->hide();
-        stringSignal(plainTextEdit->toPlainText(),false);
-        plainTextEdit->clear();
-    }
-};
-
 void addButtonsToGridLayout(QGridLayout *gridLayout, QButtonGroup *buttonGroup, QStringList &stringList);
 
-class colorsWidget:public teSignalWidget{
+class colorsWidget : public LiteWidget2 {
     Q_OBJECT
 public:
-    QVBoxLayout*layout = new QVBoxLayout(content);
+    QVBoxLayout* layout = nullptr;
     QHBoxLayout* signal_button_layout = new QHBoxLayout;
     /// Sections are layed out horizontally by default; pass
     /// `verticalSections = true` to stack them instead, or `sectionColumns` to
@@ -74,10 +39,10 @@ public:
     /// One entry per column when `sectionColumns` was used.
     QVector<QVBoxLayout*> columns;
     QVBoxLayout shade_layout;
-    QButtonGroup*shade_buttongroup = new QButtonGroup(content);
+    QButtonGroup* shade_buttongroup = new QButtonGroup(this);
 
     QGridLayout colors_layout;
-    QButtonGroup*colors_buttongroup = new QButtonGroup(content);
+    QButtonGroup* colors_buttongroup = new QButtonGroup(this);
     QHBoxLayout* extra_layout=nullptr;
     QButtonGroup* extra_buttongroup =nullptr;
 
@@ -115,17 +80,18 @@ public:
                  QButtonGroup* sharedExclusiveGroup=nullptr,
                  bool verticalSections=false,
                  QVector<int> sectionColumns={});
-    void closeEvent(QCloseEvent *event) override {
-        emit cancelSignal();
-        uncheckAllButtons();
-    }
+
+
     /// Moves itself next to the cursor, clamped to the screen, and shows.
     void showNearCursor();
 
     QPushButton* getColorButton(const QString&colorText,int r,int g,int b,bool ifblacktext=false);
     void sendString(bool ifadd);
     virtual void input_and_show(std::shared_ptr<teTag> in_tag=nullptr);
-
+signals:
+    void stringSignal(QString data, bool ifadd);
+    void destroySignal();
+    void cancelSignal();
 };
 
 class teFilteredPictureModel : public QAbstractListModel,public teObject {
@@ -188,7 +154,7 @@ private:
     QFlowLayoutReorderer* m_reorderer=nullptr;
     QLineEdit* lineedit = nullptr;
 };
-class filterWidget : public teWidget {
+class filterWidget : public LiteWidget2 {
     Q_OBJECT
 public:
     filterWidget(tePictureListView* in_listview) : listview(in_listview) {
@@ -199,6 +165,9 @@ public:
     ~filterWidget(){
     }
     enum RuleType { AllOf, AnyOf, NoneOf, ExactOne };
+    /// 筛选窗下面是图片列表,要的是"高窗口":四条规则 + 按钮 + 一屏缩略图。
+    QSize sizeHint() const override { return QSize(430, 780); }
+    QSize minimumSizeHint() const override { return QSize(360, 520); }
     tePictureListView* listview;
     QListView* myview = new QListView;
     teFilteredPictureModel mymodel{listview};
@@ -225,7 +194,7 @@ private:
 
 };
 
-class customControlWidget:public teWidget{
+class customControlWidget : public LiteWidget2 {
     Q_OBJECT
 public:
     customControlWidget()  {
@@ -237,7 +206,7 @@ public:
     QLineEdit* lineEdit = new QLineEdit(this);
     QPushButton* OK_Btn = nullptr;
     QPushButton* Bin_Btn = nullptr;
-    QHBoxLayout*buttonLayout = new QHBoxLayout(this);
+    QHBoxLayout*buttonLayout = new QHBoxLayout;
 private:
     void initializeUI();
     void connectSignals();

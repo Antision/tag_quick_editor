@@ -1,4 +1,6 @@
 #include "mainwindow.h"
+#include "litewidget2.h"
+#include "windowglyphbutton.h"
 #include "teselectiontaglist.h"
 #include "tepicturelistview.h"
 #include "ui_mainwindow.h"
@@ -63,6 +65,20 @@ QPair<QList<tePictureFile*>, QList<tePictureFile*>> findDifferences(
 
     return qMakePair(onlyInLast, onlyInFiles);
 }
+void applyAboutQtStyle(QMessageBox& box)
+{
+    // 对话框自己的样式表比祖先(MainWindow)的更近,能盖掉那条 QWidget{color:white}
+    // 带来的"只有字没有底"的状态。
+    box.setStyleSheet(QStringLiteral(
+        "QMessageBox{background-color:rgb(27,27,27);}"
+        "QMessageBox QLabel{color:white;background:transparent;}"
+        "QMessageBox QTextEdit{background-color:rgb(35,35,35);color:white;border:none;}"
+        "QMessageBox QPushButton{color:white;border:1px solid #4c399e;"
+        "background:transparent;padding:4px 18px;border-radius:3px;}"
+        "QMessageBox QPushButton:hover{border-color:#a858f2;"
+        "background:rgba(177,100,255,60);}"));
+}
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -174,11 +190,32 @@ MainWindow::MainWindow(QWidget *parent)
         editorlistlayoutwidget->load();
     });
     connect(ui->actionAbout_Qt,&QAction::triggered,this,[this]{
-        QMessageBox::aboutQt(this, tr("About Qt"));
+        // 不用 QMessageBox::aboutQt():它是静态的,套不上单独的样式,而主窗口的
+        // `QWidget{color:white}` 会让它变成白底白字。
+        QMessageBox box(this);
+        box.setWindowTitle(tr("About Qt"));
+        box.setWindowIcon(windowIcon());
+        box.setIconPixmap(QApplication::style()->standardIcon(QStyle::SP_MessageBoxInformation).pixmap(64, 64));
+        box.setTextFormat(Qt::RichText);
+        box.setText(tr("<h3>About Qt</h3><p>This program uses Qt version %1.</p>")
+                        .arg(QString::fromLatin1(qVersion())));
+        box.setInformativeText(tr(
+            "<p>Qt is a C++ toolkit for cross-platform application development.</p>"
+            "<p>Qt is available under the GNU Lesser General Public License v3 and a "
+            "commercial license; this program is distributed under the GNU General "
+            "Public License v3.0.</p>"
+            "<p>Copyright (C) The Qt Company Ltd and other contributors.<br>"
+            "Qt and the Qt logo are trademarks of The Qt Company Ltd.</p>"
+            "<p><a href=\"https://www.qt.io/licensing/\">qt.io/licensing</a></p>"));
+        applyAboutQtStyle(box);
+        box.exec();
     });
     connect(ui->actionLicense,&QAction::triggered,this,[this]{
-        teWidget* licenseWidget = new teWidget;
-        connect(licenseWidget->close_btn,&QPushButton::pressed,licenseWidget,&QWidget::deleteLater);
+        auto* licenseWidget = new LiteWidget2;
+        // 以前这里没套窗口配色:QTextEdit 用调色板画底,和全白的字叠在一起就成了
+        // 白底白字。套上以后底是深灰、字是白的。
+        applyLiteWindowStyle(licenseWidget);
+        connect(licenseWidget,&LiteWidget2::closed,licenseWidget,&QWidget::deleteLater);
         QScrollArea* textScrollArea = new QScrollArea;
         textScrollArea->setWidgetResizable(true);
         QWidget*centralWidget = new QWidget;
@@ -207,9 +244,7 @@ MainWindow::MainWindow(QWidget *parent)
             }
         }
         textLayout->addStretch();
-        QVBoxLayout* contentLayout = new QVBoxLayout;
-        contentLayout->addWidget(textScrollArea);
-        licenseWidget->content->setLayout(contentLayout);
+        licenseWidget->contentLayout()->addWidget(textScrollArea);
         licenseWidget->resize(400,500);
         licenseWidget->show();
     });
@@ -315,19 +350,9 @@ MainWindow::MainWindow(QWidget *parent)
     menulayout->addWidget(titleLabel2);//title
     menulayout->addWidget(titleLabel1);
     menulayout->addItem(menuspacer2);
-    close_btn = new QPushButton(ui->menuBar);
-    maximize_btn = new QPushButton(ui->menuBar);
-    minimize_btn = new QPushButton(ui->menuBar);
-
-    close_btn->setStyleSheet(QStringLiteral(R"(QPushButton{
-border-image:url(:/res/close_mainwindow_sleep.png);border-top-right-radius:7px;}
-QPushButton:hover{background-color:rgba(255,100,100,100);})"));
-    maximize_btn->setStyleSheet(QStringLiteral(R"(QPushButton{
-border-image:url(:/res/maximize_mainwindow_sleep.png);}
-QPushButton:hover{background-color:rgba(100,100,100,100);})"));
-    minimize_btn->setStyleSheet(QStringLiteral(R"(QPushButton{
-border-image:url(:/res/minimize_mainwindow_sleep.png);}
-QPushButton:hover{background-color:rgba(100,100,100,100);})"));
+    close_btn = new WindowGlyphButton(WindowGlyphButton::Glyph::Close, ui->menuBar);
+    maximize_btn = new WindowGlyphButton(WindowGlyphButton::Glyph::Maximize, ui->menuBar);
+    minimize_btn = new WindowGlyphButton(WindowGlyphButton::Glyph::Minimize, ui->menuBar);
 
     connect(close_btn,&QPushButton::pressed,this, &MainWindow::onApplicationClose);
     connect(maximize_btn,&QPushButton::pressed,this,&MainWindow::toggleMaximize);
@@ -340,9 +365,11 @@ QPushButton:hover{background-color:rgba(100,100,100,100);})"));
     menulayout->addWidget(minimize_btn);
     menulayout->addWidget(maximize_btn);
     menulayout->addWidget(close_btn);
-    minimize_btn->setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Expanding);
-    maximize_btn->setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Expanding);
-    close_btn->setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Expanding);
+    for (WindowGlyphButton* button : {minimize_btn, maximize_btn, close_btn}) {
+        button->setFixedWidth(30);
+        button->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
+    }
+    updateWindowGlyphs();
 
     QVector<teEditor*>allEditors{
         new teEditor_custom{ui->taglist,QStringLiteral("custom")}
@@ -500,6 +527,16 @@ void MainWindow::toggleMaximize()
             ::ShowWindow(hwnd, SW_MAXIMIZE);
     }
     updateMaximizedContentInset();
+    updateWindowGlyphs();
+}
+
+void MainWindow::updateWindowGlyphs()
+{
+    if (!maximize_btn)
+        return;
+    const bool zoomed = ::IsZoomed(reinterpret_cast<HWND>(winId())) != 0;
+    maximize_btn->setGlyph(zoomed ? WindowGlyphButton::Glyph::Restore
+                                  : WindowGlyphButton::Glyph::Maximize);
 }
 
 void MainWindow::changeEvent(QEvent* event)
@@ -508,6 +545,7 @@ void MainWindow::changeEvent(QEvent* event)
     if (event->type() == QEvent::WindowStateChange)
         QTimer::singleShot(0, this, [this]{
             updateMaximizedContentInset();
+            updateWindowGlyphs();
             // 整窗同步重画一次。最大化时窗口矩形被系统撑大、客户区却还是原来那一块
             // (半透明窗口的画布不跟着放大),右半截的子控件常常一次都没画上:菜单栏
             // 右边的三个窗口按钮会整块空白,看起来像按钮消失了。一次全量 repaint 把

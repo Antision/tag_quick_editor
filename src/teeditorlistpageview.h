@@ -78,7 +78,8 @@ public:
     }
 };
 
-class EditorListLayoutWidget:public teSignalWidget{
+class EditorListLayoutWidget : public LiteWidget2 {
+    Q_OBJECT
 public:
     QVector<QPair<QListView*,teEditorListPageModel*>>listviews;
     teEditorListPageDelegate* delegate = new teEditorListPageDelegate;
@@ -102,10 +103,17 @@ public:
         pageCount=0;
     }
     void addList(bool notAddPageInLayout);
+    /// 编辑器排版窗:内容是一列页面对列表,推荐尺寸沿用迁移前的那一档。
+    QSize sizeHint() const override { return QSize(560, 420); }
+    QSize minimumSizeHint() const override { return QSize(360, 240); }
+
     void load(){
         loadPages();
         this->show();
     }
+signals:
+    /// 关闭窗口时通知主窗口把编辑器排布还原(不再是 teSignalWidget 的那套)。
+    void cancelSignal();
 };
 
 #endif // TEEDITORLISTPAGEVIEW_H
