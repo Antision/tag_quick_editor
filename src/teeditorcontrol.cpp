@@ -70,6 +70,12 @@ teTagWidgetBase* EditorControl::tagWidgetFor(std::shared_ptr<teTag> core) const
 void EditorControl::edited(){
     teemit(teCallbackType::edit,false);
 }
+
+void EditorControl::clearLinks(){
+    for(std::shared_ptr<teTag>tag:linked_tags)
+        tag->teDisconnect(this);
+    linked_tags.clear();
+}
 teTagComboBox::teTagComboBox(QList<QPair<QString,QStringList>>&& string_datas,QString&&in_default_text, QWidget *parent, QString *styleSheet)
     :QComboBox(parent),default_text(std::move(in_default_text)){
     addItem(default_text,QStringList{});
@@ -96,21 +102,18 @@ void teTagComboBox::clear(){
     // Same channel as refreshState() uses, so the two cannot disagree about what
     // "not linked" looks like (both go through setStateTextColor).
     setStateTextColor(this,QColor(Qt::white));
-    for(std::shared_ptr<teTag>tag:linked_tags){
-        tag->teDisconnect(this);
+    {
+        UpdateGuard guard(excute);
+        setItemText(0,default_text);
+        setItemData(0,QStringList{});
+        reset();
     }
-    --excute;
-    setItemText(0,default_text);
-    setItemData(0,QStringList{});
-    reset();
-    linked_tags.clear();
-    ++excute;
+    clearLinks();
 }
 
 void teTagComboBox::reset(){
-    --excute;
+    UpdateGuard guard(excute);
     setCurrentIndex(0);
-    ++excute;
 }
 
 void teTagComboBox::onIndexChanged(int index){
@@ -153,9 +156,10 @@ void teTagComboBox::refreshState(){
         itemtext.chop(1);
         setItemText(0,std::move(QString(itemtext)));
         setItemData(0,std::move(tagstrings));
-        --excute;
-        setCurrentIndex(0);
-        ++excute;
+        {
+            UpdateGuard guard(excute);
+            setCurrentIndex(0);
+        }
         // Palette, not a stylesheet: a setStyleSheet() here costs about 7 ms
         // because Qt re-parses the sheet and re-polishes the combo together with
         // its popup view, and this runs for every combo box, on every image
@@ -254,10 +258,7 @@ void teTagButtonGroup::onClicked(int id){
 void teTagButtonGroup::clear(){
     resetPolicy();                              // the subclass's own state first
     setStyleSheetOnce(this,"color:white;");
-    for(std::shared_ptr<teTag>tag:linked_tags){
-        tag->teDisconnect(this);
-    }
-    linked_tags.clear();
+    clearLinks();
     reset();
 }
 void teTagButtonGroup::getDefaultFiltStrings(){
@@ -385,11 +386,8 @@ void teTagLineedit::onEditingFinished(){
 
 void teTagLineedit::clear(){
     setStyleSheetOnce(this,"color:white;");
-    for(std::shared_ptr<teTag>tag:linked_tags){
-        tag->teDisconnect(this);
-    }
+    clearLinks();
     reset();
-    linked_tags.clear();
     edited();
 }
 
@@ -413,10 +411,7 @@ void teTagCheckBox::reset(){
 }
 void teTagCheckBox::clear(){
     setStyleSheetOnce(this,"color:white;");
-    for(std::shared_ptr<teTag>tag:linked_tags){
-        tag->teDisconnect(this);
-    }
-    linked_tags.clear();
+    clearLinks();
     reset();
 }
 
@@ -430,15 +425,13 @@ void teTagCheckBox::clearString(){
 
 
 void teTagCheckBox::select(){
-    --excute;
+    UpdateGuard guard(excute);
     setChecked(true);
-    ++excute;
 }
 
 void teTagCheckBox::unselect(){
-    --excute;
+    UpdateGuard guard(excute);
     setChecked(false);
-    ++excute;
 }
 
 bool teTagCheckBox::filter(std::shared_ptr<teTag>tag) const{
@@ -525,10 +518,7 @@ void teTagCheckBoxPlus::re_readGroup(std::shared_ptr<teTag>tag, int taggroup){
 
 void teTagCheckBoxPlus::clear(){
     setStyleSheetOnce(this,"color:white;");
-    for(std::shared_ptr<teTag>tag:linked_tags){
-        tag->teDisconnect(this);
-    }
-    linked_tags.clear();
+    clearLinks();
     for(std::shared_ptr<teTag>tag:second_tags){
         tag->teDisconnect(this);
     }

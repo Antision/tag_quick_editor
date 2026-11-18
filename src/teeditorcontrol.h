@@ -63,6 +63,31 @@ public:
      * widget it made itself (returns nullptr when the tag is not shown here).
      */
     teTagWidgetBase* tagWidgetFor(std::shared_ptr<teTag> core) const;
+    /**
+     * @brief Drops every connection this control holds on its linked tags.
+     *
+     * Every control's clear() spelled this loop out (four copies, in four
+     * slightly different orders). Doing it in one place is what makes "a cleared
+     * control is never called again" a property of the base class instead of a
+     * habit that has to be remembered.
+     */
+    void clearLinks();
+    /**
+     * @brief While this is alive the control ignores its own state changes.
+     *
+     * Several controls guard their own updates with an `excute` counter and a
+     * hand-written --excute/++excute pair around the block. A return or an
+     * exception in the middle of such a block left the counter off by one, and
+     * the control then swallowed every later click. The guard cannot be
+     * unbalanced.
+     */
+    struct UpdateGuard {
+        int& depth;
+        explicit UpdateGuard(int& d):depth(d){ --depth; }
+        ~UpdateGuard(){ ++depth; }
+        UpdateGuard(const UpdateGuard&)=delete;
+        UpdateGuard& operator=(const UpdateGuard&)=delete;
+    };
     void edited();
     virtual ~EditorControl(){};
 };
