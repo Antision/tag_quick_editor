@@ -1,13 +1,14 @@
 #ifndef TEEDITORLIST_H
 #define TEEDITORLIST_H
 #include"teeditor.h"
+#include"tagviewcontracts.h"
 
 extern const QString editorliststyle;
 extern const QString editorListScrollAreaStyle;
 class teTagListView;
 
 
-class teEditorList:public QWidget,public teObject
+class teEditorList:public QWidget,public teObject,public TagEditorHost
 {
     Q_OBJECT
 public:
@@ -28,6 +29,10 @@ public:
     void loadEditors(const QVector<teEditor*>& input_vector_ptr,editorListLayout*in_listpage);
     void setEditorsToPages();
     void connectTaglistWidget(teTagListView*in_taglist);
+    /// TagEditorHost: the tag view loaded `list`; make every editor read it.
+    void readAll(teTagList* list) override;
+    /// TagEditorHost: the shown list is gone; drop what the editors display.
+    void clearAll() override;
     void onNewTaglistLoaded();
     void readList(teTagList*input_taglist);
     void unloadList();

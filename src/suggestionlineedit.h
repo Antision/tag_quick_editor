@@ -1,6 +1,11 @@
 #ifndef SUGGESTIONLINEEDIT_H
 #define SUGGESTIONLINEEDIT_H
-#include"pch.h"
+#include "tagviewcontracts.h"
+#include <QLineEdit>
+#include <QListWidget>
+#include <atomic>
+#include <condition_variable>
+#include <mutex>
 class teTagWidget;
 extern const QString suggestionLineEditStyle;
 extern QString lineeditstyle;
@@ -11,14 +16,11 @@ class suggestionLineEdit:public QLineEdit{
 public:
     QListWidget*suggestionBox;
     QWidget*containerParent=nullptr;
-    QString previous;
-    unsigned int l=0;unsigned int r=ctags.size();
     std::atomic<bool> lineeditTextUpdateFlag=false;
     std::atomic<bool> lineeditfocusflag=false;
     /// Incremented by start(): a worker from an older edit sees a different value
     /// and returns, so the widget never feeds two background threads at once.
     std::atomic<unsigned> workerGeneration{0};
-    std::pair<size_t, size_t> prefixRange;
     std::mutex lineEditUpdateCheckThreadMutex;
     std::condition_variable_any lineEditUpdateMutexCV;
 
@@ -47,10 +49,12 @@ public:
 
     void onSuggestionClicked(QListWidgetItem* item);
 public slots:
-    void updateSuggestionBox(getSuggestionTagsArray_type HighestFrenquencyCtags);
     void start(const QString& in);
     void stop();
     void resetContainer();
+private:
+    /// Fills the box with what the source returned (GUI thread).
+    void applySuggestions(const QVector<SuggestionItem>& items);
 public:
     bool event(QEvent* e) override;
     void keyPressEvent(QKeyEvent* event) override;

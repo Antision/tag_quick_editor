@@ -1,6 +1,7 @@
 #include "func.h"
 #include "mainwindow.h"
 #include"pch.h"
+#include "suggestionsource.h"
 #include <QApplication>
 #include"tesignalwidget.h"
 #include"task_runner.h"
@@ -9,6 +10,13 @@
 
 using namespace std;
 BS::thread_pool<> thread_pool;
+
+namespace {
+/// The program's tag completion source. It starts empty and answers nothing
+/// until load_tags() filled `ctags`; installing it here is what keeps the editor
+/// widget free of the index (TV-03).
+CtagsSuggestionSource g_tagSuggestions;
+}
 
 int main(int argc, char *argv[])
 {
@@ -29,6 +37,7 @@ int main(int argc, char *argv[])
         }
     }
     QLoggingCategory::setFilterRules(QStringLiteral("qt.gui.imageio=false"));
+    setSuggestionSource(&g_tagSuggestions);
     load_config();
     // Heap, not stack: the window has to be destroyed *before* the pool is drained
     // (its destructor is what cancels the queued thumbnail decodes), but only once

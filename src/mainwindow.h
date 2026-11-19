@@ -42,6 +42,7 @@ class QMessageBox;
 void applyAboutQtStyle(QMessageBox& box);
 
 class tePictureFileModel;
+class PictureFileCaptionSource;
 class WindowGlyphButton;
 class teSelectionTagListView;
 class teSelectionTagModel;
@@ -88,6 +89,9 @@ public:
     QSplitter* splitter;
     tePictureFileModel*picturefileModel;
     tePictureListView* picturefileListView;
+    /// tqe's CaptionSource: turns the path the tag list asks about into the
+    /// tePictureFile the picture list already holds (TV-03).
+    PictureFileCaptionSource* captionSource=nullptr;
     teImageWidget*imageWidget=nullptr;
     teSelectionTagModel* multitaglistmodel;
     teSelectionTagListView*multitaglist;

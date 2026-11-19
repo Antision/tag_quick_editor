@@ -25,32 +25,22 @@ void suggestionLineEdit::onSuggestionClicked(QListWidgetItem *item){
     stop();
 }
 
-void suggestionLineEdit::updateSuggestionBox(getSuggestionTagsArray_type HighestFrenquencyCtags){
+void suggestionLineEdit::applySuggestions(const QVector<SuggestionItem>& items){
     suggestionBox->clear();
     QPoint pos = this->mapToGlobal(QPoint{0,height()});
     suggestionBox->move(pos);
     suggestionBox->setMinimumWidth(width());
-    if (HighestFrenquencyCtags.empty()) {
+    if (items.isEmpty()) {
         suggestionBox->hide();
         return;
     }
     suggestionBox->setSortingEnabled(false);
-    unsigned int HighestFrenquencyCtagsSize = HighestFrenquencyCtags.size();
-    for (unsigned int i=0;i<HighestFrenquencyCtagsSize; ++i) {
-        auto[frequency,index] = HighestFrenquencyCtags.top();
-        HighestFrenquencyCtags.pop();
-        ctag&tag = ctags[index];
-        QString displayText,dataText;
-        if (tag.ref_pos != 0xffffffffu) {
-            dataText = QString(ctags[tag.ref_pos].text);
-            displayText = QString("%1 -> %2 (%3)").arg(tag.text).arg(dataText).arg(tag.frequency);
-        } else {
-            dataText = QString(tag.text);
-            displayText = QString("%1 (%2)").arg(dataText).arg(tag.frequency);
-        }
-        QListWidgetItem* item = new QListWidgetItem(displayText);
-        item->setData(Qt::UserRole, QString(dataText));
-        suggestionBox->insertItem(0,item);
+    // The source returns the most frequent hit first; each row goes on top, so
+    // the best match ends up at the top of the visible list (as it always did).
+    for (const SuggestionItem& item : items) {
+        QListWidgetItem* row = new QListWidgetItem(item.display);
+        row->setData(Qt::UserRole,item.text);
+        suggestionBox->insertItem(0,row);
     }
     suggestionBox->setCurrentRow(0);
     suggestionBox->raise();
@@ -64,7 +54,6 @@ void suggestionLineEdit::updateSuggestionBox(getSuggestionTagsArray_type Highest
 }
 
 void suggestionLineEdit::start(const QString &in){
-    previous=QStringLiteral("");
     setText(in);
     lineeditTextUpdateFlag=true;
     lineeditfocusflag=true;
@@ -72,7 +61,14 @@ void suggestionLineEdit::start(const QString &in){
     // earlier edit may still be inside its sleep slice. The generation makes it
     // retire instead of running beside the new one.
     const unsigned generation = ++workerGeneration;
-    teDetachTask("autocomplete", [this, generation]{
+    SuggestionSource* source = suggestionSource();
+    if (!source) {
+        // No index in this program (gallery_info): there is nothing to search,
+        // so no worker is started at all. The box just stays hidden.
+        suggestionBox->hide();
+        return;
+    }
+    teDetachTask("autocomplete", [this, generation, source]{
         while(lineeditfocusflag==true && !g_appShuttingDown
               && generation == workerGeneration.load()){
             if(lineeditTextUpdateFlag==true){
@@ -80,24 +76,16 @@ void suggestionLineEdit::start(const QString &in){
                 QString newtext=text();
                 if(newtext.isEmpty())
                 {
-                    QMetaObject::invokeMethod(suggestionBox,"hide");
-                    previous="";continue;
+                    QMetaObject::invokeMethod(this,[this]{ suggestionBox->hide(); },Qt::QueuedConnection);
+                    continue;
                 }
                 if(newtext.back()==' '){
                     newtext.chop(1);
                 }
-                auto[diffstr,diffcharCount] = compareStrings(previous,newtext);
-                if(diffcharCount>0||previous.isEmpty()){
-                    auto[newl,newr] = find_prefix_range(ctags,newtext.toLatin1().data());
-                    l=newl,r=newr;
-                }else if(diffstr[0]!='\0'){
-                    auto[newl,newr] = refine_range(ctags,previous.toLatin1().data(),l,r,diffstr,diffcharCount);
-                    l=newl,r=newr;
-                }
-                delete diffstr;
-                previous = newtext;
-                auto HighestFrenquencyCtags = getSuggestionTagsArray(ctags,l,r,50);
-                QMetaObject::invokeMethod(this,"updateSuggestionBox",std::move(HighestFrenquencyCtags));
+                const QVector<SuggestionItem> items = source->suggest(newtext,50);
+                QMetaObject::invokeMethod(this,[this,items]{
+                    applySuggestions(items);
+                },Qt::QueuedConnection);
             }
             lineEditUpdateCheckThreadMutex.lock();
             if(lineeditTextUpdateFlag==false)

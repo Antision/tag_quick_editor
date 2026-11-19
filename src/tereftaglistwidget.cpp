@@ -358,12 +358,12 @@ void teRefTagListWidget::paste()
 
     if (parentTagListWidget) {
         for (const auto& piece : pieces)
-            parentTagListWidget->tagInsertAbove(false, std::make_shared<teTag>(piece.text, nullptr, piece.sentence), 2);
+            parentTagListWidget->tagInsertAbove(false, std::make_shared<teTag>(piece.text, piece.sentence), 2);
     } else {
         telog("[teRefTagListWidget::taginsert]:No taglistwidget specified");
         MainWindow* mwptr = (MainWindow*)global_window;
         for (const auto& piece : pieces)
-            mwptr->ui->taglist->tagInsertAbove(false, std::make_shared<teTag>(piece.text, nullptr, piece.sentence), 2);
+            mwptr->ui->taglist->tagInsertAbove(false, std::make_shared<teTag>(piece.text, piece.sentence), 2);
     }
 }
 

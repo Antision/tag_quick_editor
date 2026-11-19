@@ -131,14 +131,27 @@ void teEditorList::setEditorsToPages(){
 }
 
 void teEditorList::connectTaglistWidget(teTagListView *in_listWidget){
-    if(tagListWidget!=nullptr) disconnect(tagListWidget,0,this,0);
+    if(tagListWidget){
+        tagListWidget->setEditorHost(nullptr);
+        disconnect(tagListWidget,0,this,0);
+    }
     if(!in_listWidget){telog("input taglist is nullptr");return;}
     tagListWidget=in_listWidget;
     for(teEditor*e:editorlist){
         e->setTagListWidget(in_listWidget);
     }
-    connect(in_listWidget,&teTagListView::newlistloaded,this,&teEditorList::readList,Qt::DirectConnection);
-    connect(in_listWidget,&teTagListView::showinglistDestroyed,this,&teEditorList::unloadList,Qt::DirectConnection);
+    // The view tells its host directly (TV-03). It used to be a pair of signals;
+    // the difference only showed in who owned the connection - and the view must
+    // not know this class once it moves into the shared library.
+    in_listWidget->setEditorHost(this);
+}
+
+void teEditorList::readAll(teTagList *list){
+    readList(list);
+}
+
+void teEditorList::clearAll(){
+    unloadList();
 }
 
 void teEditorList::onNewTaglistLoaded(){
@@ -153,6 +166,8 @@ void teEditorList::readList(teTagList *input_taglist){
     unloadList();
     if(input_taglist)
         connectedList = input_taglist;
+    if(!connectedList)
+        return;                     // nothing to read (a picture without a caption)
     // Reading a list is not editing it. The controls normalise what they read
     // (two mergeable clothes tags become one), and those merges must neither land
     // on the undo stack nor count as "the user changed something" - they were

@@ -4,12 +4,11 @@
 #include "tesignalwidget.h"
 #include "tetaglistmodel.h"
 #include "tetagdisplaywidget.h"    // teTagDisplayOwner: what the popup needs
+#include "tagviewcontracts.h"
 #include "type_search.h"
 extern QStringList ClipBoard;
 
 extern QString lineeditstyle;
-class teEditorList;
-class tePictureFile;
 class teTagDisplayWidget;
 class teTagWidget;
 class teTag;
@@ -315,11 +314,13 @@ public:
     ~teTagListView();
 
     teTagList* showing_list=nullptr;///< the teTagList which is displaying
-    teEditorList* editorlist=nullptr;///< the EditorList connected with
-    /// The file whose caption is shown. Must be initialized: clear() reads it
-    /// (and calls into it) before loadFile() ever ran, and an uninitialized
-    /// pointer there made the first clear()/destruction crash at random.
-    tePictureFile* file=nullptr;
+    /// Where the list came from and where the editors are told about it. Both
+    /// are interfaces (TV-03): this view must not know what a picture file or an
+    /// editor list is, or it cannot move into the shared library.
+    CaptionSource* m_captionSource=nullptr;
+    TagEditorHost* m_editorHost=nullptr;
+    /// Image the shown caption belongs to (empty when nothing is shown).
+    QString m_imagePath;
     /// Plain text window for long-form tags.
     teInputWidget* plaintextedit=nullptr;
     /// The magnified popup.
@@ -368,7 +369,23 @@ public:
 
     void clear(teTagList* in=nullptr);
     void load(teTagList* newlist=nullptr);
-    void loadFile(tePictureFile*f);
+    /// Sets where loadCaption() gets its tags from. Not owned; may be null.
+    void setCaptionSource(CaptionSource* source);
+    /// Sets who is told when a list was loaded or went away. Not owned.
+    void setEditorHost(TagEditorHost* host){ m_editorHost=host; }
+    /**
+     * @brief Shows the caption of `imagePath`.
+     *
+     * Loads the list from the caption source (the same list every time, so the
+     * undo history of a picture survives switching away and back). A path whose
+     * source has nothing to offer empties the view; that is the "no caption
+     * file yet" case, not an error.
+     */
+    void loadCaption(const QString& imagePath);
+    /// Drops the shown caption and forgets which image it belonged to.
+    void closeCaption();
+    /// Image currently shown, or an empty string.
+    QString captionImagePath() const { return m_imagePath; }
     void onTagEdited(std::shared_ptr<teTag>tag);
     /**
      * @brief Replaces the shown list's content and makes everyone re-read it.
@@ -398,7 +415,6 @@ public:
     void tagInsertBelow(bool edit=true,std::shared_ptr<teTag>newtag=nullptr,int removeDuplicate=1);
     /// Long-form tags are edited in a plain text window.
     void onPlainTextEditStop(QString in_str);
-    void onFileDeleted(tePictureFile*obj);
 
     // -- clipboard -------------------------------------------------------------
     void copy();
@@ -441,9 +457,6 @@ public slots:
     void onViewContextMenu(const QPoint& pos);
     void onViewCurrentChanged(const QModelIndex& current,const QModelIndex& previous);
     void onModelReset();
-signals:
-    void newlistloaded(teTagList*);
-    void showinglistDestroyed();
 protected:
     void dropEvent(QDropEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
@@ -475,6 +488,8 @@ private:
     /// Scrolls the popup away when the pointer left it (grace period).
     void scheduleTagDisplayHide();
     void tagDisplayHideTick();
+    /// CaptionSource reports that a list it handed out is about to die.
+    void onCaptionListGone(teTagList* list);
 
     teTagListModel* m_model=nullptr;
     teTagDelegate* m_delegate=nullptr;

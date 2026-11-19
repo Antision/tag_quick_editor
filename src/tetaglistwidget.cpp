@@ -1,12 +1,11 @@
 #include "tetaglistwidget.h"
 #include "testyle.h"
 #include "teeditor.h"
-#include "teeditorlist.h"
-#include "tepicturefile.h"
 #include "tetag.h"
 #include "tetagdisplaywidget.h"
 #include "tesignalwidget.h"
 #include "func.h"
+#include <QPointer>
 QStringList ClipBoard;
 
 teTagListWidgetBase::teTagListWidgetBase(int wordsize,QWidget *parent): QWidget{parent}{
@@ -674,13 +673,14 @@ void teTagListView::typeSearch(const QString &text){
     },text);
 }
 
-void teTagListView::onFileDeleted(tePictureFile *obj){
-    if(obj==file){
-        clear();
-        file=nullptr;
-        showing_list=nullptr;
-        emit showinglistDestroyed();
-    }
+void teTagListView::onCaptionListGone(teTagList *list){
+    if(!list||list!=showing_list)
+        return;
+    // The list the view was showing is dying with its picture: drop every
+    // pointer before it becomes dangling, and tell the editors to let go.
+    clear();
+    if(m_editorHost)
+        m_editorHost->clearAll();
 }
 void teTagListWidgetBase::tagEdit(){
     if(select_current!=nullptr)
@@ -714,7 +714,7 @@ void teTagListWidgetBase::paste()
 
     for (const auto& piece : pieces) {
         if (!piece.text.isEmpty()) {
-            tagInsertBelow(false, std::make_shared<teTag>(piece.text, nullptr, piece.sentence), 1);
+            tagInsertBelow(false, std::make_shared<teTag>(piece.text, piece.sentence), 1);
         }
     }
 }
@@ -734,7 +734,11 @@ void teTagListView::load(teTagList*newlist){
     // this list shows rows, so there is nothing to flag or unload here.
     const int tmpSelectIndex=m_pendingSelectionIndex;
     m_model->setTagList(showing_list);
-    emit newlistloaded(newlist);
+    // The editors read the list here, before the selection is restored: reading
+    // may merge tags, which rebuilds rows, and a row index chosen before that
+    // would point at whatever moved into its place.
+    if(m_editorHost)
+        m_editorHost->readAll(showing_list);
 
     if(tmpSelectIndex>-1&&m_model->rowCount()>0){
         const int row = std::min(tmpSelectIndex,m_model->rowCount()-1);
@@ -742,16 +746,38 @@ void teTagListView::load(teTagList*newlist){
     }
 }
 
-void teTagListView::loadFile(tePictureFile *f)
+void teTagListView::setCaptionSource(CaptionSource *source)
 {
-    if(!f)
+    m_captionSource=source;
+    if(m_captionSource)
+        // The source may outlive this view (the window keeps it until the last
+        // picture is gone), so the handler must not reach a destroyed view. A
+        // QPointer turns that into a null check instead of a crash.
+        m_captionSource->setListGoneHandler([view=QPointer<teTagListView>(this)](teTagList* list){
+            if(view)
+                view->onCaptionListGone(list);
+        });
+}
+
+void teTagListView::loadCaption(const QString &imagePath)
+{
+    if(imagePath.isEmpty()){
+        closeCaption();
         return;
-    if(file==f&&showing_list==&f->taglist)
-        return;                     // already showing this file
+    }
+    if(imagePath==m_imagePath&&showing_list)
+        return;                     // already showing this image
     clear();
-    file=f;
-    load(&f->taglist);
-    f->teConnect(teCallbackType::destroy,this,&teTagListView::onFileDeleted,f);
+    m_imagePath=imagePath;
+    if(!m_captionSource)
+        return;
+    if(teTagList* list=m_captionSource->open(imagePath))
+        load(list);
+}
+
+void teTagListView::closeCaption()
+{
+    clear();            // also forgets the image path
 }
 
 void teTagListView::clear(teTagList *in){
@@ -762,10 +788,7 @@ void teTagListView::clear(teTagList *in){
     if(m_delegate)
         m_delegate->stopEditing();
     if(in==showing_list||in==nullptr){
-        if(file){
-            file->teDisconnect(this);
-            file=nullptr;
-        }
+        m_imagePath.clear();
         if(m_model)
             m_model->setTagList(nullptr);
         if(showing_list){
@@ -930,27 +953,19 @@ bool teTagListView::canRedo() const{
 void teTagListView::undo(){
     if(!showing_list)
         return;
-    // A gesture that is still open belongs to this undo: a click followed by
-    // Ctrl+Z before the event loop came back is one step, not zero.
-    showing_list->commitChange();
-    const teUndoHistory::Step* step=showing_list->history.stepToUndo();
-    if(!step)
-        return;
-    const teTagSnapshotList before=step->before;
-    showing_list->history.stepUndone();
-    applySnapshot(before);
+    // The list consumes the step and hands out the state to restore; an open
+    // gesture belongs to this undo (see teTagList::takeUndoSnapshot).
+    teTagSnapshotList before;
+    if(showing_list->takeUndoSnapshot(before))
+        applySnapshot(before);
 }
 
 void teTagListView::redo(){
     if(!showing_list)
         return;
-    showing_list->commitChange();
-    const teUndoHistory::Step* step=showing_list->history.stepToRedo();
-    if(!step)
-        return;
-    const teTagSnapshotList after=step->after;
-    showing_list->history.stepRedone();
-    applySnapshot(after);
+    teTagSnapshotList after;
+    if(showing_list->takeRedoSnapshot(after))
+        applySnapshot(after);
 }
 
 void teTagListWidgetBase::onTagRightButtonClicked(teTagWidgetBase *tag, QPoint point, int modifiers){
@@ -1010,8 +1025,11 @@ void teTagListView::onTagEdited(std::shared_ptr<teTag>tag){
 teTagListView::teTagListView(QWidget* parent)
     : QListView(parent)
 {
-    createModelAndDelegate();
+    // The menu first: createModelAndDelegate() connects its actions, and doing
+    // that before they exist made every one of those connects a no-op (Qt logged
+    // "invalid nullptr parameter"), i.e. the view's context menu was dead.
     createMenu();
+    createModelAndDelegate();
     plaintextedit = new teInputWidget;
     // Magnified popup: it appears when a tag is clicked, not after a hover delay,
     // and stays while the pointer travels into it.
@@ -1075,7 +1093,7 @@ void teTagListView::paste()
     const QString text = QApplication::clipboard()->text();
     const auto pieces = splitTextToPieces(text);
     for(const auto& piece : pieces)
-        tagInsertBelow(false,std::make_shared<teTag>(piece.text,nullptr,piece.sentence),2);
+        tagInsertBelow(false,std::make_shared<teTag>(piece.text,piece.sentence),2);
 }
 
 void teTagListView::onPlainTextEditStop(QString in_str)

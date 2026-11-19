@@ -31,12 +31,14 @@ SOURCES += \
     src/main.cpp \
     src/mainwindow.cpp \
     src/numberpad.cpp \
+    src/picturefilecaptionsource.cpp \
     src/prefix_priority.cpp \
     src/secondarybutton.cpp \
     src/secondarycaption.cpp \
     src/secondarymenu.cpp \
     src/testyle.cpp \
     src/suggestionlineedit.cpp \
+    src/suggestionsource.cpp \
     src/task_runner.cpp \
     src/teeditor.cpp \
     src/teeditor_derive.cpp \
@@ -44,7 +46,6 @@ SOURCES += \
     src/teeditorlist.cpp \
     src/teeditorlistpageview.cpp \
     src/teimagewidget.cpp \
-    src/teobject.cpp \
     src/tepicturefile.cpp \
     src/tepicturelistview.cpp \
     src/tereftaglistwidget.cpp \
@@ -63,11 +64,13 @@ HEADERS += \
     src/mainwindow.h \
     src/pch.h \
     src/numberpad.h \
+    src/picturefilecaptionsource.h \
     src/prefix_priority.h \
     src/secondarybutton.h \
     src/secondarycaption.h \
     src/secondarymenu.h \
     src/suggestionlineedit.h \
+    src/suggestionsource.h \
     src/task_runner.h \
     src/teeditor.h \
     src/teeditor_derive.h \
@@ -81,7 +84,6 @@ HEADERS += \
     src/teeditorlist.h \
     src/teeditorlistpageview.h \
     src/teimagewidget.h \
-    src/teobject.h \
     src/tepicturefile.h \
     src/tepicturelistview.h \
     src/tereftaglistwidget.h \

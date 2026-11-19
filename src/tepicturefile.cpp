@@ -186,7 +186,7 @@ void tePictureFile::save()
         return;
 
     const QString text = serializePieces(taglist.size(), [&](int i) -> std::shared_ptr<teTag> {
-        return taglist.tags[i];
+        return taglist.shareAt(i);
     }, true);
 
     // QSaveFile writes to a temporary file and renames it into place, so a

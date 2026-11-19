@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "litewidget2.h"
 #include "windowglyphbutton.h"
+#include "picturefilecaptionsource.h"
 #include "teselectiontaglist.h"
 #include "tepicturelistview.h"
 #include "ui_mainwindow.h"
@@ -166,11 +167,14 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(ui->GlobalMultiTaglistView->model,&teSelectionTagModel::listModified,this,[this]{
         connect(ui->tagListTabWidget,&QTabWidget::currentChanged,ui->taglist,[this]{
-            tePictureFile* tmpPictureFile = ui->taglist->file;
+            const QString shownImage = ui->taglist->captionImagePath();
             QItemSelection tmpSelection= picturefileListView->selectionModel()->selection();
-            if(tmpSelection.count()==1&&
-                tmpPictureFile==qvariant_cast<tePictureFile*>(picturefileListView->model()->data(tmpSelection.indexes().first())))
-                ui->taglist->loadFile(tmpPictureFile);
+            if(tmpSelection.count()==1){
+                tePictureFile* tmpPictureFile = qvariant_cast<tePictureFile*>(
+                    picturefileListView->model()->data(tmpSelection.indexes().first()));
+                if(tmpPictureFile&&shownImage==tmpPictureFile->filepath.qstring)
+                    ui->taglist->loadCaption(shownImage);
+            }
             disconnect(ui->tagListTabWidget,&QTabWidget::currentChanged,ui->taglist,0);
         },Qt::SingleShotConnection);
     },Qt::DirectConnection);
@@ -253,6 +257,15 @@ MainWindow::MainWindow(QWidget *parent)
 
     picturefileListView=ui->picturelist;
     picturefileModel = picturefileListView->fileModel();
+    captionSource = new PictureFileCaptionSource(picturefileModel);
+    ui->taglist->setCaptionSource(captionSource);
+    // The tag view is a child widget, so ~QWidget deletes it *after* this
+    // destructor body; the source it points at has to go last. `destroyed` is
+    // emitted once the children are gone.
+    {
+        PictureFileCaptionSource* source = captionSource;
+        connect(this,&QObject::destroyed,this,[source]{ delete source; });
+    }
     imageWidget = new teImageWidget{nullptr};
     imageWidget->hide();
     connect(picturefileListView, &QListView::doubleClicked, this, [this](const QModelIndex &index) {
@@ -327,7 +340,6 @@ MainWindow::MainWindow(QWidget *parent)
                 ui->tagListTabWidget->setCurrentIndex(0);
             },Qt::DirectConnection);
 
-    ui->taglist->editorlist = ui->editorlist;
     ui->editorlist->tagListWidget = ui->taglist;
     global_window=this;
     connect(ui->action_undo,&QAction::triggered,ui->taglist,&teTagListView::undo,Qt::DirectConnection);
@@ -685,7 +697,7 @@ void MainWindow::emitloadlists(const QItemSelection &selected, const QItemSelect
         shownMultiTagFiles.clear();
         // The list is a QListView now; its own scrollbar is the one to reset.
         ui->taglist->scrollToTop();
-        ui->taglist->loadFile(selectedFiles.first());
+        ui->taglist->loadCaption(selectedFiles.first()->filepath.qstring);
         return;
     }
 
@@ -753,6 +765,8 @@ MainWindow::~MainWindow()
     delete imageWidget;
     delete logWindow;
     delete ui;
+    // captionSource is deleted from the `destroyed` handler (see the constructor):
+    // the view that points at it is a child widget and dies after this body.
     // Nothing may read the window through this any more: save_config() uses it for
     // the splitter sizes and the geometry, and running it after the window is gone
     // was an access violation on freed memory (the release build reported it as an
