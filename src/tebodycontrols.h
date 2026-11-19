@@ -144,37 +144,3 @@ struct Breast_Buttongroup : public teTagButtonGroup {
     void getDefaultFiltStrings()override{};
 };
 
-struct legUp_Buttongroup : public teTagButtonGroup {
-    legUp_Buttongroup(QWidget* parent = nullptr, QString* styleSheet_button = nullptr, QString* styleSheet_label = nullptr)
-        :teTagButtonGroup({
-            {qsl("one"),qsl("one"),true,true,false},
-            {qsl("leg(s)"),qsl("leg"),true,true,false},
-            {qsl("up"),qsl("up"),false,true,false},})
-        {
-            // 0 = "one", 1 = "leg": picking "one" turns "leg" on, picking "leg"
-            // alone clears "one".
-            rules.exclusive = {{0,1}};
-            rules.implies = {{0,1,{}}};
-        }
-    /**
-     * @brief "one leg up" is singular, "legs up" is not: the label follows the box.
-     *
-     * The exclusivity ("one" implies "leg", and picking "leg" clears "one") is the
-     * rule table; what is left here is the word the button writes.
-     */
-    virtual void reform(int id)override {
-        enum {
-            one,leg
-        };
-        applyRules(id);
-        allwidgets[leg].data = buttons[one]->isChecked()?qsl("leg"):qsl("legs");
-    }
-
-bool filter(std::shared_ptr<teTag> in) const override{
-    QVector<teWord*>&words = in->words;
-    if(words.size()<2)return false;
-    if(words.at(words.size()-2)->text.startsWith(qsl("leg"))&&in->words.back()->text==qsl("up"))
-        return true;
-    return false;
-}
-};

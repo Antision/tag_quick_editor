@@ -5,18 +5,6 @@
 #pragma once
 #include "teeditorhelpers.h"
 
-struct smile_buttongroup : public teTagButtonGroup {
-    smile_buttongroup(QWidget* parent = nullptr, QString* styleSheet_button = nullptr, QString* styleSheet_label = nullptr)
-        :teTagButtonGroup({ {qsl("light"),qsl("light"),true},{qsl("naughty"),qsl("naughty"),true},{qsl("seductive"),qsl("seductive"),true},{qsl("smile"),qsl("smile"),true} })
-    {
-        layout->setSpacing(1);
-        // "light", "naughty" and "seductive" only describe a smile that is there:
-        // each of them implies the "smile" button, and turning "smile" off takes
-        // them with it (that is the same rule read backwards).
-        rules.implies = {{0,3},{1,3},{2,3}};
-    }
-};
-
 struct mouth_buttongroup : public teTagButtonGroup {
     mouth_buttongroup(QWidget* parent = nullptr, QString* styleSheet_button = nullptr, QString* styleSheet_label = nullptr)
     :teTagButtonGroup({ {qsl("open"),qsl("open"),true},{qsl("closed"),qsl("closed"),true},{qsl("mouth"),qsl("mouth"),false} })
@@ -25,37 +13,6 @@ struct mouth_buttongroup : public teTagButtonGroup {
         // "open" and "closed" exclude each other; the label is not a button.
         rules.exclusive = {{0,1}};
     }
-};
-
-struct ClosedEyes_Buttongroup : public teTagButtonGroup {
-    ClosedEyes_Buttongroup(QWidget* parent = nullptr, QString* styleSheet_button = nullptr, QString* styleSheet_label = nullptr)
-        :teTagButtonGroup({
-            {qsl("half-"),qsl("half-"),true,false,false},
-            {qsl("closed"),qsl("closed"),true,true,false},
-            {qsl("eyes"),qsl("eyes"),false,true,false},
-        })
-        {
-            layout->setSpacing(1);
-            // "half-" is a prefix of "closed": it implies that button, and
-            // unchecking "closed" unchecks it (the table reads the statement
-            // backwards as well).
-            rules.implies = {{half,closed,{}}};
-        }
-        enum {
-            half,closed,eyes
-        };
-        void refreshState()override{
-            bool halfb=false,closedb=false;
-            for(std::shared_ptr<teTag>tc:linked_tags)
-                if(tc->words[0]->text==qsl("half-closed")){
-                    halfb=true;
-                    closedb=true;
-                }
-                else if(tc->words[0]->text==qsl("closed"))
-                    closedb=true;
-            buttons[half]->setChecked(halfb);
-            buttons[closed]->setChecked(closedb);
-        }
 };
 
 struct Ears_Buttongroup : public teTagButtonGroup {

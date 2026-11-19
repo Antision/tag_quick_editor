@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>eye_shape_menu</class>
+ <widget class="QWidget" name="eye_shape_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>60</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="btn_none">
+     <property name="text"><string>(none)</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_jitome">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>jitome</string></property>
+     <property name="tags" stdset="0"><string>jitome</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_tareme">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>tareme</string></property>
+     <property name="tags" stdset="0"><string>tareme</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_tsurime">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>tsurime</string></property>
+     <property name="tags" stdset="0"><string>tsurime</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_sanpaku">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>sanpaku</string></property>
+     <property name="tags" stdset="0"><string>sanpaku</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

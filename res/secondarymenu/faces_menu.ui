@@ -1,0 +1,1087 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>faces_menu</class>
+ <widget class="QWidget" name="faces_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>700</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0" colspan="10">
+    <widget class="QLabel" name="lbl_group_0">
+     <property name="type" stdset="0"><string>menuGroup</string></property>
+     <property name="text"><string>Helper</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_blush">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>blush</string></property>
+     <property name="tags" stdset="0"><string>blush</string></property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="chk_parted_lips">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>parted lips</string></property>
+     <property name="tags" stdset="0"><string>parted lips</string></property>
+    </widget>
+   </item>
+   <item row="1" column="2">
+    <widget class="QPushButton" name="chk_one_eye_closed">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>one eye closed</string></property>
+     <property name="tags" stdset="0"><string>one eye closed</string></property>
+    </widget>
+   </item>
+   <item row="1" column="3">
+    <widget class="QPushButton" name="chk_closed_eyes">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>closed eyes</string></property>
+     <property name="tags" stdset="0"><string>closed eyes</string></property>
+    </widget>
+   </item>
+   <item row="1" column="4">
+    <widget class="QPushButton" name="chk_open_mouth">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>open mouth</string></property>
+     <property name="tags" stdset="0"><string>open mouth</string></property>
+    </widget>
+   </item>
+   <item row="1" column="5">
+    <widget class="QPushButton" name="chk_constricted_pupils">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>constricted pupils</string></property>
+     <property name="tags" stdset="0"><string>constricted pupils</string></property>
+    </widget>
+   </item>
+   <item row="1" column="6">
+    <widget class="QPushButton" name="chk_wide_eyed">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>wide-eyed</string></property>
+     <property name="tags" stdset="0"><string>wide-eyed</string></property>
+    </widget>
+   </item>
+   <item row="1" column="7">
+    <widget class="QPushButton" name="chk_dashed_eyes">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>dashed eyes</string></property>
+     <property name="tags" stdset="0"><string>dashed eyes</string></property>
+    </widget>
+   </item>
+   <item row="1" column="8">
+    <widget class="QPushButton" name="chk_half_closed_eyes">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>half-closed eyes</string></property>
+     <property name="tags" stdset="0"><string>half-closed eyes</string></property>
+    </widget>
+   </item>
+   <item row="1" column="9">
+    <widget class="QPushButton" name="chk_empty_eyes">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>empty eyes</string></property>
+     <property name="tags" stdset="0"><string>empty eyes</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_anger_vein">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>anger vein</string></property>
+     <property name="tags" stdset="0"><string>anger vein</string></property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QPushButton" name="chk_dot_mouth">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>dot mouth</string></property>
+     <property name="tags" stdset="0"><string>dot mouth</string></property>
+    </widget>
+   </item>
+   <item row="2" column="2">
+    <widget class="QPushButton" name="chk_no_mouth">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>no mouth</string></property>
+     <property name="tags" stdset="0"><string>no mouth</string></property>
+    </widget>
+   </item>
+   <item row="2" column="3">
+    <widget class="QPushButton" name="chk_faceless">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>faceless</string></property>
+     <property name="tags" stdset="0"><string>faceless</string></property>
+    </widget>
+   </item>
+   <item row="2" column="4">
+    <widget class="QPushButton" name="chk_raised_eyebrows">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>raised eyebrows</string></property>
+     <property name="tags" stdset="0"><string>raised eyebrows</string></property>
+    </widget>
+   </item>
+   <item row="2" column="5">
+    <widget class="QPushButton" name="chk_raised_inner_eyebrows">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>raised inner eyebrows</string></property>
+     <property name="tags" stdset="0"><string>raised inner eyebrows</string></property>
+    </widget>
+   </item>
+   <item row="2" column="6">
+    <widget class="QPushButton" name="chk_furrowed_brow">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>furrowed brow</string></property>
+     <property name="tags" stdset="0"><string>furrowed brow</string></property>
+    </widget>
+   </item>
+   <item row="2" column="7">
+    <widget class="QPushButton" name="chk_v_shaped_eyebrows">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>v-shaped eyebrows</string></property>
+     <property name="tags" stdset="0"><string>v-shaped eyebrows</string></property>
+    </widget>
+   </item>
+   <item row="2" column="8">
+    <widget class="QPushButton" name="chk_rolling_eyes">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>rolling eyes</string></property>
+     <property name="tags" stdset="0"><string>rolling eyes</string></property>
+    </widget>
+   </item>
+   <item row="2" column="9">
+    <widget class="QPushButton" name="chk_clenched_teeth">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>clenched teeth</string></property>
+     <property name="tags" stdset="0"><string>clenched teeth</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_wavy_mouth">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>wavy mouth</string></property>
+     <property name="tags" stdset="0"><string>wavy mouth</string></property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QPushButton" name="chk_sweatdrop">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>sweatdrop</string></property>
+     <property name="tags" stdset="0"><string>sweatdrop</string></property>
+    </widget>
+   </item>
+   <item row="3" column="2">
+    <widget class="QPushButton" name="chk_mouth_drool">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>mouth drool</string></property>
+     <property name="tags" stdset="0"><string>mouth drool</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0" colspan="10">
+    <widget class="QLabel" name="lbl_group_4">
+     <property name="type" stdset="0"><string>menuGroup</string></property>
+     <property name="text"><string>Happy</string></property>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="QPushButton" name="chk_smile">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>smile</string></property>
+     <property name="tags" stdset="0"><string>smile</string></property>
+    </widget>
+   </item>
+   <item row="5" column="1">
+    <widget class="QPushButton" name="chk_light_smile">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>light smile</string></property>
+     <property name="tags" stdset="0"><string>light smile</string></property>
+    </widget>
+   </item>
+   <item row="5" column="2">
+    <widget class="QPushButton" name="chk_grin">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>grin</string></property>
+     <property name="tags" stdset="0"><string>grin</string></property>
+    </widget>
+   </item>
+   <item row="5" column="3">
+    <widget class="QPushButton" name="chk_excited">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>excited</string></property>
+     <property name="tags" stdset="0"><string>excited</string></property>
+    </widget>
+   </item>
+   <item row="5" column="4">
+    <widget class="QPushButton" name="chk_happy">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>happy</string></property>
+     <property name="tags" stdset="0"><string>happy</string></property>
+    </widget>
+   </item>
+   <item row="5" column="5">
+    <widget class="QPushButton" name="chk_laughing">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>laughing</string></property>
+     <property name="tags" stdset="0"><string>laughing</string></property>
+    </widget>
+   </item>
+   <item row="5" column="6">
+    <widget class="QPushButton" name="chk_smirk">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>smirk</string></property>
+     <property name="tags" stdset="0"><string>smirk</string></property>
+    </widget>
+   </item>
+   <item row="5" column="7">
+    <widget class="QPushButton" name="chk_smug">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>smug</string></property>
+     <property name="tags" stdset="0"><string>smug</string></property>
+    </widget>
+   </item>
+   <item row="5" column="8">
+    <widget class="QPushButton" name="chk_evil_smile">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>evil smile</string></property>
+     <property name="tags" stdset="0"><string>evil smile</string></property>
+    </widget>
+   </item>
+   <item row="5" column="9">
+    <widget class="QPushButton" name="chk_stifled_laugh">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>stifled laugh</string></property>
+     <property name="tags" stdset="0"><string>stifled laugh</string></property>
+    </widget>
+   </item>
+   <item row="6" column="0">
+    <widget class="QPushButton" name="chk_curious">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>curious</string></property>
+     <property name="tags" stdset="0"><string>curious</string></property>
+    </widget>
+   </item>
+   <item row="6" column="1">
+    <widget class="QPushButton" name="chk_doyagao">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>doyagao</string></property>
+     <property name="tags" stdset="0"><string>doyagao</string></property>
+    </widget>
+   </item>
+   <item row="6" column="2">
+    <widget class="QPushButton" name="chk_seductive_smile">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>seductive smile</string></property>
+     <property name="tags" stdset="0"><string>seductive smile</string></property>
+    </widget>
+   </item>
+   <item row="6" column="3">
+    <widget class="QPushButton" name="chk_naughty_face">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>naughty face</string></property>
+     <property name="tags" stdset="0"><string>naughty face</string></property>
+    </widget>
+   </item>
+   <item row="7" column="0" colspan="10">
+    <widget class="QLabel" name="lbl_group_7">
+     <property name="type" stdset="0"><string>menuGroup</string></property>
+     <property name="text"><string>Calm</string></property>
+    </widget>
+   </item>
+   <item row="8" column="0">
+    <widget class="QPushButton" name="chk_bored">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>bored</string></property>
+     <property name="tags" stdset="0"><string>bored</string></property>
+    </widget>
+   </item>
+   <item row="8" column="1">
+    <widget class="QPushButton" name="chk_expressionless">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>expressionless</string></property>
+     <property name="tags" stdset="0"><string>expressionless</string></property>
+    </widget>
+   </item>
+   <item row="8" column="2">
+    <widget class="QPushButton" name="chk_sleepy">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>sleepy</string></property>
+     <property name="tags" stdset="0"><string>sleepy</string></property>
+    </widget>
+   </item>
+   <item row="8" column="3">
+    <widget class="QPushButton" name="chk_confused">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>confused</string></property>
+     <property name="tags" stdset="0"><string>confused</string></property>
+    </widget>
+   </item>
+   <item row="8" column="4">
+    <widget class="QPushButton" name="chk_thinking">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>thinking</string></property>
+     <property name="tags" stdset="0"><string>thinking</string></property>
+    </widget>
+   </item>
+   <item row="8" column="5">
+    <widget class="QPushButton" name="chk_unamused">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>unamused</string></property>
+     <property name="tags" stdset="0"><string>unamused</string></property>
+    </widget>
+   </item>
+   <item row="9" column="0" colspan="10">
+    <widget class="QLabel" name="lbl_group_9">
+     <property name="type" stdset="0"><string>menuGroup</string></property>
+     <property name="text"><string>Nervous / scared</string></property>
+    </widget>
+   </item>
+   <item row="10" column="0">
+    <widget class="QPushButton" name="chk_struggling">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>struggling</string></property>
+     <property name="tags" stdset="0"><string>struggling</string></property>
+    </widget>
+   </item>
+   <item row="10" column="1">
+    <widget class="QPushButton" name="chk_surprised">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>surprised</string></property>
+     <property name="tags" stdset="0"><string>surprised</string></property>
+    </widget>
+   </item>
+   <item row="10" column="2">
+    <widget class="QPushButton" name="chk_scared">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>scared</string></property>
+     <property name="tags" stdset="0"><string>scared</string></property>
+    </widget>
+   </item>
+   <item row="10" column="3">
+    <widget class="QPushButton" name="chk_nervous">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>nervous</string></property>
+     <property name="tags" stdset="0"><string>nervous</string></property>
+    </widget>
+   </item>
+   <item row="10" column="4">
+    <widget class="QPushButton" name="chk_flustered">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>flustered</string></property>
+     <property name="tags" stdset="0"><string>flustered</string></property>
+    </widget>
+   </item>
+   <item row="10" column="5">
+    <widget class="QPushButton" name="chk_nervous_smile">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>nervous smile</string></property>
+     <property name="tags" stdset="0"><string>nervous smile</string></property>
+    </widget>
+   </item>
+   <item row="10" column="6">
+    <widget class="QPushButton" name="chk_serious">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>serious</string></property>
+     <property name="tags" stdset="0"><string>serious</string></property>
+    </widget>
+   </item>
+   <item row="10" column="7">
+    <widget class="QPushButton" name="chk_screaming">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>screaming</string></property>
+     <property name="tags" stdset="0"><string>screaming</string></property>
+    </widget>
+   </item>
+   <item row="10" column="8">
+    <widget class="QPushButton" name="chk_panicking">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>panicking</string></property>
+     <property name="tags" stdset="0"><string>panicking</string></property>
+    </widget>
+   </item>
+   <item row="10" column="9">
+    <widget class="QPushButton" name="chk_turn_pale">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>turn pale</string></property>
+     <property name="tags" stdset="0"><string>turn pale</string></property>
+    </widget>
+   </item>
+   <item row="11" column="0" colspan="10">
+    <widget class="QLabel" name="lbl_group_11">
+     <property name="type" stdset="0"><string>menuGroup</string></property>
+     <property name="text"><string>Shy / embarrassed / love</string></property>
+    </widget>
+   </item>
+   <item row="12" column="0">
+    <widget class="QPushButton" name="chk_shy">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>shy</string></property>
+     <property name="tags" stdset="0"><string>shy</string></property>
+    </widget>
+   </item>
+   <item row="12" column="1">
+    <widget class="QPushButton" name="chk_nose_blush">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>nose blush</string></property>
+     <property name="tags" stdset="0"><string>nose blush</string></property>
+    </widget>
+   </item>
+   <item row="12" column="2">
+    <widget class="QPushButton" name="chk_full_face_blush">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>full-face blush</string></property>
+     <property name="tags" stdset="0"><string>full-face blush</string></property>
+    </widget>
+   </item>
+   <item row="12" column="3">
+    <widget class="QPushButton" name="chk_embarrassed">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>embarrassed</string></property>
+     <property name="tags" stdset="0"><string>embarrassed</string></property>
+    </widget>
+   </item>
+   <item row="12" column="4">
+    <widget class="QPushButton" name="chk_false_smile">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>false smile</string></property>
+     <property name="tags" stdset="0"><string>false smile</string></property>
+    </widget>
+   </item>
+   <item row="12" column="5">
+    <widget class="QPushButton" name="chk_forced_smile">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>forced smile</string></property>
+     <property name="tags" stdset="0"><string>forced smile</string></property>
+    </widget>
+   </item>
+   <item row="12" column="6">
+    <widget class="QPushButton" name="chk_lovestruck">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>lovestruck</string></property>
+     <property name="tags" stdset="0"><string>lovestruck</string></property>
+    </widget>
+   </item>
+   <item row="12" column="7">
+    <widget class="QPushButton" name="chk_envy">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>envy</string></property>
+     <property name="tags" stdset="0"><string>envy</string></property>
+    </widget>
+   </item>
+   <item row="12" column="8">
+    <widget class="QPushButton" name="chk_staring">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>staring</string></property>
+     <property name="tags" stdset="0"><string>staring</string></property>
+    </widget>
+   </item>
+   <item row="13" column="0" colspan="10">
+    <widget class="QLabel" name="lbl_group_13">
+     <property name="type" stdset="0"><string>menuGroup</string></property>
+     <property name="text"><string>Down / hurt</string></property>
+    </widget>
+   </item>
+   <item row="14" column="0">
+    <widget class="QPushButton" name="chk_worried">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>worried</string></property>
+     <property name="tags" stdset="0"><string>worried</string></property>
+    </widget>
+   </item>
+   <item row="14" column="1">
+    <widget class="QPushButton" name="chk_sad">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>sad</string></property>
+     <property name="tags" stdset="0"><string>sad</string></property>
+    </widget>
+   </item>
+   <item row="14" column="2">
+    <widget class="QPushButton" name="chk_disappointed">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>disappointed</string></property>
+     <property name="tags" stdset="0"><string>disappointed</string></property>
+    </widget>
+   </item>
+   <item row="14" column="3">
+    <widget class="QPushButton" name="chk_despair">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>despair</string></property>
+     <property name="tags" stdset="0"><string>despair</string></property>
+    </widget>
+   </item>
+   <item row="14" column="4">
+    <widget class="QPushButton" name="chk_pain">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>pain</string></property>
+     <property name="tags" stdset="0"><string>pain</string></property>
+    </widget>
+   </item>
+   <item row="14" column="5">
+    <widget class="QPushButton" name="chk_crying">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>crying</string></property>
+     <property name="tags" stdset="0"><string>crying</string></property>
+    </widget>
+   </item>
+   <item row="14" column="6">
+    <widget class="QPushButton" name="chk_tears">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>tears</string></property>
+     <property name="tags" stdset="0"><string>tears</string></property>
+    </widget>
+   </item>
+   <item row="14" column="7">
+    <widget class="QPushButton" name="chk_sigh">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>sigh</string></property>
+     <property name="tags" stdset="0"><string>sigh</string></property>
+    </widget>
+   </item>
+   <item row="14" column="8">
+    <widget class="QPushButton" name="chk_frown">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>frown</string></property>
+     <property name="tags" stdset="0"><string>frown</string></property>
+    </widget>
+   </item>
+   <item row="14" column="9">
+    <widget class="QPushButton" name="chk_gloom_expression">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>gloom (expression)</string></property>
+     <property name="tags" stdset="0"><string>gloom (expression)</string></property>
+    </widget>
+   </item>
+   <item row="15" column="0">
+    <widget class="QPushButton" name="chk_traumatized">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>traumatized</string></property>
+     <property name="tags" stdset="0"><string>traumatized</string></property>
+    </widget>
+   </item>
+   <item row="16" column="0" colspan="10">
+    <widget class="QLabel" name="lbl_group_16">
+     <property name="type" stdset="0"><string>menuGroup</string></property>
+     <property name="text"><string>Angry / displeased</string></property>
+    </widget>
+   </item>
+   <item row="17" column="0">
+    <widget class="QPushButton" name="chk_pout">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>pout</string></property>
+     <property name="tags" stdset="0"><string>pout</string></property>
+    </widget>
+   </item>
+   <item row="17" column="1">
+    <widget class="QPushButton" name="chk_puffy_cheeks">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>puffy cheeks</string></property>
+     <property name="tags" stdset="0"><string>puffy cheeks</string></property>
+    </widget>
+   </item>
+   <item row="17" column="2">
+    <widget class="QPushButton" name="chk_angry">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>angry</string></property>
+     <property name="tags" stdset="0"><string>angry</string></property>
+    </widget>
+   </item>
+   <item row="17" column="3">
+    <widget class="QPushButton" name="chk_annoyed">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>annoyed</string></property>
+     <property name="tags" stdset="0"><string>annoyed</string></property>
+    </widget>
+   </item>
+   <item row="17" column="4">
+    <widget class="QPushButton" name="chk_glaring">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>glaring</string></property>
+     <property name="tags" stdset="0"><string>glaring</string></property>
+    </widget>
+   </item>
+   <item row="17" column="5">
+    <widget class="QPushButton" name="chk_disgust">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>disgust</string></property>
+     <property name="tags" stdset="0"><string>disgust</string></property>
+    </widget>
+   </item>
+   <item row="17" column="6">
+    <widget class="QPushButton" name="chk_grimace">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>grimace</string></property>
+     <property name="tags" stdset="0"><string>grimace</string></property>
+    </widget>
+   </item>
+   <item row="17" column="7">
+    <widget class="QPushButton" name="chk_sulking">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>sulking</string></property>
+     <property name="tags" stdset="0"><string>sulking</string></property>
+    </widget>
+   </item>
+   <item row="17" column="8">
+    <widget class="QPushButton" name="chk_scowl">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>scowl</string></property>
+     <property name="tags" stdset="0"><string>scowl</string></property>
+    </widget>
+   </item>
+   <item row="17" column="9">
+    <widget class="QPushButton" name="chk_wince">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>wince</string></property>
+     <property name="tags" stdset="0"><string>wince</string></property>
+    </widget>
+   </item>
+   <item row="18" column="0">
+    <widget class="QPushButton" name="chk_disdain">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>disdain</string></property>
+     <property name="tags" stdset="0"><string>disdain</string></property>
+    </widget>
+   </item>
+   <item row="19" column="0" colspan="10">
+    <widget class="QLabel" name="lbl_group_19">
+     <property name="type" stdset="0"><string>menuGroup</string></property>
+     <property name="text"><string>Effects</string></property>
+    </widget>
+   </item>
+   <item row="20" column="0">
+    <widget class="QPushButton" name="chk_emote">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>^^^</string></property>
+     <property name="tags" stdset="0"><string>^^^</string></property>
+    </widget>
+   </item>
+   <item row="20" column="1">
+    <widget class="QPushButton" name="chk_color_drain">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>color drain</string></property>
+     <property name="tags" stdset="0"><string>color drain</string></property>
+    </widget>
+   </item>
+   <item row="20" column="2">
+    <widget class="QPushButton" name="chk_nosebleed">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>nosebleed</string></property>
+     <property name="tags" stdset="0"><string>nosebleed</string></property>
+    </widget>
+   </item>
+   <item row="20" column="3">
+    <widget class="QPushButton" name="chk_heart_shaped_eyes">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>heart-shaped eyes</string></property>
+     <property name="tags" stdset="0"><string>heart-shaped eyes</string></property>
+    </widget>
+   </item>
+   <item row="21" column="0" colspan="10">
+    <widget class="QLabel" name="lbl_group_21">
+     <property name="type" stdset="0"><string>menuGroup</string></property>
+     <property name="text"><string>Sexual</string></property>
+    </widget>
+   </item>
+   <item row="22" column="0">
+    <widget class="QPushButton" name="chk_exhausted">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>exhausted</string></property>
+     <property name="tags" stdset="0"><string>exhausted</string></property>
+    </widget>
+   </item>
+   <item row="22" column="1">
+    <widget class="QPushButton" name="chk_afterglow">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>afterglow</string></property>
+     <property name="tags" stdset="0"><string>afterglow</string></property>
+    </widget>
+   </item>
+   <item row="22" column="2">
+    <widget class="QPushButton" name="chk_ahegao">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>ahegao</string></property>
+     <property name="tags" stdset="0"><string>ahegao</string></property>
+    </widget>
+   </item>
+   <item row="22" column="3">
+    <widget class="QPushButton" name="chk_fucked_silly">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>fucked silly</string></property>
+     <property name="tags" stdset="0"><string>fucked silly</string></property>
+    </widget>
+   </item>
+   <item row="22" column="4">
+    <widget class="QPushButton" name="chk_aroused">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>aroused</string></property>
+     <property name="tags" stdset="0"><string>aroused</string></property>
+    </widget>
+   </item>
+   <item row="22" column="5">
+    <widget class="QPushButton" name="chk_penis_awe">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>penis awe</string></property>
+     <property name="tags" stdset="0"><string>penis awe</string></property>
+    </widget>
+   </item>
+   <item row="22" column="6">
+    <widget class="QPushButton" name="chk_ohhoai">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>ohhoai</string></property>
+     <property name="tags" stdset="0"><string>ohhoai</string></property>
+    </widget>
+   </item>
+   <item row="22" column="7">
+    <widget class="QPushButton" name="chk_ohogao">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>ohogao</string></property>
+     <property name="tags" stdset="0"><string>ohogao</string></property>
+    </widget>
+   </item>
+   <item row="22" column="8">
+    <widget class="QPushButton" name="chk_torogao">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>torogao</string></property>
+     <property name="tags" stdset="0"><string>torogao</string></property>
+    </widget>
+   </item>
+   <item row="22" column="9">
+    <widget class="QPushButton" name="chk_orgasm">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>orgasm</string></property>
+     <property name="tags" stdset="0"><string>orgasm</string></property>
+    </widget>
+   </item>
+   <item row="23" column="0">
+    <widget class="QPushButton" name="chk_moaning">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>moaning</string></property>
+     <property name="tags" stdset="0"><string>moaning</string></property>
+    </widget>
+   </item>
+   <item row="24" column="0" colspan="10">
+    <widget class="QLabel" name="lbl_group_24">
+     <property name="type" stdset="0"><string>menuGroup</string></property>
+     <property name="text"><string>Emotes</string></property>
+    </widget>
+   </item>
+   <item row="25" column="0">
+    <widget class="QPushButton" name="chk_emote_2">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>;)</string></property>
+     <property name="tags" stdset="0"><string>;)</string></property>
+    </widget>
+   </item>
+   <item row="25" column="1">
+    <widget class="QPushButton" name="chk_d">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>:D</string></property>
+     <property name="tags" stdset="0"><string>:D</string></property>
+    </widget>
+   </item>
+   <item row="25" column="2">
+    <widget class="QPushButton" name="chk_d_2">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>;D</string></property>
+     <property name="tags" stdset="0"><string>;D</string></property>
+    </widget>
+   </item>
+   <item row="25" column="3">
+    <widget class="QPushButton" name="chk_xd">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>XD</string></property>
+     <property name="tags" stdset="0"><string>XD</string></property>
+    </widget>
+   </item>
+   <item row="25" column="4">
+    <widget class="QPushButton" name="chk_d_3">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>D:</string></property>
+     <property name="tags" stdset="0"><string>D:</string></property>
+    </widget>
+   </item>
+   <item row="25" column="5">
+    <widget class="QPushButton" name="chk_3">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>:3</string></property>
+     <property name="tags" stdset="0"><string>:3</string></property>
+    </widget>
+   </item>
+   <item row="25" column="6">
+    <widget class="QPushButton" name="chk_3_2">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>;3</string></property>
+     <property name="tags" stdset="0"><string>;3</string></property>
+    </widget>
+   </item>
+   <item row="25" column="7">
+    <widget class="QPushButton" name="chk_x3">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>x3</string></property>
+     <property name="tags" stdset="0"><string>x3</string></property>
+    </widget>
+   </item>
+   <item row="25" column="8">
+    <widget class="QPushButton" name="chk_3_3">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>3:</string></property>
+     <property name="tags" stdset="0"><string>3:</string></property>
+    </widget>
+   </item>
+   <item row="25" column="9">
+    <widget class="QPushButton" name="chk_0w0">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>0w0</string></property>
+     <property name="tags" stdset="0"><string>0w0</string></property>
+    </widget>
+   </item>
+   <item row="26" column="0">
+    <widget class="QPushButton" name="chk_uwu">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>uwu</string></property>
+     <property name="tags" stdset="0"><string>uwu</string></property>
+    </widget>
+   </item>
+   <item row="26" column="1">
+    <widget class="QPushButton" name="chk_p">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>:p</string></property>
+     <property name="tags" stdset="0"><string>:p</string></property>
+    </widget>
+   </item>
+   <item row="26" column="2">
+    <widget class="QPushButton" name="chk_p_2">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>;p</string></property>
+     <property name="tags" stdset="0"><string>;p</string></property>
+    </widget>
+   </item>
+   <item row="26" column="3">
+    <widget class="QPushButton" name="chk_q">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>:q</string></property>
+     <property name="tags" stdset="0"><string>:q</string></property>
+    </widget>
+   </item>
+   <item row="26" column="4">
+    <widget class="QPushButton" name="chk_q_2">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>;q</string></property>
+     <property name="tags" stdset="0"><string>;q</string></property>
+    </widget>
+   </item>
+   <item row="26" column="5">
+    <widget class="QPushButton" name="chk_emote_3">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>&gt;:)</string></property>
+     <property name="tags" stdset="0"><string>&gt;:)</string></property>
+    </widget>
+   </item>
+   <item row="26" column="6">
+    <widget class="QPushButton" name="chk_emote_4">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>&gt;:(</string></property>
+     <property name="tags" stdset="0"><string>&gt;:(</string></property>
+    </widget>
+   </item>
+   <item row="26" column="7">
+    <widget class="QPushButton" name="chk_t">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>:T</string></property>
+     <property name="tags" stdset="0"><string>:T</string></property>
+    </widget>
+   </item>
+   <item row="26" column="8">
+    <widget class="QPushButton" name="chk_emote_5">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>:/</string></property>
+     <property name="tags" stdset="0"><string>:/</string></property>
+    </widget>
+   </item>
+   <item row="26" column="9">
+    <widget class="QPushButton" name="chk_emote_6">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>:|</string></property>
+     <property name="tags" stdset="0"><string>:|</string></property>
+    </widget>
+   </item>
+   <item row="27" column="0">
+    <widget class="QPushButton" name="chk_x_mouth">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>x mouth</string></property>
+     <property name="tags" stdset="0"><string>x mouth</string></property>
+    </widget>
+   </item>
+   <item row="27" column="1">
+    <widget class="QPushButton" name="chk_c">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>:c</string></property>
+     <property name="tags" stdset="0"><string>:c</string></property>
+    </widget>
+   </item>
+   <item row="27" column="2">
+    <widget class="QPushButton" name="chk_c_2">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>c:</string></property>
+     <property name="tags" stdset="0"><string>c:</string></property>
+    </widget>
+   </item>
+   <item row="27" column="3">
+    <widget class="QPushButton" name="chk_emote_7">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>:&lt;</string></property>
+     <property name="tags" stdset="0"><string>:&lt;</string></property>
+    </widget>
+   </item>
+   <item row="27" column="4">
+    <widget class="QPushButton" name="chk_emote_8">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>;&lt;</string></property>
+     <property name="tags" stdset="0"><string>;&lt;</string></property>
+    </widget>
+   </item>
+   <item row="27" column="5">
+    <widget class="QPushButton" name="chk_emote_9">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>:&gt;</string></property>
+     <property name="tags" stdset="0"><string>:&gt;</string></property>
+    </widget>
+   </item>
+   <item row="27" column="6">
+    <widget class="QPushButton" name="chk_o">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>:o</string></property>
+     <property name="tags" stdset="0"><string>:o</string></property>
+    </widget>
+   </item>
+   <item row="27" column="7">
+    <widget class="QPushButton" name="chk_o_2">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>;o</string></property>
+     <property name="tags" stdset="0"><string>;o</string></property>
+    </widget>
+   </item>
+   <item row="27" column="8">
+    <widget class="QPushButton" name="chk_o3o">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>o3o</string></property>
+     <property name="tags" stdset="0"><string>o3o</string></property>
+    </widget>
+   </item>
+   <item row="27" column="9">
+    <widget class="QPushButton" name="chk_3_4">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>&gt;3&lt;</string></property>
+     <property name="tags" stdset="0"><string>&gt;3&lt;</string></property>
+    </widget>
+   </item>
+   <item row="28" column="0">
+    <widget class="QPushButton" name="chk_o_o">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>o_o</string></property>
+     <property name="tags" stdset="0"><string>o_o</string></property>
+    </widget>
+   </item>
+   <item row="28" column="1">
+    <widget class="QPushButton" name="chk_0_0">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>0_0</string></property>
+     <property name="tags" stdset="0"><string>0_0</string></property>
+    </widget>
+   </item>
+   <item row="28" column="2">
+    <widget class="QPushButton" name="chk_emote_10">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>|_|</string></property>
+     <property name="tags" stdset="0"><string>|_|</string></property>
+    </widget>
+   </item>
+   <item row="28" column="3">
+    <widget class="QPushButton" name="chk_emote_11">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>._.</string></property>
+     <property name="tags" stdset="0"><string>._.</string></property>
+    </widget>
+   </item>
+   <item row="28" column="4">
+    <widget class="QPushButton" name="chk_emote_12">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>^_^</string></property>
+     <property name="tags" stdset="0"><string>^_^</string></property>
+    </widget>
+   </item>
+   <item row="28" column="5">
+    <widget class="QPushButton" name="chk_o_3">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>\(^o^)/</string></property>
+     <property name="tags" stdset="0"><string>\(^o^)/</string></property>
+    </widget>
+   </item>
+   <item row="28" column="6">
+    <widget class="QPushButton" name="chk_q_3">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>^q^</string></property>
+     <property name="tags" stdset="0"><string>^q^</string></property>
+    </widget>
+   </item>
+   <item row="28" column="7">
+    <widget class="QPushButton" name="chk_emote_13">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>&gt;_&lt;</string></property>
+     <property name="tags" stdset="0"><string>&gt;_&lt;</string></property>
+    </widget>
+   </item>
+   <item row="28" column="8">
+    <widget class="QPushButton" name="chk_o_4">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>&gt;o&lt;</string></property>
+     <property name="tags" stdset="0"><string>&gt;o&lt;</string></property>
+    </widget>
+   </item>
+   <item row="28" column="9">
+    <widget class="QPushButton" name="chk_emote_14">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>@_@</string></property>
+     <property name="tags" stdset="0"><string>@_@</string></property>
+    </widget>
+   </item>
+   <item row="29" column="0">
+    <widget class="QPushButton" name="chk_emote_15">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>&gt;_@</string></property>
+     <property name="tags" stdset="0"><string>&gt;_@</string></property>
+    </widget>
+   </item>
+   <item row="29" column="1">
+    <widget class="QPushButton" name="chk_emote_16">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>+_+</string></property>
+     <property name="tags" stdset="0"><string>+_+</string></property>
+    </widget>
+   </item>
+   <item row="29" column="2">
+    <widget class="QPushButton" name="chk_emote_17">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>+_-</string></property>
+     <property name="tags" stdset="0"><string>+_-</string></property>
+    </widget>
+   </item>
+   <item row="29" column="3">
+    <widget class="QPushButton" name="chk_emote_18">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>=_=</string></property>
+     <property name="tags" stdset="0"><string>=_=</string></property>
+    </widget>
+   </item>
+   <item row="29" column="4">
+    <widget class="QPushButton" name="chk_t_t">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>T_T</string></property>
+     <property name="tags" stdset="0"><string>T_T</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

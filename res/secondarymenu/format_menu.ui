@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>format_menu</class>
+ <widget class="QWidget" name="format_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>60</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="btn_none">
+     <property name="text"><string>(none)</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_comic">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>comic</string></property>
+     <property name="tags" stdset="0"><string>comic</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_greyscale">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>greyscale</string></property>
+     <property name="tags" stdset="0"><string>greyscale</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_monochrome">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>monochrome</string></property>
+     <property name="tags" stdset="0"><string>monochrome</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_game_cg">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>game cg</string></property>
+     <property name="tags" stdset="0"><string>game cg</string></property>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="QPushButton" name="chk_doujin_cover">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>doujin cover</string></property>
+     <property name="tags" stdset="0"><string>doujin cover</string></property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QPushButton" name="chk_cover_page">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>cover page</string></property>
+     <property name="tags" stdset="0"><string>cover page</string></property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="chk_tachi_e">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>tachi-e</string></property>
+     <property name="tags" stdset="0"><string>tachi-e</string></property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QPushButton" name="chk_pixel_art">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>pixel art</string></property>
+     <property name="tags" stdset="0"><string>pixel art</string></property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QPushButton" name="chk_lineart">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>lineart</string></property>
+     <property name="tags" stdset="0"><string>lineart</string></property>
+    </widget>
+   </item>
+   <item row="4" column="1">
+    <widget class="QPushButton" name="chk_dakimakura">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>dakimakura</string></property>
+     <property name="tags" stdset="0"><string>dakimakura ( medium )</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

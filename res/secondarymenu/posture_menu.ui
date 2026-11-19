@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>posture_menu</class>
+ <widget class="QWidget" name="posture_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>60</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="btn_none">
+     <property name="text"><string>(none)</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_sitting">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>sitting</string></property>
+     <property name="tags" stdset="0"><string>sitting</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_wariza">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>wariza</string></property>
+     <property name="tags" stdset="0"><string>wariza</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_squatting">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>squatting</string></property>
+     <property name="tags" stdset="0"><string>squatting</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_on_back">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>on back</string></property>
+     <property name="tags" stdset="0"><string>on back</string></property>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="QPushButton" name="chk_on_side">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>on side</string></property>
+     <property name="tags" stdset="0"><string>on side</string></property>
+    </widget>
+   </item>
+   <item row="6" column="0">
+    <widget class="QPushButton" name="chk_on_stomach">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>on stomach</string></property>
+     <property name="tags" stdset="0"><string>on stomach</string></property>
+    </widget>
+   </item>
+   <item row="7" column="0">
+    <widget class="QPushButton" name="chk_kneeling">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>kneeling</string></property>
+     <property name="tags" stdset="0"><string>kneeling</string></property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QPushButton" name="chk_knees_up">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>knees up</string></property>
+     <property name="tags" stdset="0"><string>knees up</string></property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="chk_knee_up">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>knee up</string></property>
+     <property name="tags" stdset="0"><string>knee up</string></property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QPushButton" name="chk_all_fours">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>all fours</string></property>
+     <property name="tags" stdset="0"><string>all fours</string></property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QPushButton" name="chk_pose">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>pose</string></property>
+     <property name="tags" stdset="0"><string>pose</string></property>
+    </widget>
+   </item>
+   <item row="4" column="1">
+    <widget class="QPushButton" name="chk_fetal_position">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>fetal position</string></property>
+     <property name="tags" stdset="0"><string>fetal position</string></property>
+    </widget>
+   </item>
+   <item row="5" column="1">
+    <widget class="QPushButton" name="chk_floating">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>floating</string></property>
+     <property name="tags" stdset="0"><string>floating</string></property>
+    </widget>
+   </item>
+   <item row="6" column="1">
+    <widget class="QPushButton" name="chk_standing">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>standing</string></property>
+     <property name="tags" stdset="0"><string>standing</string></property>
+    </widget>
+   </item>
+   <item row="7" column="1">
+    <widget class="QPushButton" name="chk_top_down_bottom_up">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>top-down bottom-up</string></property>
+     <property name="tags" stdset="0"><string>top-down bottom-up</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

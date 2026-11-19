@@ -41,6 +41,31 @@ void setStyleSheetOnce(QWidget* widget,const QString& sheet);
  */
 void setStateTextColor(QWidget* widget,const QColor& color);
 
+/**
+ * @brief A small blue dash: the delimiter between two tag *groups* on one line.
+ *
+ * Inside a group the buttons are alternatives of one thing and must stay packed
+ * (`open | closed | mouth`); two groups side by side are two meanings and need the
+ * dash, or the whole line reads as one long strip. A plain label with its own
+ * colour, because the editor pages and the LiteWindow popups do not share one
+ * stylesheet.
+ */
+QWidget* makeGroupSeparator(QWidget* parent = nullptr);
+
+/**
+ * @brief The same delimiter, drawn as a short vertical line between two columns.
+ *
+ * The colour dialogs put several tag groups side by side; between columns a dash
+ * would sit at an odd angle, so the delimiter turns with the layout: a 1px blue
+ * line, vertically centred, in a 5px slot.
+ */
+QWidget* makeColumnSeparator(QWidget* parent = nullptr);
+
+/**
+ * @brief The delimiter for two stacked sections: a 1px blue line across the row.
+ */
+QWidget* makeRowSeparator(QWidget* parent = nullptr);
+
 int load_config();
 
 int save_config();

@@ -365,22 +365,6 @@ public:
     }
 };
 
-class teTagComboBox : public QComboBox,public EditorControl{
-    Q_OBJECT
-public:
-    int excute=1;
-    QString default_text="...";
-    teTagComboBox(QList<QPair<QString,QStringList>>&& string_datas,QString&&default_text, QWidget *parent = nullptr,QString*styleSheet=nullptr);
-    virtual bool filter(std::shared_ptr<teTag> tag) const override;
-    virtual void clear()override;
-    virtual void reset()override;
-    virtual void onIndexChanged(int index);
-    virtual void refreshState()override;
-    void wheelEvent(QWheelEvent *event) override {
-        event->ignore();
-    }
-};
-
 class teTagLineedit:public QWidget,public EditorControl{
     Q_OBJECT
 public:

@@ -29,6 +29,9 @@ void addButtonsToGridLayout(QGridLayout *gridLayout, QButtonGroup *buttonGroup, 
         button->setCheckable(true);
 
         buttonGroup->addButton(button);
+        // One section is one tag group: its buttons sit edge to edge on purpose
+        // (they are alternatives of one thing). The separator belongs between
+        // sections - see colorsWidget::addSectionToContent.
         gridLayout->addWidget(button, currentRow, currentCol);
 
         // Move to the next grid cell
@@ -43,6 +46,13 @@ void addButtonsToGridLayout(QGridLayout *gridLayout, QButtonGroup *buttonGroup, 
 void colorsWidget::addSectionToContent(QLayout* sectionLayout,const QString& heading,int column)
 {
     QBoxLayout* target = (column>=0&&column<int(columns.size()))?columns[column]:content_layout;
+    // A delimiter between tag groups, never inside one. Only the top level layout
+    // gets one: inside a column the sections are already separated by their own
+    // captions, and a line there would cut the column in half.
+    if(target==content_layout&&target->count()>0){
+        target->addWidget(target->direction()==QBoxLayout::TopToBottom
+                              ? makeRowSeparator(this) : makeColumnSeparator(this));
+    }
     if(heading.isEmpty()){
         target->addLayout(sectionLayout);
         return;

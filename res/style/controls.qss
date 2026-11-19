@@ -1,0 +1,188 @@
+/*
+ * 控件层三态样式(SC-09)。
+ *
+ * 这个文件原来是 teeditorlist.cpp 里一个叫做 editorliststyle 的字符串:编辑器每
+ * 一列的背景、滚动条、以及所有一级控件(按钮 / 勾选 / 输入框 / 列表项)的常态、
+ * 悬停、按下三种颜色都写在里面。放在源码里有两个问题:改一处配色要翻代码,而且
+ * 二级按钮的菜单是独立窗口,拿不到那个字符串,只能再造一份。
+ *
+ * 现在这份表同时给三处用:
+ *   · 编辑器列的容器(teEditorList 的每一页)—— 一级控件;
+ *   · 二级按钮的菜单窗口(SecondaryMenu)—— 菜单里的按钮;
+ *   · 二级按钮自己(SecondaryButton,见文件末尾)。
+ *
+ * 规则顺序有意义:Qt 里选择器优先级相同的规则,后写的赢。所以
+ *   QPushButton  →  QPushButton:hover  →  QPushButton:checked  →  SecondaryButton*
+ * 这个顺序不能调:SecondaryButton 的常态规则必须排在 QPushButton:hover 后面,
+ * 否则悬停时会被通用的悬停底色盖掉;反过来,它自己的 :hover / :pressed 一条不少。
+ */
+
+QWidget{
+background-color: rgb(27, 27, 27);
+}
+*{
+    font-size:11pt;
+    color:white;
+}
+QScrollArea{border:1px solid #4c399e;}
+QScrollArea:hover{border:1px solid #ad5dff;}
+QScrollBar{background:rgba(0,0,0,210);}
+QScrollBar::vertical{margin: 0px 0px 0px 0px;border:0px solid #5421ff;width:5px;}
+QScrollBar::horizontal{margin: 0px 0px 0px 0px;border:0px solid #5421ff;height:5px;}
+QScrollBar::handle{
+color:#00ff00
+}
+QScrollBar::handle:!pressed{background:rgba(255,255,255,60);}
+QScrollBar::handle:pressed{background:rgba(255,255,255,150);}
+
+QScrollBar::handle:vertical{min-height:20px; border-radius: 2px;}
+QScrollBar::handle:horizontal{min-width:20px;border-radius: 2px;}
+
+QScrollBar::sub-page,QScrollBar::add-page {
+    background-color: None;
+}
+QScrollBar::add-line,QScrollBar::sub-line{
+border:0px solid black;
+width:0px;
+height:0px;
+}
+QScrollBar::sub-page,QScrollBar::add-page {
+    background-color: #05191f;
+}
+
+/* ---- 一级控件:常态紫边 / 悬停亮紫 / 选中(按下)绿底 ---- */
+QPushButton{
+    outline: 0px solid black;
+    border: 1px solid #4c399e;
+    background-color:transparent;
+    padding: 2px 0px;
+}
+QPushButton:hover{
+    border: 1px solid #a858f2;
+    background-color:rgba(177,100,255,60);
+}
+QPushButton:checked{
+    border: 1px solid #12b594;
+    background-color:#00592c;
+}
+QPushButton:checked:hover{
+    border: 1px solid #12f3e0;
+    background-color:#00a452;
+}
+QCheckBox{
+    outline: 0px solid black;
+    border: 1px solid #4c399e;
+}
+QCheckBox:hover{
+    border: 1px solid #a858f2;
+    background-color:rgba(177,100,255,60);
+}
+QLineEdit{
+    outline: 0px solid black;
+    border: 1px solid #4c399e;
+    padding: 2px 0px;
+}
+QLabel{
+    padding: 2px 0px;
+}
+QAbstractItemView{
+    font-size:10pt;
+    outline: 0px solid black;
+    border: 1px solid #4c399e;
+    selection-background-color: #3aaf74;
+}
+QAbstractItemView::item{
+    height: 25px;
+    border:1px solid #57487a;
+    background-color: #171717;
+}
+QAbstractItemView::item:hover{
+    border:1px solid #4a25a4;
+    background-color: #4c4a5d;
+}
+
+/* ---- 二级按钮菜单里的项(SC-06/SC-11) ----
+ * menuSelected:这一项写出来的 tag 集合正好是按钮现在捕获的那一组。由
+ * SecondaryButton 在每次打开菜单时同步(属性 + repolish,不重解析样式表)。
+ * 悬停/按下态沿用上面的 QPushButton 规则。 */
+QPushButton[menuSelected="true"]{
+    border: 1px solid #12f3e0;
+    background-color: rgba(18,181,148,150);
+}
+
+/* 菜单项的高度用 min-height 而不是 .ui 里的 minimumSize:两者在 Qt 里算法不同,
+ * minimumSize 可以大于布局自己的 sizeHint,于是滚动区按 minimumSize 布局、按
+ * sizeHint 汇报,菜单就会为几个像素长出一条滚动条。 */
+SecondaryMenu QPushButton{
+    min-height: 22px;
+    /* 竖向 padding 必须为 0:通用 QPushButton 规则的 2px 会把文字矩形压到只剩字体的
+     * ascent 高度,下划线(emote 标签 o_o / |_|)整条被裁掉。 */
+    padding: 0px 6px;
+}
+
+/* 菜单里的分组标题(角色类型 / faces / 体位这些大菜单用)。不是动作项,只是
+ * objectName 不带 btn_/chk_ 前缀的 QLabel,所以点它不会有任何事发生。 */
+QLabel[type="menuGroup"]{
+    color:#9a9aa8;
+    font-size:10pt;
+    font-weight:600;
+    padding:6px 2px 2px 2px;
+    border-bottom:1px solid #3a3a46;
+}
+
+/* ---- 人物数量的小键盘(NumberPad) ----
+ * 白底黑字的圆角按键:它模拟键盘而不是编辑器的一部分,所以不跟随深色主题。 */
+NumberPad QPushButton{
+    background:#ffffff;
+    color:#111111;
+    border:1px solid #cfcfd6;
+    border-radius:6px;
+    font-weight:600;
+    padding:2px 6px;
+}
+NumberPad QPushButton:hover{
+    background:#ececf1;
+}
+NumberPad QPushButton:pressed{
+    background:#d8d8de;
+}
+
+/* ---- 二级按钮(SC-01) ----
+ * 常态:黄色虚线框 + 淡青底;悬停深一档;捕获:绿边绿字 + 更深的青底;
+ * 按下再深一档;禁用整体降透明度。
+ * 文字颜色只在这里出现——控件构造函数不再写颜色(SC-09),paintEvent() 从被
+ * 样式表改过的 palette 里取。 */
+SecondaryButton{
+    border: 1px dotted #d8b13a;
+    border-radius: 6px;
+    background-color: rgba(0,190,190,26);
+    color: #ffffff;
+    font-weight: 600;
+    padding: 0px 6px;
+}
+SecondaryButton:hover{
+    border: 1px dotted #f0c94a;
+    background-color: rgba(0,190,190,46);
+}
+SecondaryButton:pressed{
+    border: 1px dotted #f0c94a;
+    background-color: rgba(0,190,190,86);
+}
+SecondaryButton[captured="true"]{
+    border: 1px dotted #00b059;
+    background-color: rgba(0,190,190,66);
+    color: #00e07a;
+}
+SecondaryButton[captured="true"]:hover{
+    border: 1px dotted #00d96b;
+    background-color: rgba(0,190,190,86);
+}
+SecondaryButton[captured="true"]:pressed{
+    border: 1px dotted #00d96b;
+    background-color: rgba(0,190,190,106);
+}
+SecondaryButton:disabled{
+    border: 1px dotted rgba(216,177,58,102);
+    background-color: rgba(0,190,190,10);
+    color: rgba(255,255,255,102);
+}

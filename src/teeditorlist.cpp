@@ -1,6 +1,7 @@
 #include "teeditorlist.h"
 #include "teeditorcontrol.h"
 #include "tetaglistwidget.h"
+#include "testyle.h"
 #include "pch.h"
 
 void teEditorList::loadEditors(const QVector<teEditor*>& input_vector_ptr,editorListLayout*in_listpage){
@@ -23,7 +24,7 @@ void teEditorList::loadEditors(const QVector<teEditor*>& input_vector_ptr,editor
         newscrollarea->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
         newscrollarea->setStyleSheet(editorListScrollAreaStyle);
         QVBoxLayout* containerLayout=new QVBoxLayout;
-        container->setStyleSheet(editorliststyle);
+        container->setStyleSheet(teStyle::sheet(QStringLiteral("controls")));
         container->setLayout(containerLayout);
         containerLayout->setContentsMargins(0,0,0,0);
         containerLayout->setSpacing(0);
@@ -94,7 +95,7 @@ void teEditorList::setEditorsToPages(){
         newscrollarea->setStyleSheet(editorListScrollAreaStyle);
 
         QVBoxLayout* containerLayout=new QVBoxLayout;
-        container->setStyleSheet(editorliststyle);
+        container->setStyleSheet(teStyle::sheet(QStringLiteral("controls")));
         container->setLayout(containerLayout);
         containerLayout->setContentsMargins(0,0,0,0);
         containerLayout->setSpacing(0);
@@ -287,96 +288,5 @@ QScrollBar::add-line:horizontal {
     height: 10px;
     width:12px;
 })");
-const QString editorliststyle = qsl(R"(
-QWidget{
-background-color: rgb(27, 27, 27);
-}
-*{
-    font-size:11pt;
-    color:white;
-}
-QScrollArea{border:1px solid #4c399e;}
-QScrollArea:hover{border:1px solid #ad5dff;}
-QScrollBar{background:rgba(0,0,0,210);}
-QScrollBar::vertical{margin: 0px 0px 0px 0px;border:0px solid #5421ff;width:5px;}
-QScrollBar::horizontal{margin: 0px 0px 0px 0px;border:0px solid #5421ff;height:5px;}
-QScrollBar::handle{
-color:#00ff00
-}
-QScrollBar::handle:!pressed{background:rgba(255,255,255,60);}
-QScrollBar::handle:pressed{background:rgba(255,255,255,150);}
 
-QScrollBar::handle:vertical{min-height:20px; border-radius: 2px;}
-QScrollBar::handle:horizontal{min-width:20px;border-radius: 2px;}
-
-QScrollBar::sub-page,QScrollBar::add-page {
-    background-color: None;
-}
-QScrollBar::add-line,QScrollBar::sub-line{
-border:0px solid black;
-width:0px;
-height:0px;
-}
-QScrollBar::sub-page,QScrollBar::add-page {
-    background-color: #05191f;
-}
-QPushButton{
-    outline: 0px solid black;
-    border: 1px solid #4c399e;
-    background-color:transparent;
-    padding: 2px 0px;
-}
-QPushButton:hover{
-    border: 1px solid #a858f2;
-    background-color:rgba(177,100,255,60);
-}
-QPushButton:checked{
-    border: 1px solid #12b594;
-    background-color:#00592c;
-}
-QPushButton:checked:hover{
-    border: 1px solid #12f3e0;
-    background-color:#00a452;
-}
-QCheckBox{
-    outline: 0px solid black;
-    border: 1px solid #4c399e;
-}
-QCheckBox:hover{
-    border: 1px solid #a858f2;
-    background-color:rgba(177,100,255,60);
-}
-QLineEdit{
-    outline: 0px solid black;
-    border: 1px solid #4c399e;
-    padding: 2px 0px;
-}
-QComboBox{
-    border: 1px solid #4c399e;
-    padding: 2px 0px;
-}
-QLabel{
-    padding: 2px 0px;
-}
-QComboBox:hover{
-    border: 1px solid #a858f2;
-    background-color:rgba(177,100,255,60);
-}
-QAbstractItemView{
-    font-size:10pt;
-    outline: 0px solid black;
-    border: 1px solid #4c399e;
-    selection-background-color: #3aaf74;
-}
-QAbstractItemView::item{
-    height: 25px;
-    border:1px solid #57487a;
-    background-color: #171717;
-}
-QAbstractItemView::item:hover{
-    border:1px solid #4a25a4;
-    background-color: #4c4a5d;
-}
-
-)");
 

@@ -4,9 +4,17 @@
  */
 #pragma once
 #include "teeditorhelpers.h"
+#include "numberpad.h"
 
     struct teTagLineedit_people : public teTagLineedit {
         QString objtext = "";
+        /**
+         * @brief The little keyboard that appears under the box while editing.
+         *
+         * Typing "3" for something with six possible answers is two keystrokes
+         * too many; the pad writes the number, commits the edit and closes.
+         */
+        NumberPad* pad = nullptr;
         /**
          * @brief This control's pattern, compiled once.
          *
@@ -19,6 +27,28 @@
         teTagLineedit_people(QString&& objtext, QString&& text) :teTagLineedit(std::move(text)), objtext(std::move(objtext)),
             regex(QStringLiteral(R"(^(\d+)\+?%1s?$)").arg(this->objtext)) {
             lineedit->setValidator(new QRegularExpressionValidator(QRegularExpression(QStringLiteral(R"(^\d+\+?$)"))));
+            lineedit->installEventFilter(this);      // opens the number pad
+        }
+        ~teTagLineedit_people() override {
+            delete pad;                              // it is a top-level window
+        }
+        bool eventFilter(QObject* watched, QEvent* event) override {
+            if (watched == lineedit) {
+                if (event->type() == QEvent::FocusIn) {
+                    if (!pad)
+                        pad = new NumberPad(nullptr);
+                    pad->openFor(lineedit, [this] { onEditingFinished(); });
+                } else if (event->type() == QEvent::FocusOut) {
+                    // Not immediately: clicking a pad button may briefly move the
+                    // focus, and the click that is already on its way has to
+                    // arrive. dismiss() is idempotent.
+                    QTimer::singleShot(250, this, [this] {
+                        if (pad && !lineedit->hasFocus())
+                            pad->dismiss();
+                    });
+                }
+            }
+            return teTagLineedit::eventFilter(watched, event);
         }
         QString getText() {
             if (linked_tags.empty()) { return QString{}; }
@@ -76,52 +106,6 @@
                 taglistwidget->tagEdit(*linked_tags.begin(),newTagText);
             }
             edited();
-        }
-    };
-
-    struct page1_button_link : public teTagControlGroup{
-        page1_button_link(QPushButton* linked,QVector<EditorControl*>&&children,QWidget*parent=nullptr):
-            teTagControlGroup(linked,std::move(children),parent){}
-        auto extract(const QString&in){
-            int people_count=0;
-            bool has_suffix=false;
-            QChar c='\0';
-            if(in.size()>0)
-                people_count=in[0].unicode()-'0';
-            if(in.size()>1){
-                has_suffix=true;
-                c=((teTagLineedit_people*)children[1])->lineedit->text()[1];
-            }
-            bool ok;
-            in.toInt(&ok);
-            struct{int peoplecount;bool hassuffix;QChar suffix;}ret{people_count,has_suffix,c};
-            return ret;
-        }
-        virtual void refreshState(){
-            QString showing_string{};
-            int i = 0;
-            for(;i<3;++i){
-                for(std::shared_ptr<teTag>tag_ptr:((teTagLineedit_people*)children[i])->linked_tags)
-                    showing_string+=(*tag_ptr)+',';
-            }
-            for(;i<7;++i){
-                if(((teTagCheckBox*)children[i])->isChecked())
-                    for(std::shared_ptr<teTag>tag_ptr:((teTagCheckBox*)children[i])->linked_tags)
-                        showing_string+=(*tag_ptr)+',';
-            }
-
-            if(!showing_string.isEmpty()){
-                showing_string.chop(1);
-                setStyleSheetOnce(linked_widget,"color:#07f680;");
-            }else{
-                showing_string=QStringLiteral("(nobody)");
-                setStyleSheetOnce(linked_widget,"color:white;");
-            }
-            QFontMetrics fontMetrics(((QPushButton*)linked_widget)->font());
-            ((QPushButton*)linked_widget)->setText(fontMetrics.elidedText(showing_string, Qt::ElideMiddle, linked_widget->width()));
-        }
-        virtual void onChildControlEdited(EditorControl*){
-            refreshState();
         }
     };
 

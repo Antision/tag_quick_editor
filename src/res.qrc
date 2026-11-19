@@ -39,5 +39,28 @@
         <file alias="list.qss">../res/style/list.qss</file>
         <file alias="editor.qss">../res/style/editor.qss</file>
         <file alias="editor_custom.qss">../res/style/editor_custom.qss</file>
+        <file alias="controls.qss">../res/style/controls.qss</file>
+    </qresource>
+    <!-- 二级按钮的菜单界面(SC-10)。一个控件一个 .ui,文件名 = 控件 id + _menu;
+         运行时用 QUiLoader 按 :/secondarymenu/<id>_menu.ui 取,不依赖外部文件。
+         在 Designer 里可以直接打开这些文件改布局,代码那边只认按钮的 objectName
+         (btn_<id> / chk_<id>),所以挪位置、改文字都不用动代码。 -->
+    <qresource prefix="/secondarymenu">
+        <file alias="quality_menu.ui">../res/secondarymenu/quality_menu.ui</file>
+        <file alias="framing_menu.ui">../res/secondarymenu/framing_menu.ui</file>
+        <file alias="facing_menu.ui">../res/secondarymenu/facing_menu.ui</file>
+        <file alias="posture_menu.ui">../res/secondarymenu/posture_menu.ui</file>
+        <file alias="angle_menu.ui">../res/secondarymenu/angle_menu.ui</file>
+        <file alias="lighting_menu.ui">../res/secondarymenu/lighting_menu.ui</file>
+        <file alias="scene_menu.ui">../res/secondarymenu/scene_menu.ui</file>
+        <file alias="format_menu.ui">../res/secondarymenu/format_menu.ui</file>
+        <file alias="expression_menu.ui">../res/secondarymenu/expression_menu.ui</file>
+        <file alias="eye_menu.ui">../res/secondarymenu/eye_menu.ui</file>
+        <file alias="eye_shape_menu.ui">../res/secondarymenu/eye_shape_menu.ui</file>
+        <file alias="censor_menu.ui">../res/secondarymenu/censor_menu.ui</file>
+        <file alias="trap_menu.ui">../res/secondarymenu/trap_menu.ui</file>
+        <file alias="character_type_menu.ui">../res/secondarymenu/character_type_menu.ui</file>
+        <file alias="faces_menu.ui">../res/secondarymenu/faces_menu.ui</file>
+        <file alias="sexual_positions_menu.ui">../res/secondarymenu/sexual_positions_menu.ui</file>
     </qresource>
 </RCC>

@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>quality_menu</class>
+ <widget class="QWidget" name="quality_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>60</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="btn_none">
+     <property name="text"><string>(none)</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_masterpiece">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>masterpiece</string></property>
+     <property name="tags" stdset="0"><string>masterpiece</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_best_quality">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>best quality</string></property>
+     <property name="tags" stdset="0"><string>best quality</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_absurdres">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>absurdres</string></property>
+     <property name="tags" stdset="0"><string>absurdres</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_very_aesthetic">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>very aesthetic</string></property>
+     <property name="tags" stdset="0"><string>very aesthetic</string></property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QPushButton" name="chk_score_9">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>score_9</string></property>
+     <property name="tags" stdset="0"><string>score_9</string></property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="chk_score_8_up">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>score_8_up</string></property>
+     <property name="tags" stdset="0"><string>score_8_up</string></property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QPushButton" name="chk_low_quality">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>low quality</string></property>
+     <property name="tags" stdset="0"><string>low quality</string></property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QPushButton" name="chk_worst_quality">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>worst quality</string></property>
+     <property name="tags" stdset="0"><string>worst quality</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

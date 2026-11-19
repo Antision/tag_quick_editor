@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>framing_menu</class>
+ <widget class="QWidget" name="framing_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>60</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="btn_none">
+     <property name="text"><string>(none)</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_full_body">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>full body</string></property>
+     <property name="tags" stdset="0"><string>full body</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_upper_body">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>upper body</string></property>
+     <property name="tags" stdset="0"><string>upper body</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_cowboy_shot">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>cowboy shot</string></property>
+     <property name="tags" stdset="0"><string>cowboy shot</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_pov">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>pov</string></property>
+     <property name="tags" stdset="0"><string>pov</string></property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QPushButton" name="chk_close_up">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>close-up</string></property>
+     <property name="tags" stdset="0"><string>close-up</string></property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="chk_face_focus">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>face focus</string></property>
+     <property name="tags" stdset="0"><string>face focus</string></property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QPushButton" name="chk_eyes_focus">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>eyes focus</string></property>
+     <property name="tags" stdset="0"><string>eyes focus</string></property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QPushButton" name="chk_foot_focus">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>foot focus</string></property>
+     <property name="tags" stdset="0"><string>foot focus</string></property>
+    </widget>
+   </item>
+   <item row="4" column="1">
+    <widget class="QPushButton" name="chk_ass_focus">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>ass focus</string></property>
+     <property name="tags" stdset="0"><string>ass focus</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

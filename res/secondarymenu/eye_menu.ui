@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>eye_menu</class>
+ <widget class="QWidget" name="eye_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>60</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="btn_none">
+     <property name="text"><string>(none)</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_empty_eyes">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>empty eyes</string></property>
+     <property name="tags" stdset="0"><string>empty eyes</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_constricted_pupils">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>constricted pupils</string></property>
+     <property name="tags" stdset="0"><string>constricted pupils</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_wide_eyed">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>wide-eyed</string></property>
+     <property name="tags" stdset="0"><string>wide-eyed</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_sparkling">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>sparkling</string></property>
+     <property name="tags" stdset="0"><string>sparkling</string></property>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="QPushButton" name="chk_one_eye_closed">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>one eye closed</string></property>
+     <property name="tags" stdset="0"><string>one eye closed</string></property>
+    </widget>
+   </item>
+   <item row="6" column="0">
+    <widget class="QPushButton" name="chk_dashed_eyes">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>dashed eyes</string></property>
+     <property name="tags" stdset="0"><string>dashed eyes</string></property>
+    </widget>
+   </item>
+   <item row="7" column="0">
+    <widget class="QPushButton" name="chk_squiggle_eyes">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>squiggle eyes</string></property>
+     <property name="tags" stdset="0"><string>squiggle eyes</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

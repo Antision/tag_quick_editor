@@ -117,13 +117,21 @@ void teEditor_standard::addRowTo(QBoxLayout* layout, teEditorRow row){
         line->addWidget(new QLabel(row.lead));
     }
     bool hasWidget = !row.lead.isEmpty();
+    bool previousWasGroup = false;
     for(EditorControl* control : row.controls){
         if(!control)
             continue;
         registerControl(control);
         if(auto* widget = dynamic_cast<QWidget*>(control)){
+            const bool isGroup = dynamic_cast<teTagButtonGroup*>(control) != nullptr;
+            // Two button groups sharing a line are two different meanings; without
+            // the dash the last button of one and the first of the next read as
+            // neighbours of the same group. Inside a group there is no delimiter.
+            if(isGroup && previousWasGroup)
+                line->addWidget(makeGroupSeparator());
             line->addWidget(widget);
             hasWidget = true;
+            previousWasGroup = isGroup;
         }
     }
     if(hasWidget)

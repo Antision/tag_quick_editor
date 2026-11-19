@@ -1,5 +1,7 @@
 QT       += core gui
 QT       += network
+# 二级按钮的菜单是 .ui 文件,运行时用 QUiLoader 从 qrc 里读(SC-10)
+QT       += uitools
 # common/audio (提示音) 用 QMediaPlayer;缺这个模块链接会失败
 QT       += multimedia
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
@@ -28,7 +30,11 @@ SOURCES += \
     src/func.cpp \
     src/main.cpp \
     src/mainwindow.cpp \
+    src/numberpad.cpp \
     src/prefix_priority.cpp \
+    src/secondarybutton.cpp \
+    src/secondarycaption.cpp \
+    src/secondarymenu.cpp \
     src/testyle.cpp \
     src/suggestionlineedit.cpp \
     src/task_runner.cpp \
@@ -56,7 +62,11 @@ HEADERS += \
     src/func.h \
     src/mainwindow.h \
     src/pch.h \
+    src/numberpad.h \
     src/prefix_priority.h \
+    src/secondarybutton.h \
+    src/secondarycaption.h \
+    src/secondarymenu.h \
     src/suggestionlineedit.h \
     src/task_runner.h \
     src/teeditor.h \

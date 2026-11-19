@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>expression_menu</class>
+ <widget class="QWidget" name="expression_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>60</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="btn_none">
+     <property name="text"><string>(none)</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_surprised">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>surprised</string></property>
+     <property name="tags" stdset="0"><string>surprised</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_scared">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>scared</string></property>
+     <property name="tags" stdset="0"><string>scared</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_smug">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>smug</string></property>
+     <property name="tags" stdset="0"><string>smug</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_confused">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>confused</string></property>
+     <property name="tags" stdset="0"><string>confused</string></property>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="QPushButton" name="chk_annoyed">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>annoyed</string></property>
+     <property name="tags" stdset="0"><string>annoyed</string></property>
+    </widget>
+   </item>
+   <item row="6" column="0">
+    <widget class="QPushButton" name="chk_sad">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>sad</string></property>
+     <property name="tags" stdset="0"><string>sad</string></property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QPushButton" name="chk_flustered">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>flustered</string></property>
+     <property name="tags" stdset="0"><string>flustered</string></property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="chk_crying">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>crying</string></property>
+     <property name="tags" stdset="0"><string>crying</string></property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QPushButton" name="chk_angry">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>angry</string></property>
+     <property name="tags" stdset="0"><string>angry</string></property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QPushButton" name="chk_exhausted">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>exhausted</string></property>
+     <property name="tags" stdset="0"><string>exhausted</string></property>
+    </widget>
+   </item>
+   <item row="4" column="1">
+    <widget class="QPushButton" name="chk_embarrassed">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>embarrassed</string></property>
+     <property name="tags" stdset="0"><string>embarrassed</string></property>
+    </widget>
+   </item>
+   <item row="5" column="1">
+    <widget class="QPushButton" name="chk_grin">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>grin</string></property>
+     <property name="tags" stdset="0"><string>grin</string></property>
+    </widget>
+   </item>
+   <item row="6" column="1">
+    <widget class="QPushButton" name="chk_expressionless">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>expressionless</string></property>
+     <property name="tags" stdset="0"><string>expressionless</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

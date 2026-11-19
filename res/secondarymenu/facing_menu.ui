@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>facing_menu</class>
+ <widget class="QWidget" name="facing_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>60</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="btn_none">
+     <property name="text"><string>(none)</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_looking_at_viewer">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>looking at viewer</string></property>
+     <property name="tags" stdset="0"><string>looking at viewer</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_facing_viewer">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>facing viewer</string></property>
+     <property name="tags" stdset="0"><string>facing viewer</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_looking_back">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>looking back</string></property>
+     <property name="tags" stdset="0"><string>looking back</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_looking_to_the_side">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>looking to the side</string></property>
+     <property name="tags" stdset="0"><string>looking to the side</string></property>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="QPushButton" name="chk_facing_to_the_side">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>facing to the side</string></property>
+     <property name="tags" stdset="0"><string>facing to the side</string></property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QPushButton" name="chk_looking_away">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>looking away</string></property>
+     <property name="tags" stdset="0"><string>looking away</string></property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="chk_facing_away">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>facing away</string></property>
+     <property name="tags" stdset="0"><string>facing away</string></property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QPushButton" name="chk_looking_up">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>looking up</string></property>
+     <property name="tags" stdset="0"><string>looking up</string></property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QPushButton" name="chk_looking_down">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>looking down</string></property>
+     <property name="tags" stdset="0"><string>looking down</string></property>
+    </widget>
+   </item>
+   <item row="4" column="1">
+    <widget class="QPushButton" name="chk_looking_at_object">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>looking at object</string></property>
+     <property name="tags" stdset="0"><string>looking at object</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

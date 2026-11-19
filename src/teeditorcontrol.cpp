@@ -114,102 +114,6 @@ void EditorControl::clearLinks(){
     dropAll(linked_tags,this);
 }
 
-teTagComboBox::teTagComboBox(QList<QPair<QString,QStringList>>&& string_datas,QString&&in_default_text, QWidget *parent, QString *styleSheet)
-    :QComboBox(parent),default_text(std::move(in_default_text)){
-    addItem(default_text,QStringList{});
-    for(QPair<QString,QStringList>& pair:string_datas){
-        addItem(std::move(pair.first),pair.second);
-        QStringList& tagstrlist = pair.second;
-        int tagstrlist_size = tagstrlist.size();
-        for(int i =0;i<tagstrlist_size;++i)
-            captureList.insert(tagstrlist.takeAt(0));
-    }
-    if(styleSheet)
-        setStyleSheet(*styleSheet);
-    connect(this,&teTagComboBox::currentIndexChanged,this,&teTagComboBox::onIndexChanged,Qt::DirectConnection);
-}
-
-bool teTagComboBox::filter(std::shared_ptr<teTag>tag) const{
-    if(captureList.find((QString)(*tag))!=captureList.end())
-        return true;
-    else
-        return false;
-}
-
-void teTagComboBox::clear(){
-    // Same channel as refreshState() uses, so the two cannot disagree about what
-    // "not linked" looks like (both go through setStateTextColor).
-    setStateTextColor(this,QColor(Qt::white));
-    {
-        UpdateGuard guard(excute);
-        setItemText(0,default_text);
-        setItemData(0,QStringList{});
-        reset();
-    }
-    clearLinks();
-}
-
-void teTagComboBox::reset(){
-    UpdateGuard guard(excute);
-    setCurrentIndex(0);
-}
-
-void teTagComboBox::onIndexChanged(int index){
-    if(!taglistwidget->showing_list)return;
-    if(excute<1) return;
-    QStringList stringlist = itemData(index,Qt::UserRole).toStringList();
-
-    auto linked_tags_tmp = linked_tags;
-    auto it =linked_tags_tmp.begin();
-    for (;it!=linked_tags_tmp.end();++it) {
-        std::shared_ptr<teTag> tag = *it;
-        QString tagString = static_cast<QString>(*tag);
-        if (!stringlist.contains(tagString)) {
-            taglistwidget->retire(tag);
-        }
-    }
-    for (const QString& tagstring : stringlist) {
-        auto found = std::find_if(linked_tags.begin(), linked_tags.end(),
-                                  [&tagstring](std::shared_ptr<teTag> tag) {
-                                      return static_cast<QString>(*tag) == tagstring;
-                                  });
-        if (found == linked_tags.end()) {
-            taglistwidget->tagInsertAbove(false, std::make_shared<teTag>(tagstring));
-        }
-    }
-    edited();
-}
-
-void teTagComboBox::refreshState(){
-    QStringList tagstrings;
-    for(std::shared_ptr<teTag>tag:linked_tags){
-        tagstrings.push_back(*tag);
-    }
-    QString itemtext="";
-    if(!tagstrings.empty())
-    {
-        for(QString& str:tagstrings){
-            itemtext+=str+',';
-        }
-        itemtext.chop(1);
-        setItemText(0,std::move(QString(itemtext)));
-        setItemData(0,std::move(tagstrings));
-        {
-            UpdateGuard guard(excute);
-            setCurrentIndex(0);
-        }
-        // Palette, not a stylesheet: a setStyleSheet() here costs about 7 ms
-        // because Qt re-parses the sheet and re-polishes the combo together with
-        // its popup view, and this runs for every combo box, on every image
-        // switch (measured: 101 of 102 ms of the editor rebuild).
-        setStateTextColor(this,QColor(0x07,0xf6,0x80));
-    }else{
-        setStateTextColor(this,QColor(Qt::white));
-        setItemText(0,default_text);
-        setItemData(0,QStringList{});
-    }
-}
-
 teTagButtonGroup::teTagButtonGroup(const QVector<in_item>& in_buttons, QWidget *parent, QString *styleSheet_button, QString *styleSheet_label)
     :QWidget(parent),group(new QButtonGroup(this)){
     layout = new QHBoxLayout(this);
@@ -235,6 +139,9 @@ teTagButtonGroup::teTagButtonGroup(const QVector<in_item>& in_buttons, QWidget *
     }
     layout->setContentsMargins(0,0,0,0);
     layout->setSpacing(0);
+    // No delimiter inside a group: its buttons are one control (`open | closed |
+    // mouth` is one meaning, not three). Separators go *between* groups - see
+    // teEditor_standard::addRowTo and colorsWidget::addSectionToContent.
     connect(group, &QButtonGroup::idClicked, this, &teTagButtonGroup::onClicked,Qt::DirectConnection);
     getDefaultFiltStrings();
 }
@@ -525,6 +432,12 @@ void teTagCheckBoxPlus::linkCounted(std::shared_ptr<teTag>in_tag){
 
 void teTagCheckBoxPlus::unlinkCounted(std::shared_ptr<teTag>tag){
     dropClaim(tag,counted_tags);
+    // The box says "multiple <nouns>" *because* it counts tags ("2girls"). When the
+    // last count goes away there is nothing left to be multiple about, so the tag it
+    // wrote goes with them - clearing the count field (the number pad's 0) has to
+    // take "multiple girls" with it, not leave it claiming an empty picture.
+    if(counted_tags.empty()&&!linked_tags.empty())
+        eraseOwnedTags();
 }
 
 TagHandling teTagCheckBoxPlus::read(std::shared_ptr<teTag>tag){

@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>censor_menu</class>
+ <widget class="QWidget" name="censor_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>60</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="btn_none">
+     <property name="text"><string>(none)</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_bar_censor">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>bar censor</string></property>
+     <property name="tags" stdset="0"><string>bar censor</string></property>
+     <property name="implies" stdset="0"><string>censored</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_blank_censor">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>blank censor</string></property>
+     <property name="tags" stdset="0"><string>blank censor</string></property>
+     <property name="implies" stdset="0"><string>censored</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_heart_censor">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>heart censor</string></property>
+     <property name="tags" stdset="0"><string>heart censor</string></property>
+     <property name="implies" stdset="0"><string>censored</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_mosaic_censoring">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>mosaic censoring</string></property>
+     <property name="tags" stdset="0"><string>mosaic censoring</string></property>
+     <property name="implies" stdset="0"><string>censored</string></property>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="QPushButton" name="chk_blur_censor">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>blur censor</string></property>
+     <property name="tags" stdset="0"><string>blur censor</string></property>
+     <property name="implies" stdset="0"><string>censored</string></property>
+    </widget>
+   </item>
+   <item row="6" column="0">
+    <widget class="QPushButton" name="chk_light_censor">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>light censor</string></property>
+     <property name="tags" stdset="0"><string>light censor</string></property>
+     <property name="implies" stdset="0"><string>censored</string></property>
+    </widget>
+   </item>
+   <item row="7" column="0">
+    <widget class="QPushButton" name="chk_censored">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>censored</string></property>
+     <property name="tags" stdset="0"><string>censored</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

@@ -1,0 +1,483 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>sexual_positions_menu</class>
+ <widget class="QWidget" name="sexual_positions_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>500</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0" colspan="4">
+    <widget class="QLabel" name="lbl_group_0">
+     <property name="type" stdset="0"><string>menuGroup</string></property>
+     <property name="text"><string>Basic</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_69">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>69</string></property>
+     <property name="tags" stdset="0"><string>69</string></property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="chk_missionary">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>missionary</string></property>
+     <property name="tags" stdset="0"><string>missionary</string></property>
+    </widget>
+   </item>
+   <item row="1" column="2">
+    <widget class="QPushButton" name="chk_mating_press">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>mating press</string></property>
+     <property name="tags" stdset="0"><string>mating press</string></property>
+    </widget>
+   </item>
+   <item row="1" column="3">
+    <widget class="QPushButton" name="chk_standing_missionary">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>standing missionary</string></property>
+     <property name="tags" stdset="0"><string>standing missionary</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_standing_sex">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>standing sex</string></property>
+     <property name="tags" stdset="0"><string>standing sex</string></property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QPushButton" name="chk_sex_from_behind">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>sex from behind</string></property>
+     <property name="tags" stdset="0"><string>sex from behind</string></property>
+    </widget>
+   </item>
+   <item row="2" column="2">
+    <widget class="QPushButton" name="chk_doggystyle">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>doggystyle</string></property>
+     <property name="tags" stdset="0"><string>doggystyle</string></property>
+    </widget>
+   </item>
+   <item row="2" column="3">
+    <widget class="QPushButton" name="chk_bent_over">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>bent over</string></property>
+     <property name="tags" stdset="0"><string>bent over</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_prone_bone">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>prone bone</string></property>
+     <property name="tags" stdset="0"><string>prone bone</string></property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QPushButton" name="chk_top_down_bottom_up">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>top-down bottom-up</string></property>
+     <property name="tags" stdset="0"><string>top-down bottom-up</string></property>
+    </widget>
+   </item>
+   <item row="3" column="2">
+    <widget class="QPushButton" name="chk_spooning">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>spooning</string></property>
+     <property name="tags" stdset="0"><string>spooning</string></property>
+    </widget>
+   </item>
+   <item row="3" column="3">
+    <widget class="QPushButton" name="chk_on_side">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>on side</string></property>
+     <property name="tags" stdset="0"><string>on side</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0" colspan="4">
+    <widget class="QLabel" name="lbl_group_4">
+     <property name="type" stdset="0"><string>menuGroup</string></property>
+     <property name="text"><string>Top</string></property>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="QPushButton" name="chk_girl_on_top">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>girl on top</string></property>
+     <property name="tags" stdset="0"><string>girl on top</string></property>
+    </widget>
+   </item>
+   <item row="5" column="1">
+    <widget class="QPushButton" name="chk_amazon_position">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>amazon position</string></property>
+     <property name="tags" stdset="0"><string>amazon position</string></property>
+    </widget>
+   </item>
+   <item row="5" column="2">
+    <widget class="QPushButton" name="chk_cowgirl_position">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>cowgirl position</string></property>
+     <property name="tags" stdset="0"><string>cowgirl position</string></property>
+    </widget>
+   </item>
+   <item row="5" column="3">
+    <widget class="QPushButton" name="chk_squatting_cowgirl_position">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>squatting cowgirl position</string></property>
+     <property name="tags" stdset="0"><string>squatting cowgirl position</string></property>
+    </widget>
+   </item>
+   <item row="6" column="0">
+    <widget class="QPushButton" name="chk_reverse_cowgirl_position">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>reverse cowgirl position</string></property>
+     <property name="tags" stdset="0"><string>reverse cowgirl position</string></property>
+    </widget>
+   </item>
+   <item row="6" column="1">
+    <widget class="QPushButton" name="chk_upright_straddle">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>upright straddle</string></property>
+     <property name="tags" stdset="0"><string>upright straddle</string></property>
+    </widget>
+   </item>
+   <item row="6" column="2">
+    <widget class="QPushButton" name="chk_reverse_upright_straddle">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>reverse upright straddle</string></property>
+     <property name="tags" stdset="0"><string>reverse upright straddle</string></property>
+    </widget>
+   </item>
+   <item row="6" column="3">
+    <widget class="QPushButton" name="chk_boy_on_top">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>boy on top</string></property>
+     <property name="tags" stdset="0"><string>boy on top</string></property>
+    </widget>
+   </item>
+   <item row="7" column="0">
+    <widget class="QPushButton" name="chk_anvil_position">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>anvil position</string></property>
+     <property name="tags" stdset="0"><string>anvil position</string></property>
+    </widget>
+   </item>
+   <item row="7" column="1">
+    <widget class="QPushButton" name="chk_folded">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>folded</string></property>
+     <property name="tags" stdset="0"><string>folded</string></property>
+    </widget>
+   </item>
+   <item row="7" column="2">
+    <widget class="QPushButton" name="chk_knees_to_chest">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>knees to chest</string></property>
+     <property name="tags" stdset="0"><string>knees to chest</string></property>
+    </widget>
+   </item>
+   <item row="7" column="3">
+    <widget class="QPushButton" name="chk_legs_up">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>legs up</string></property>
+     <property name="tags" stdset="0"><string>legs up</string></property>
+    </widget>
+   </item>
+   <item row="8" column="0">
+    <widget class="QPushButton" name="chk_legs_over_head">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>legs over head</string></property>
+     <property name="tags" stdset="0"><string>legs over head</string></property>
+    </widget>
+   </item>
+   <item row="9" column="0" colspan="4">
+    <widget class="QLabel" name="lbl_group_9">
+     <property name="type" stdset="0"><string>menuGroup</string></property>
+     <property name="text"><string>Advanced</string></property>
+    </widget>
+   </item>
+   <item row="10" column="0">
+    <widget class="QPushButton" name="chk_suspended_congress">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>suspended congress</string></property>
+     <property name="tags" stdset="0"><string>suspended congress</string></property>
+    </widget>
+   </item>
+   <item row="10" column="1">
+    <widget class="QPushButton" name="chk_reverse_suspended_congress">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>reverse suspended congress</string></property>
+     <property name="tags" stdset="0"><string>reverse suspended congress</string></property>
+    </widget>
+   </item>
+   <item row="10" column="2">
+    <widget class="QPushButton" name="chk_full_nelson">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>full nelson</string></property>
+     <property name="tags" stdset="0"><string>full nelson</string></property>
+    </widget>
+   </item>
+   <item row="10" column="3">
+    <widget class="QPushButton" name="chk_piledriver">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>piledriver</string></property>
+     <property name="tags" stdset="0"><string>piledriver</string></property>
+    </widget>
+   </item>
+   <item row="11" column="0">
+    <widget class="QPushButton" name="chk_mounting">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>mounting</string></property>
+     <property name="tags" stdset="0"><string>mounting</string></property>
+    </widget>
+   </item>
+   <item row="11" column="1">
+    <widget class="QPushButton" name="chk_straddling">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>straddling</string></property>
+     <property name="tags" stdset="0"><string>straddling</string></property>
+    </widget>
+   </item>
+   <item row="11" column="2">
+    <widget class="QPushButton" name="chk_sitting_on_face">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>sitting on face</string></property>
+     <property name="tags" stdset="0"><string>sitting on face</string></property>
+    </widget>
+   </item>
+   <item row="11" column="3">
+    <widget class="QPushButton" name="chk_thigh_straddling">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>thigh straddling</string></property>
+     <property name="tags" stdset="0"><string>thigh straddling</string></property>
+    </widget>
+   </item>
+   <item row="12" column="0">
+    <widget class="QPushButton" name="chk_leg_lock">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>leg lock</string></property>
+     <property name="tags" stdset="0"><string>leg lock</string></property>
+    </widget>
+   </item>
+   <item row="13" column="0" colspan="4">
+    <widget class="QLabel" name="lbl_group_13">
+     <property name="type" stdset="0"><string>menuGroup</string></property>
+     <property name="text"><string>Group</string></property>
+    </widget>
+   </item>
+   <item row="14" column="0">
+    <widget class="QPushButton" name="chk_spitroast">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>spitroast</string></property>
+     <property name="tags" stdset="0"><string>spitroast</string></property>
+    </widget>
+   </item>
+   <item row="14" column="1">
+    <widget class="QPushButton" name="chk_reverse_spitroast">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>reverse spitroast</string></property>
+     <property name="tags" stdset="0"><string>reverse spitroast</string></property>
+    </widget>
+   </item>
+   <item row="14" column="2">
+    <widget class="QPushButton" name="chk_male_spitroast">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>male spitroast</string></property>
+     <property name="tags" stdset="0"><string>male spitroast</string></property>
+    </widget>
+   </item>
+   <item row="15" column="0" colspan="4">
+    <widget class="QLabel" name="lbl_group_15">
+     <property name="type" stdset="0"><string>menuGroup</string></property>
+     <property name="text"><string>Bondage</string></property>
+    </widget>
+   </item>
+   <item row="16" column="0">
+    <widget class="QPushButton" name="chk_bound_arms">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>bound arms</string></property>
+     <property name="tags" stdset="0"><string>bound arms</string></property>
+    </widget>
+   </item>
+   <item row="16" column="1">
+    <widget class="QPushButton" name="chk_bound_elbows">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>bound elbows</string></property>
+     <property name="tags" stdset="0"><string>bound elbows</string></property>
+    </widget>
+   </item>
+   <item row="16" column="2">
+    <widget class="QPushButton" name="chk_bound_fingers">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>bound fingers</string></property>
+     <property name="tags" stdset="0"><string>bound fingers</string></property>
+    </widget>
+   </item>
+   <item row="16" column="3">
+    <widget class="QPushButton" name="chk_bound_wrists">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>bound wrists</string></property>
+     <property name="tags" stdset="0"><string>bound wrists</string></property>
+    </widget>
+   </item>
+   <item row="17" column="0">
+    <widget class="QPushButton" name="chk_bound_breasts">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>bound breasts</string></property>
+     <property name="tags" stdset="0"><string>bound breasts</string></property>
+    </widget>
+   </item>
+   <item row="17" column="1">
+    <widget class="QPushButton" name="chk_bound_legs">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>bound legs</string></property>
+     <property name="tags" stdset="0"><string>bound legs</string></property>
+    </widget>
+   </item>
+   <item row="17" column="2">
+    <widget class="QPushButton" name="chk_bound_calves">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>bound calves</string></property>
+     <property name="tags" stdset="0"><string>bound calves</string></property>
+    </widget>
+   </item>
+   <item row="17" column="3">
+    <widget class="QPushButton" name="chk_bound_feet">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>bound feet</string></property>
+     <property name="tags" stdset="0"><string>bound feet</string></property>
+    </widget>
+   </item>
+   <item row="18" column="0">
+    <widget class="QPushButton" name="chk_bound_knees">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>bound knees</string></property>
+     <property name="tags" stdset="0"><string>bound knees</string></property>
+    </widget>
+   </item>
+   <item row="18" column="1">
+    <widget class="QPushButton" name="chk_bound_thighs">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>bound thighs</string></property>
+     <property name="tags" stdset="0"><string>bound thighs</string></property>
+    </widget>
+   </item>
+   <item row="18" column="2">
+    <widget class="QPushButton" name="chk_bound_toes">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>bound toes</string></property>
+     <property name="tags" stdset="0"><string>bound toes</string></property>
+    </widget>
+   </item>
+   <item row="18" column="3">
+    <widget class="QPushButton" name="chk_bound_penis">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>bound penis</string></property>
+     <property name="tags" stdset="0"><string>bound penis</string></property>
+    </widget>
+   </item>
+   <item row="19" column="0">
+    <widget class="QPushButton" name="chk_bound_tail">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>bound tail</string></property>
+     <property name="tags" stdset="0"><string>bound tail</string></property>
+    </widget>
+   </item>
+   <item row="19" column="1">
+    <widget class="QPushButton" name="chk_bound_torso">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>bound torso</string></property>
+     <property name="tags" stdset="0"><string>bound torso</string></property>
+    </widget>
+   </item>
+   <item row="19" column="2">
+    <widget class="QPushButton" name="chk_box_tie">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>box tie</string></property>
+     <property name="tags" stdset="0"><string>box tie</string></property>
+    </widget>
+   </item>
+   <item row="19" column="3">
+    <widget class="QPushButton" name="chk_reverse_prayer">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>reverse prayer</string></property>
+     <property name="tags" stdset="0"><string>reverse prayer</string></property>
+    </widget>
+   </item>
+   <item row="20" column="0">
+    <widget class="QPushButton" name="chk_frogtie">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>frogtie</string></property>
+     <property name="tags" stdset="0"><string>frogtie</string></property>
+    </widget>
+   </item>
+   <item row="20" column="1">
+    <widget class="QPushButton" name="chk_hogtie">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>hogtie</string></property>
+     <property name="tags" stdset="0"><string>hogtie</string></property>
+    </widget>
+   </item>
+   <item row="20" column="2">
+    <widget class="QPushButton" name="chk_separated_arms">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>separated arms</string></property>
+     <property name="tags" stdset="0"><string>separated arms</string></property>
+    </widget>
+   </item>
+   <item row="20" column="3">
+    <widget class="QPushButton" name="chk_separated_legs">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>separated legs</string></property>
+     <property name="tags" stdset="0"><string>separated legs</string></property>
+    </widget>
+   </item>
+   <item row="21" column="0">
+    <widget class="QPushButton" name="chk_separated_wrists">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>separated wrists</string></property>
+     <property name="tags" stdset="0"><string>separated wrists</string></property>
+    </widget>
+   </item>
+   <item row="21" column="1">
+    <widget class="QPushButton" name="chk_shrimp_tie">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>shrimp tie</string></property>
+     <property name="tags" stdset="0"><string>shrimp tie</string></property>
+    </widget>
+   </item>
+   <item row="21" column="2">
+    <widget class="QPushButton" name="chk_strappado">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>strappado</string></property>
+     <property name="tags" stdset="0"><string>strappado</string></property>
+    </widget>
+   </item>
+   <item row="21" column="3">
+    <widget class="QPushButton" name="chk_suspension">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>suspension</string></property>
+     <property name="tags" stdset="0"><string>suspension</string></property>
+    </widget>
+   </item>
+   <item row="22" column="0">
+    <widget class="QPushButton" name="chk_cuffs_to_collar">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>cuffs-to-collar</string></property>
+     <property name="tags" stdset="0"><string>cuffs-to-collar</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

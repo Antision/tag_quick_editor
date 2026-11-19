@@ -2,6 +2,7 @@
 #include "teeditorcontrol.h"
 // The controls live in these headers now; they used to be declared inside the
 // editor constructors below, which made this file a 2400 line wall.
+#include "secondarybutton.h"     // the drop-down buttons (SC-01..SC-11)
 #include "teclothescontrol.h"
 #include "tefacecontrols.h"
 #include "tebodycontrols.h"
@@ -221,7 +222,12 @@ void teEditor_custom::setControls(const QStringList& order){
 
 
 /**
- * @brief The people editor: a page of coarse tags plus a sub-page of details.
+ * @brief The people editor: one page, character types in a menu.
+ *
+ * The page used to be two: a "(nobody)" button opened a sub-page with the three
+ * counts and the character-type boxes, and every picture meant opening it and
+ * coming back. That sub-page is gone - the types are a secondary menu that stays
+ * out of the way, and the three counts are edit boxes with a number pad.
  *
  * The rows below are the whole page. Every control is created and handed to
  * addRow()/addRowTo(), which is what puts it on screen and registers it with the
@@ -229,34 +235,22 @@ void teEditor_custom::setControls(const QStringList& order){
  * to forget (a forgotten one used to be a control that silently never saw a tag).
  */
 teEditor_pretreat::teEditor_pretreat(teTagListView*in_taglistwidget,QString&& name, QWidget* parent) :teEditor_standard(in_taglistwidget,name, QStringLiteral("pretreat"), parent) {
-    // --- the people sub-page -------------------------------------------------
-    auto* peopleButton = new QPushButton;
-    contentLayout->addWidget(peopleButton);
+    // One page, no sub page: the character types are a menu of their own and the
+    // three counts sit where they are used. The old design put both behind a
+    // "(nobody)" button that had to be opened and closed for every picture.
+    auto* characterType = new SecondaryButton(
+        QStringLiteral(":/secondarymenu/character_type_menu.ui"),QStringLiteral("(character type)"));
+    characterType->setObjectName(qsl("character_type"));
+    addControl(characterType);
 
-    auto* peoplePanel = new QWidget;
-    auto* peopleLayout = new QVBoxLayout(peoplePanel);
-    peopleLayout->setSpacing(1);
-    peopleLayout->setContentsMargins(0,0,0,0);
-
+    // The counts keep the line-edit control (typing "10" is still allowed); the
+    // number pad is only a shortcut that appears under the box (NumberPad).
     auto* girls = new teTagLineedit_people(qsl("girl"),qsl("girl(s)"));
     auto* boys  = new teTagLineedit_people(qsl("boy"),qsl("boy(s)"));
     auto* others= new teTagLineedit_people(qsl("other"),qsl("other(s)"));
-    addRowTo(peopleLayout,{{},{},{girls}});
-    addRowTo(peopleLayout,{{},{},{boys}});
-    addRowTo(peopleLayout,{{},{},{others}});
+    addRow({{},{},{girls,boys,others}});
 
-    auto* furry = new teTagCheckBox({qsl("furry")});
-    auto* magicalGirl = new teTagCheckBox({qsl("magical girl")});
-    auto* elf = new teTagCheckBox({qsl("elf")});
-    auto* mesugaki = new teTagCheckBox({qsl("mesugaki")});
-    addRowTo(peopleLayout,{{},{},{furry,magicalGirl,elf,mesugaki}});
-
-    addSubPage(peopleButton,peoplePanel);
-    // The sub-page controls are still editor controls: the group below is what
-    // makes the three counts behave like one line ("1girl, 2boys, ...").
-    new page1_button_link(peopleButton,{girls,boys,others,furry,magicalGirl,elf,mesugaki},this);
-
-    // --- the main page -------------------------------------------------------
+    // --- the rest of the page ------------------------------------------------
     auto* loli = new teTagCheckBox({"loli"});
     auto* shota = new teTagCheckBox({"shota"});
     auto* chibi = new teTagCheckBox({"chibi"});
@@ -266,151 +260,46 @@ teEditor_pretreat::teEditor_pretreat(teTagListView*in_taglistwidget,QString&& na
     addControl(new Mature_Buttongroup);
     addControl(new multipeople_CheckBox(qsl("multiple (people)s")));
 
-    auto* quality = new teTagComboBox({
-        {qsl("(none)"),{}},
-        {qsl("masterpiece,best quality"),{qsl("masterpiece"),qsl("best quality")}},
-        {qsl("mst,bst,absurdres,very aesthetic"),{qsl("masterpiece"),qsl("best quality"),qsl("absurdres"),qsl("very aesthetic")}},
-        {qsl("score_9,score_8_up"),{qsl("score_9"),qsl("score_8_up")}},
-        {qsl("low quality,worst quality"),{qsl("low quality"),qsl("worst quality")}}
-    },QStringLiteral("(quality)"));
-    quality->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);
-    addControl(quality);
+    // (quality) - the entries are buttons in res/secondarymenu/quality_menu.ui;
+    // the ids here are those buttons' objectNames without the "btn_" prefix.
+    // Two controls per row: a page of twelve full-width bars is a wall, and these
+    // four pairs are what is read together (shape + layout, framing + angle,
+    // facing + posture, light + place). `multiple views` keeps its own row under
+    // framing/angle, as before.
+    auto* quality = new SecondaryButton(QStringLiteral(":/secondarymenu/quality_menu.ui"),QStringLiteral("(quality)"));
+    quality->setObjectName(qsl("quality"));
+    auto* format = new SecondaryButton(QStringLiteral(":/secondarymenu/format_menu.ui"),QStringLiteral("(format)"));
+    format->setObjectName(qsl("format"));
+    addRow({{},{},{quality,format}});
 
-    addControl(new teTagComboBox({
-        {qsl("(none)"),{}},
-        {qsl("full body"),{qsl("full body")}},
-        {qsl("upper body"),{qsl("upper body")}},
-        {qsl("cowboy shot"),{qsl("cowboy shot")}},
-        {qsl("pov"),{qsl("pov")}},
-        {qsl("close-up"),{qsl("close-up")}},
-        {qsl("face focus"),{qsl("face focus")}},
-        {qsl("eyes focus"),{qsl("eyes focus")}},
-        {qsl("foot focus"),{qsl("foot focus")}},
-        {qsl("ass focus"),{qsl("ass focus")}},
-    },QStringLiteral("(framing)")));
-
-    auto* facing = new teTagComboBox({
-        {qsl("(none)"),{}},
-        {qsl("looking at viewer"),{qsl("looking at viewer")}},
-        {qsl("facing viewer"),{qsl("facing viewer")}},
-        {qsl("lookingat&facing viewer"),{qsl("looking at viewer"),qsl("facing viewer")}},
-        {qsl("looking back"),{qsl("looking back")}},
-        {qsl("looking to the side"),{qsl("looking to the side")}},
-        {qsl("facing to the side"),{qsl("facing to the side")}},
-        {qsl("looking away"),{qsl("looking away")}},
-        {qsl("facing away"),{qsl("facing away")}},
-        {qsl("looking&facing away"),{qsl("looking away"),qsl("facing away")}},
-        {qsl("looking up"),{qsl("looking up")}},
-        {qsl("looking down"),{qsl("looking down")}},
-        {qsl("looking at object"),{qsl("looking at object")}}
-    },QStringLiteral("(facing)"));
-    facing->setSizePolicy(QSizePolicy::Ignored,QSizePolicy::Preferred);
-    addControl(facing);
-
-    addControl(new teTagComboBox({
-        {qsl("(none)"),{}},
-        {qsl("sitting"),{qsl("sitting")}},
-        {qsl("wariza"),{qsl("wariza")}},
-        {qsl("squatting"),{qsl("squatting")}},
-        {qsl("on back"),{qsl("on back")}},
-        {qsl("on side"),{qsl("on side")}},
-        {qsl("on stomach"),{qsl("on stomach")}},
-        {qsl("kneeling"),{qsl("kneeling")}},
-        {qsl("knees up"),{qsl("knees up")}},
-        {qsl("knee up"),{qsl("knee up")}},
-        {qsl("all fours"),{qsl("all fours")}},
-        {qsl("pose"),{qsl("pose")}},
-        {qsl("fetal position"),{qsl("fetal position")}},
-        {qsl("floating"),{qsl("floating")}},
-        {qsl("standing"),{qsl("standing")}},
-        {qsl("top-down bottom-up"),{qsl("top-down bottom-up")}}
-    },QStringLiteral("(posture)")));
-
-    addControl(new teTagComboBox({
-        {qsl("(none)"),{}},
-        {qsl("from above"),{qsl("from above")}},
-        {qsl("from side"),{qsl("from side")}},
-        {qsl("front view"),{qsl("front view")}},
-        {qsl("from below"),{qsl("from below")}},
-        {qsl("from behind"),{qsl("from behind")}},
-        {qsl("mtu virus"),{qsl("mtu virus")}},
-        {qsl("pantyshot"),{qsl("pantyshot")}}
-    },QStringLiteral("(angle)")));
+    auto* framing = new SecondaryButton(QStringLiteral(":/secondarymenu/framing_menu.ui"),QStringLiteral("(framing)"));
+    framing->setObjectName(qsl("framing"));
+    auto* angle = new SecondaryButton(QStringLiteral(":/secondarymenu/angle_menu.ui"),QStringLiteral("(angle)"));
+    angle->setObjectName(qsl("angle"));
+    addRow({{},{},{framing,angle}});
 
     addControl(new teTagCheckBox({ "multiple views" }));
 
-    addControl(new teTagComboBox({
-        {qsl("(none)"),{}},
-        {qsl("front lighting"),{qsl("front lighting")}},
-        {qsl("side lighting"),{qsl("side lighting")}},
-        {qsl("backlighting"),{qsl("backlighting")}},
-        {qsl("rim light"),{qsl("rim light")}},
-        {qsl("dim lighting"),{qsl("dim lighting")}},
-        {qsl("sunbeam"),{qsl("sunbeam")}}
-    },QStringLiteral("(lighting)")));
+    auto* facing = new SecondaryButton(QStringLiteral(":/secondarymenu/facing_menu.ui"),QStringLiteral("(facing)"));
+    facing->setObjectName(qsl("facing"));
+    auto* posture = new SecondaryButton(QStringLiteral(":/secondarymenu/posture_menu.ui"),QStringLiteral("(posture)"));
+    posture->setObjectName(qsl("posture"));
+    addRow({{},{},{facing,posture}});
 
-    addControl(new teTagComboBox({
-        {qsl("(none)"),{}},
-        {qsl("scenery"),{qsl("scenery")}},
-        {qsl("landscape"),{qsl("landscape")}},
-        {qsl("cityscape"),{qsl("cityscape")}},
-        {qsl("indoors"),{qsl("indoors")}},
-        {qsl("outdoors"),{qsl("outdoors")}},
-        {qsl("on bed"),{qsl("on bed"),qsl("indoors")}}
-    },QStringLiteral("(scene)")));
+    auto* lighting = new SecondaryButton(QStringLiteral(":/secondarymenu/lighting_menu.ui"),QStringLiteral("(lighting)"));
+    lighting->setObjectName(qsl("lighting"));
+    auto* scene = new SecondaryButton(QStringLiteral(":/secondarymenu/scene_menu.ui"),QStringLiteral("(scene)"));
+    scene->setObjectName(qsl("scene"));
+    addRow({{},{},{lighting,scene}});
 
-    addControl(new teTagComboBox({
-        {qsl("(none)"),{}},
-        {qsl("comic"),{qsl("comic")}},
-        {qsl("comic,greyscale,monochrome"),{qsl("comic"),qsl("greyscale"),qsl("monochrome")}},
-        {qsl("game cg"),{qsl("game cg")}},
-        {qsl("doujin cover"),{qsl("doujin cover"),qsl("cover page")}},
-        {qsl("tachi-e"),{qsl("tachi-e")}},
-        {qsl("pixel art"),{qsl("pixel art")}},
-        {qsl("lineart"),{qsl("lineart")}},
-        {qsl("dakimakura"),{qsl("dakimakura ( medium )")}},
-    },QStringLiteral("(format)")));
-
-    addRow({{},{},{new teTagCheckBox({ "blush" }),
-                    new teTagCheckBox({ "nose blush" }),
-                    new teTagCheckBox({ "tears" })}});
-
-    addControl(new smile_buttongroup);
-    addControl(new ClosedEyes_Buttongroup);
-
-    addControl(new teTagComboBox({
-        {qsl("(none)"),{}},
-        {qsl("surprised"),{qsl("surprised")}},
-        {qsl("scared"),{qsl("scared")}},
-        {qsl("smug"),{qsl("smug")}},
-        {qsl("confused"),{qsl("confused")}},
-        {qsl("annoyed"),{qsl("annoyed")}},
-        {qsl("sad"),{qsl("sad")}},
-        {qsl("flustered"),{qsl("flustered")}},
-        {qsl("crying"),{qsl("crying")}},
-        {qsl("angry"),{qsl("angry")}},
-        {qsl("exhausted"),{qsl("exhausted")}},
-        {qsl("embarrassed"),{qsl("embarrassed")}},
-        {qsl("grin"),{qsl("grin")}},
-        {qsl("expressionless"),{qsl("expressionless")}},
-    },QStringLiteral("(expression)")));
-
-    addControl(new teTagComboBox({
-        {qsl("empty eyes"),{qsl("empty eyes")}},
-        {qsl("constricted pupils"),{qsl("constricted pupils")}},
-        {qsl("wide-eyed"),{qsl("wide-eyed")}},
-        {qsl("sparkling"),{qsl("sparkling")}},
-        {qsl("one eye closed"),{qsl("one eye closed")}},
-        {qsl("dashed eyes"),{qsl("dashed eyes")}},
-        {qsl("squiggle eyes"),{qsl("squiggle eyes")}}
-    },QStringLiteral("(eye)")));
-
-    addControl(new teTagComboBox({
-        {qsl("jitome"),{qsl("jitome")}},
-        {qsl("tareme"),{qsl("tareme")}},
-        {qsl("tsurime"),{qsl("tsurime")}},
-        {qsl("sanpaku"),{qsl("sanpaku")}},
-    },QStringLiteral("(eye shape)")));
+    // The face tags are one additive menu (misc/faces.txt): every entry is a
+    // checkable button, so "smile" and "blush" coexist. Two caption lines,
+    // because this is the control that captures the most at once.
+    auto* faces = new SecondaryButton(
+        QStringLiteral(":/secondarymenu/faces_menu.ui"),QStringLiteral("(face)"));
+    faces->setObjectName(qsl("faces"));
+    faces->setMaxCaptionLines(2);
+    addControl(faces);
 
     addControl(new mouth_buttongroup);
     addControl(new Breast_Buttongroup);
@@ -509,11 +398,6 @@ teEditor_nsfw::teEditor_nsfw(teTagListView*in_taglistwidget,QString &&name, QWid
                     new teTagCheckBox({ "(male)", "male masturbation"  }),
                     new teTagCheckBox({ "masturbation" })}});
 
-    addRow({{qsl("gender")},{},{new teTagCheckBox({qsl("futanari")}),
-                                  new teTagCheckBox({qsl("tomgirl")}),
-                                  new teTagCheckBox({qsl("otoko no ko")}),
-                                  new teTagCheckBox({qsl("trap")})}});
-
     addRow({{qsl("liquid")},{},{new teTagCheckBox({ "cum inside" }),
                                   new teTagCheckBox({ "lactation" }),
                                   new teTagCheckBox({ "sweat" })}});
@@ -521,12 +405,8 @@ teEditor_nsfw::teEditor_nsfw(teTagListView*in_taglistwidget,QString &&name, QWid
     addRow({{},{},{new teTagCheckBox({ "(female)", "female ejaculation" }),
                     new teTagCheckBox({ "ejaculation" })}});
 
-    addRow({{qsl("expression")},{},{new teTagCheckBox({ "orgasm" }),
-                                      new teTagCheckBox({ "face", "orgasm face" }),
-                                      new teTagCheckBox({ "furrowed brow" })}});
-    addRow({{},{},{new teTagCheckBox({ "torogao" }),
-                    new teTagCheckBox({ "ahegao" }),
-                    new teTagCheckBox({ "moaning" })}});
+    // orgasm / moaning and the worked-up expressions live in the faces menu now
+    // (`orgasm face` is not a danbooru tag - it is `orgasm`).
 
     addRow({{qsl("comic elements")},{},{new teTagCheckBox({ "trembling" }),
                                               new teTagCheckBox({ "spch bubble","speech bubble" }),
@@ -591,17 +471,14 @@ teEditor_nsfw::teEditor_nsfw(teTagListView*in_taglistwidget,QString &&name, QWid
                     new teTagCheckBox({ "ovipositor" }),
                     new teTagCheckBox({ "egg" })}});
 
-    addRow({{qsl("sexual positions")},{},{new teTagCheckBox({ "cowgirl","cowgirl position" }),
-                                              new teTagCheckBox({ "from behind","sex from behind" }),
-                                              new teTagCheckBox({ "leg lock" })}});
-
-    addRow({{},{},{new teTagCheckBox({ "doggystyle" }),
-                    new teTagCheckBox({ "spooning" }),
-                    new teTagCheckBox({ "piledriver","piledriver (sex)" })}});
-
-    addRow({{},{},{new legUp_Buttongroup,
-                    new teTagCheckBox({ "spread" ,qsl("spread legs")}),
-                    new teTagCheckBox({ "folded" ,qsl("folded")})}});
+    // Sexual positions, in the five groups of misc/sexual positions.txt. The
+    // entries are toggles: a parent position and its variant can both be on, the
+    // document is explicit that no implication is implied.
+    auto* positions = new SecondaryButton(
+        QStringLiteral(":/secondarymenu/sexual_positions_menu.ui"),QStringLiteral("(position)"));
+    positions->setObjectName(qsl("sexual_positions"));
+    positions->setMaxCaptionLines(2);
+    addControl(positions);
 
     addRow({{qsl("misc")},{},{new teTagCheckBox({ "toddlercon" }),
                               new teTagCheckBox({ "diaper" })}});
@@ -619,14 +496,7 @@ teEditor_nsfw::teEditor_nsfw(teTagListView*in_taglistwidget,QString &&name, QWid
                     new teTagCheckBox({"amputee"}),
                     new teTagCheckBox({"netorare"})}});
 
-    addControl(new teTagComboBox({
-        {qsl("(none)"),{}},
-        {qsl("bar censor"),{qsl("bar censor"),qsl("censored")}},
-        {qsl("blank censor"),{qsl("blank censor"),qsl("censored")}},
-        {qsl("heart censor"),{qsl("heart censor"),qsl("censored")}},
-        {qsl("blur censor"),{qsl("blur censor"),qsl("censored")}},
-        {qsl("mosaic censoring"),{qsl("mosaic censoring"),qsl("censored")}},
-        {qsl("light censor"),{qsl("light censor"),qsl("censored")}},
-        {qsl("censored"),{qsl("censored")}}
-    },QStringLiteral("(censor)")));
+    auto* censor = new SecondaryButton(QStringLiteral(":/secondarymenu/censor_menu.ui"),QStringLiteral("(censor)"));
+    censor->setObjectName(qsl("censor"));
+    addControl(censor);
 }

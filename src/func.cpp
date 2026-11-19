@@ -70,6 +70,52 @@ void setStyleSheetOnce(QWidget* widget,const QString& sheet)
     widget->setStyleSheet(sheet);
 }
 
+namespace {
+constexpr const char* kSeparatorColor = "#4c8dff";
+}
+
+QWidget* makeGroupSeparator(QWidget* parent)
+{
+    auto* label = new QLabel(QStringLiteral("-"), parent);
+    label->setAlignment(Qt::AlignCenter);
+    label->setFixedWidth(7);
+    label->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    label->setStyleSheet(QStringLiteral(
+        "QLabel{color:#4c8dff;background:transparent;border:none;padding:0px;}"));
+    return label;
+}
+
+QWidget* makeColumnSeparator(QWidget* parent)
+{
+    auto* host = new QWidget(parent);
+    host->setFixedWidth(5);
+    host->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    auto* layout = new QVBoxLayout(host);
+    layout->setContentsMargins(2, 0, 2, 0);
+    layout->setSpacing(0);
+    auto* line = new QFrame(host);
+    line->setFixedSize(1, 18);
+    line->setStyleSheet(QStringLiteral("QFrame{background:%1;border:none;}")
+                            .arg(QLatin1String(kSeparatorColor)));
+    layout->addWidget(line, 0, Qt::AlignCenter);
+    return host;
+}
+
+QWidget* makeRowSeparator(QWidget* parent)
+{
+    auto* host = new QWidget(parent);
+    host->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    auto* layout = new QVBoxLayout(host);
+    layout->setContentsMargins(6, 3, 6, 3);
+    layout->setSpacing(0);
+    auto* line = new QFrame(host);
+    line->setFixedHeight(1);
+    line->setStyleSheet(QStringLiteral("QFrame{background:%1;border:none;}")
+                            .arg(QLatin1String(kSeparatorColor)));
+    layout->addWidget(line);
+    return host;
+}
+
 void setStateTextColor(QWidget* widget,const QColor& color)
 {
     if (!widget)
