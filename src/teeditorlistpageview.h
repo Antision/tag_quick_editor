@@ -78,7 +78,7 @@ public:
     }
 };
 
-class EditorListLayoutWidget : public LiteWidget2 {
+class EditorListLayoutWidget : public LiteWindow {
     Q_OBJECT
 public:
     QVector<QPair<QListView*,teEditorListPageModel*>>listviews;
@@ -103,7 +103,8 @@ public:
         pageCount=0;
     }
     void addList(bool notAddPageInLayout);
-    /// 编辑器排版窗:内容是一列页面对列表,推荐尺寸沿用迁移前的那一档。
+    /// 编辑器排版窗:内容是一列页面对列表,推荐尺寸沿用迁移前的那一档
+    /// (它现在是 LiteWindow,标题栏由窗口自己画,内容在标题栏下面)。
     QSize sizeHint() const override { return QSize(560, 420); }
     QSize minimumSizeHint() const override { return QSize(360, 240); }
 

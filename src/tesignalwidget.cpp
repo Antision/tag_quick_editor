@@ -609,15 +609,27 @@ border:1px solid #00eb77;
 }
 )");
 
-void applyLiteWindowStyle(LiteWidget2* window)
+static void applyLiteWindowStyleImpl(QWidget* window, QWidget* content)
 {
-    if (!window || !window->contentWidget())
+    if (!window || !content)
         return;
     // 旧的整套窗口配色(深色底、白字、滚动条、按钮)搬到内容面板上。
-    // `QWidget#content` 那条规则不会再命中 —— 面板叫 litewidget2Content,
-    // 所以不会在 LiteWidget2 自己的轮廓里再套一圈紫色边框。
-    window->contentWidget()->setStyleSheet(liteWindowStyle);
+    // `QWidget#content` 那条规则不会再命中 —— 面板不叫 content,
+    // 所以不会在窗口自己的轮廓里再套一圈紫色边框。
+    content->setStyleSheet(liteWindowStyle);
     window->setWindowIcon(QIcon(":/res/icon.ico"));
+}
+
+void applyLiteWindowStyle(LiteWidget2* window)
+{
+    if (window)
+        applyLiteWindowStyleImpl(window, window->contentWidget());
+}
+
+void applyLiteWindowStyle(LiteWindow* window)
+{
+    if (window)
+        applyLiteWindowStyleImpl(window, window->contentWidget());
 }
 
 static void buttons_mutual_exclusion(QAbstractButton *btn, bool checked, QButtonGroup *btn_gop){

@@ -51,7 +51,7 @@ private:
     int     m_clickThreshold = 4;
 };
 
-class teImageWidget : public LiteWidget2 {
+class teImageWidget : public LiteWindow {
     Q_OBJECT
 public:
     explicit teImageWidget(QWidget *parent = nullptr);

@@ -2,6 +2,7 @@
 #define TESIGNALWIDGET_H
 #include "tepicturelistview.h"
 #include "litewidget2.h"
+#include "litewindow.h"
 #include "pch.h"
 
 extern QString destroyButtonStyle, OkButtonStyle, addButtonStyle;
@@ -9,6 +10,8 @@ extern QString destroyButtonStyle, OkButtonStyle, addButtonStyle;
 /// 给 LiteWidget2 的内容面板套上原来的窗口配色(深色底、白字、滚动条)。
 /// 面板会被窗口裁成圆角,所以不再画 `QWidget#content` 那圈紫色边框。
 void applyLiteWindowStyle(LiteWidget2* window);
+/// 同上,给 LiteWindow(整宽标题栏那种普通窗体)。
+void applyLiteWindowStyle(LiteWindow* window);
 
 class teInputWidget : public LiteWidget2
 {
@@ -154,11 +157,11 @@ private:
     QFlowLayoutReorderer* m_reorderer=nullptr;
     QLineEdit* lineedit = nullptr;
 };
-class filterWidget : public LiteWidget2 {
+class filterWidget : public LiteWindow {
     Q_OBJECT
 public:
     filterWidget(tePictureListView* in_listview) : listview(in_listview) {
-
+        setWindowTitle(QStringLiteral("Filter"));
         initializeUI();
         connectSignals();
     }

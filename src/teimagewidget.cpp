@@ -1,5 +1,7 @@
 #include "teimagewidget.h"
 
+#include <QFileInfo>
+
 ImageDisplayWidget::ImageDisplayWidget(QWidget *parent)
     : QWidget(parent)
 {
@@ -251,8 +253,9 @@ void ImageDisplayWidget::resizeEvent(QResizeEvent *ev)
 }
 
 teImageWidget::teImageWidget(QWidget *parent)
-    : LiteWidget2(parent)
+    : LiteWindow(parent)
 {
+    setWindowTitle(QStringLiteral("Preview"));
     applyLiteWindowStyle(this);
     content_layout = new QVBoxLayout(contentWidget());
     content_layout->setContentsMargins(0, 0, 0, 0);
@@ -267,6 +270,7 @@ teImageWidget::teImageWidget(QWidget *parent)
 void teImageWidget::setImage(const QString &path)
 {
     if (!imgView) return;
+    setWindowTitle(QFileInfo(path).fileName());
     imgView->setImageList({path});
     imgView->setCurrentIndex(0);
 }
@@ -284,10 +288,10 @@ void teImageWidget::keyPressEvent(QKeyEvent *event)
         return;
     }
 
-    LiteWidget2::keyPressEvent(event);
+    LiteWindow::keyPressEvent(event);
 }
 
 void teImageWidget::resizeEvent(QResizeEvent *event)
 {
-    LiteWidget2::resizeEvent(event);
+    LiteWindow::resizeEvent(event);
 }

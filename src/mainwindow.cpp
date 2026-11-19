@@ -211,11 +211,12 @@ MainWindow::MainWindow(QWidget *parent)
         box.exec();
     });
     connect(ui->actionLicense,&QAction::triggered,this,[this]{
-        auto* licenseWidget = new LiteWidget2;
+        auto* licenseWidget = new LiteWindow;
+        licenseWidget->setWindowTitle(tr("License"));
         // 以前这里没套窗口配色:QTextEdit 用调色板画底,和全白的字叠在一起就成了
         // 白底白字。套上以后底是深灰、字是白的。
         applyLiteWindowStyle(licenseWidget);
-        connect(licenseWidget,&LiteWidget2::closed,licenseWidget,&QWidget::deleteLater);
+        connect(licenseWidget,&LiteWindow::closed,licenseWidget,&QWidget::deleteLater);
         QScrollArea* textScrollArea = new QScrollArea;
         textScrollArea->setWidgetResizable(true);
         QWidget*centralWidget = new QWidget;
@@ -941,7 +942,15 @@ bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, qintptr
         const int lastActionRightX = barRect.x() + lastActionGeom.x() + lastActionGeom.width();
 
         LRESULT hit = HTCLIENT;
-        if (barRect.contains(local) && local.x() > lastActionRightX && local.x() < minBtnRect.left()) {
+        // 顶边那条带子先判:它是缩放边框,哪怕正落在标题栏(菜单栏那条)上。
+        // 以前先判 HTCAPTION,菜单栏左侧那段空白就被当成纯标题栏 —— 在那儿
+        // 按住只能拖窗口,拉不出上边框(菜单项和按钮因为不算标题栏才碰巧能拉)。
+        const bool topEdge = !zoomed && local.y() < boundaryWidth;
+        if (topEdge) {
+            if (local.x() < boundaryWidth)          hit = HTTOPLEFT;
+            else if (local.x() >= width() - boundaryWidth) hit = HTTOPRIGHT;
+            else                                    hit = HTTOP;
+        } else if (barRect.contains(local) && local.x() > lastActionRightX && local.x() < minBtnRect.left()) {
             // 最大化时也必须返回 HTCAPTION:系统就是靠"按住标题栏往下拖"把最大化
             // 的窗口还原的,返回别的值这条路就没了。
             hit = HTCAPTION;
@@ -950,15 +959,11 @@ bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, qintptr
             // 是贴屏幕边缘的,拖它既不该改大小,也不该把窗口撕下来。
             const bool left = local.x() < boundaryWidth;
             const bool right = local.x() >= width() - boundaryWidth;
-            const bool top = local.y() < boundaryWidth;
             const bool bottom = local.y() >= height() - boundaryWidth;
-            if (top && left)         hit = HTTOPLEFT;
-            else if (top && right)   hit = HTTOPRIGHT;
-            else if (bottom && left) hit = HTBOTTOMLEFT;
+            if (bottom && left)      hit = HTBOTTOMLEFT;
             else if (bottom && right)hit = HTBOTTOMRIGHT;
             else if (left)           hit = HTLEFT;
             else if (right)          hit = HTRIGHT;
-            else if (top)            hit = HTTOP;
             else if (bottom)         hit = HTBOTTOM;
         }
 
