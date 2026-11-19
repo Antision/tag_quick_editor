@@ -1,26 +1,9 @@
 #include "func.h"
 
-#include <QFontDatabase>
 #include <QFile>
 #include <QTextStream>
 #include "pch.h"
 #include"mainwindow.h"
-
-const QString& appFontFamily()
-{
-    static const QString family = [] {
-        // Ubuntu 三字重(Light/Regular/Bold)一起注册,合并出 "Ubuntu" family:
-        // main.cpp 用 Light 作主字重,需要粗体的地方能命中真 Bold 而不是合成粗体
-        int loaded = 0;
-        for (const QString& res : {QStringLiteral(":/res/fonts/Ubuntu-Light.ttf"),
-                                   QStringLiteral(":/res/fonts/Ubuntu-Regular.ttf"),
-                                   QStringLiteral(":/res/fonts/Ubuntu-Bold.ttf")})
-            if (QFontDatabase::addApplicationFont(res) >= 0)
-                ++loaded;
-        return loaded ? QStringLiteral("Ubuntu") : QStringLiteral("Segoe UI");
-    }();
-    return family;
-}
 
 void setStyleSheetOnce(QWidget* widget,const QString& sheet)
 {

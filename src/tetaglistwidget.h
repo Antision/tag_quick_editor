@@ -1,14 +1,13 @@
 #ifndef TETAGLISTWIDGET_H
 #define TETAGLISTWIDGET_H
-#include "suggestionlineedit.h"
+#include "suggestionedit.h"
 #include "tesignalwidget.h"
-#include "tetaglistmodel.h"
+#include "taglistmodel.h"
 #include "tetagdisplaywidget.h"    // teTagDisplayOwner: what the popup needs
 #include "tagviewcontracts.h"
 #include "type_search.h"
 extern QStringList ClipBoard;
 
-extern QString lineeditstyle;
 class teTagDisplayWidget;
 class teTagWidget;
 class teTag;
@@ -53,7 +52,7 @@ public:
     QVBoxLayout* wlayout=nullptr;///< Main layout of the widget
     QVBoxLayout* layout=nullptr;///< Layout for scroll area
     QScrollArea* sc=nullptr;///< Container for displaying teTags
-    suggestionLineEdit* lineedit;///< Auto-completing line edit for tag editing
+    SuggestionEdit* lineedit;///< Auto-completing line edit for tag editing
     teInputWidget* plaintextedit;///< Plain text editor for long-form tags
     QListWidget* suggestionBox = new QListWidget;///< Auto-completion suggestion box
     teTagWidgetBase*editingTag=nullptr;///< Tag currently being edited
@@ -299,11 +298,11 @@ public:
  * the model, the delegate, the selection (addressed by tag core), the context
  * menu, the plain text window and the popup.
  *
- * The tags are drawn by teTagListModel + teTagDelegate, one row per tag and no
+ * The tags are drawn by TagListModel + TagDelegate, one row per tag and no
  * widget per tag, which is what makes switching from one image to the next cheap.
  *
  * Qt's InternalMove would need mime data and a model that accepts drops; the row
- * move is expressed directly through teTagListModel::moveRows() instead, which is
+ * move is expressed directly through TagListModel::moveRows() instead, which is
  * also what the undo records expect.
  */
 class teTagListView : public QListView, public teTagDisplayOwner, public teTagListHost, virtual public teObject
@@ -337,7 +336,7 @@ public:
      */
     bool dropRowsAt(const QPoint& viewportPos);
     /// The model behind the rows.
-    teTagListModel* tagModel() const { return m_model; }
+    TagListModel* tagModel() const { return m_model; }
     /**
      * @brief A model/view list has no widget per tag, so this is always nullptr.
      *
@@ -360,7 +359,7 @@ public:
         Q_UNUSED(core);
     }
     /// The delegate that draws and edits the rows.
-    teTagDelegate* delegate() const { return m_delegate; }
+    TagDelegate* delegate() const { return m_delegate; }
     size_t size()const;
     /// Tag of the current row, or nullptr.
     std::shared_ptr<teTag> currentCore() const;
@@ -491,8 +490,8 @@ private:
     /// CaptionSource reports that a list it handed out is about to die.
     void onCaptionListGone(teTagList* list);
 
-    teTagListModel* m_model=nullptr;
-    teTagDelegate* m_delegate=nullptr;
+    TagListModel* m_model=nullptr;
+    TagDelegate* m_delegate=nullptr;
     /// Context menu and its actions.
     QMenu* menu=nullptr;
     QAction *editAction=nullptr,*deleteAction=nullptr,*insertAction=nullptr,

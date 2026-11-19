@@ -123,7 +123,7 @@ bool teEditorListPageModel::dropMimeData(const QMimeData *data, Qt::DropAction a
 void teEditorListPageDelegate::updateEditorGeometry(QWidget *editor, const QStyleOptionViewItem &option, const QModelIndex &index) const {
     if(!showEditor)return;
     editor->setGeometry(option.rect.adjusted(4,2,-1,-2));
-    ((suggestionLineEdit*)editor)->moveSuggestionBox();
+    ((SuggestionEdit*)editor)->moveSuggestionBox();
 }
 
 void teEditorListPageDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const {

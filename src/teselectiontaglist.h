@@ -184,7 +184,7 @@ signals:
 class teTagListDelegate : public QStyledItemDelegate {
     Q_OBJECT
 public:
-    suggestionLineEdit* lineedit;
+    SuggestionEdit* lineedit;
     QListWidget* suggestionBox = new QListWidget;
     QWidget*parent;
     int tagheight=30;
@@ -213,7 +213,7 @@ public:
         Q_UNUSED(index);
         if(!showEditor)return;
         editor->setGeometry(option.rect.adjusted(4,2,-1,-2));
-        static_cast<suggestionLineEdit*>(editor)->moveSuggestionBox();
+        static_cast<SuggestionEdit*>(editor)->moveSuggestionBox();
     }
     void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
     QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override {

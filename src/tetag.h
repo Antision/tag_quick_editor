@@ -1,12 +1,12 @@
 #ifndef TETAG_H
 #define TETAG_H
 #include"pch.h"
-#include"suggestionlineedit.h"
 // 数据层(teWord / teTag / teTagList / 快照 / 切分)已经搬进 common/tagview;
 // 这个头只剩 tqe 自己的 per-tag 控件实现。
 #include"tag.h"
 
 class teWordWidget;
+class teTagWidget;
 class teTagWidgetBase;
 class obj_callback_function_base;
 class teInputWidget;

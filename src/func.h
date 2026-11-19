@@ -7,16 +7,8 @@ extern int mainWindowSplitterLength[MainWindowWidgetCount];
 int findWidgetIndexInLayout(QBoxLayout* layout, QWidget* widget);
 extern QRect mainwindowGeometry;
 
-/**
- * @brief Global font family: the embedded Ubuntu fonts (Light/Regular/Bold).
- *
- * Registered on first call (:/res/fonts/Ubuntu-*.ttf, Ubuntu Font Licence,
- * license text embedded at :/UFL.txt, source copy in LICENSES/UFL.txt). Returns an empty QString on failure
- * (Qt then falls back to the platform default). Must be called after the
- * QApplication instance exists. The Light weight is applied by main.cpp
- * when setting the application font.
- */
-const QString& appFontFamily();
+// 字体注册随 S5 搬进 common/ui/fonts.*,两程序共用。
+#include "fonts.h"
 
 /**
  * @brief setStyleSheet() only when the sheet really changes.

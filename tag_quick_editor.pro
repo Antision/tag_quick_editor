@@ -37,9 +37,7 @@ SOURCES += \
     src/secondarycaption.cpp \
     src/secondarymenu.cpp \
     src/testyle.cpp \
-    src/suggestionlineedit.cpp \
     src/suggestionsource.cpp \
-    src/task_runner.cpp \
     src/teeditor.cpp \
     src/teeditor_derive.cpp \
     src/teeditorcontrol.cpp \
@@ -53,12 +51,10 @@ SOURCES += \
     src/tesignalwidget.cpp \
     src/tetag.cpp \
     src/tetagdisplaywidget.cpp \
-    src/tetaglistmodel.cpp \
     src/tetaglistwidget.cpp \
     src/widget_pool.cpp
 
 HEADERS += \
-    src/BS_thread_pool.hpp \
     src/ctag.h \
     src/func.h \
     src/mainwindow.h \
@@ -69,9 +65,7 @@ HEADERS += \
     src/secondarybutton.h \
     src/secondarycaption.h \
     src/secondarymenu.h \
-    src/suggestionlineedit.h \
     src/suggestionsource.h \
-    src/task_runner.h \
     src/teeditor.h \
     src/teeditor_derive.h \
     src/teeditorcontrol.h \
@@ -92,7 +86,6 @@ HEADERS += \
     src/testyle.h \
     src/tetag.h \
     src/tetagdisplaywidget.h \
-    src/tetaglistmodel.h \
     src/tetaglistwidget.h \
     src/type_search.h \
     src/widget_pool.h \

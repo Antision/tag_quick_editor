@@ -541,7 +541,7 @@ void teSelectionTag::re_read(std::shared_ptr<teTag>in,teTagList*in_list){
 }
 
 teTagListDelegate::teTagListDelegate(QWidget *parent):parent(parent){
-    lineedit=new suggestionLineEdit(suggestionBox,parent);
+    lineedit=new SuggestionEdit(suggestionBox,parent);
     lineedit->hide();
     connect(lineedit, &QLineEdit::editingFinished, this, [this]{
         emit commitData(lineedit);
@@ -551,7 +551,7 @@ teTagListDelegate::teTagListDelegate(QWidget *parent):parent(parent){
 }
 
 bool teTagListDelegate::eventFilter(QObject *watched, QEvent *e) {
-    suggestionLineEdit* lineeditp = dynamic_cast<suggestionLineEdit*>(watched);
+    SuggestionEdit* lineeditp = dynamic_cast<SuggestionEdit*>(watched);
     if (e->type() == QEvent::FocusOut) {
         auto focusEvent = static_cast<QFocusEvent*>(e);
         if (focusEvent->reason() == Qt::FocusReason::OtherFocusReason ||
@@ -584,7 +584,7 @@ QWidget *teTagListDelegate::createEditor(QWidget *parent, const QStyleOptionView
 }
 
 void teTagListDelegate::setModelData(QWidget *editor, QAbstractItemModel *model, const QModelIndex &index) const {
-    auto *lineEdit = qobject_cast<suggestionLineEdit *>(editor);
+    auto *lineEdit = qobject_cast<SuggestionEdit *>(editor);
     if (lineEdit) {
         showEditor=false;
         model->setData(index, lineEdit->text(), Qt::EditRole);

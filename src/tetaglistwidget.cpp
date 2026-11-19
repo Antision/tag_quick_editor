@@ -9,7 +9,7 @@
 QStringList ClipBoard;
 
 teTagListWidgetBase::teTagListWidgetBase(int wordsize,QWidget *parent): QWidget{parent}{
-    lineedit=new suggestionLineEdit(suggestionBox,this);
+    lineedit=new SuggestionEdit(suggestionBox,this);
     plaintextedit = new teInputWidget;
     QSizePolicy sp =QSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
     sp.setHorizontalStretch(1);
@@ -80,7 +80,7 @@ std::shared_ptr<teTag> teTagListView::currentCore() const
     const QModelIndex index = this->currentIndex();
     if(!index.isValid())
         return nullptr;
-    teTag* raw = index.data(teTagListModel::TagCoreRole).value<teTag*>();
+    teTag* raw = index.data(TagListModel::TagCoreRole).value<teTag*>();
     if(!raw)
         return nullptr;
     // Recover the owning shared_ptr through the tag list itself, which is the
@@ -226,7 +226,7 @@ QString teTagListView::getSelectText(){
             rows.append(this->currentIndex());    // nothing selected: the current row
         cores.reserve(rows.size());
         for(const QModelIndex& index:rows){
-            if(teTag* raw = index.data(teTagListModel::TagCoreRole).value<teTag*>())
+            if(teTag* raw = index.data(TagListModel::TagCoreRole).value<teTag*>())
                 if(showing_list)
                     cores.push_back(showing_list->shareAt(index.row()));
         }
@@ -381,7 +381,7 @@ void teTagListWidgetBase::tagEdit(teTagWidgetBase *tag, teWordWidgetBase *inw){
         }
         lineedit->start(tagtext);
         tag->layout->insertWidget(0,lineedit);
-        connect(lineedit,&suggestionLineEdit::editingFinished,this,&teTagListWidgetBase::onLineEditStop,Qt::DirectConnection);
+        connect(lineedit,&SuggestionEdit::editingFinished,this,&teTagListWidgetBase::onLineEditStop,Qt::DirectConnection);
         lineedit->containerParent=tag;
         lineedit->show();
         lineedit->moveSuggestionBox();
@@ -559,7 +559,7 @@ void teTagListView::startEditingRow(int row)
     if(!m_model||row<0||row>=m_model->rowCount())
         return;
     const QModelIndex index = m_model->index(row,0);
-    auto* raw = index.data(teTagListModel::TagCoreRole).value<teTag*>();
+    auto* raw = index.data(TagListModel::TagCoreRole).value<teTag*>();
     if(raw&&raw->type==teTag::sentence){
         // Sentences are edited in the plain text window, like before.
         hideTagDisplay();
@@ -664,7 +664,7 @@ void teTagListView::keyPressEvent(QKeyEvent *event) {
 }
 
 void teTagListView::typeSearch(const QString &text){
-    teTagListModel* list = tagModel();
+    TagListModel* list = tagModel();
     if(!list)
         return;
     typeSearchState.search(this,list->rowCount(),currentIndex().row(),[list](int row){
@@ -1159,8 +1159,8 @@ void teTagListView::tagDisplayHideTick()
 
 void teTagListView::createModelAndDelegate()
 {
-    m_model = new teTagListModel(this);
-    m_delegate = new teTagDelegate(this);
+    m_model = new TagListModel(this);
+    m_delegate = new TagDelegate(this);
     setModel(m_model);
     setItemDelegate(m_delegate);
     setSelectionMode(QAbstractItemView::ExtendedSelection);
@@ -1215,7 +1215,7 @@ void teTagListView::dropEvent(QDropEvent* event)
 
 bool teTagListView::dropRowsAt(const QPoint& viewportPos)
 {
-    auto* tagModel = qobject_cast<teTagListModel*>(model());
+    auto* tagModel = qobject_cast<TagListModel*>(model());
     if(!tagModel)
         return false;
     QVector<int> rows;
@@ -1227,7 +1227,7 @@ bool teTagListView::dropRowsAt(const QPoint& viewportPos)
     // before it, below inserts after it. That is exactly the rule Qt uses to draw
     // its drop indicator, so the drop lands where the line is drawn - including
     // between two tags.
-    auto* tagDelegate = qobject_cast<teTagDelegate*>(itemDelegate());
+    auto* tagDelegate = qobject_cast<TagDelegate*>(itemDelegate());
     const int rowHeight = tagDelegate?tagDelegate->rowHeight():30;
     const QPoint pos(viewportPos.x(),viewportPos.y()+rowHeight/2);
     const QModelIndex target = indexAt(pos);
@@ -1266,7 +1266,7 @@ void teTagListView::startDrag(Qt::DropActions supportedActions)
     // second time - after dropEvent() already moved them into place. That is
     // what made rows vanish (and, with the model out of sync, crash) while
     // dragging. The multi tag list draws its own pixmap for the same reason.
-    auto* tagModel = qobject_cast<teTagListModel*>(model());
+    auto* tagModel = qobject_cast<TagListModel*>(model());
     const QModelIndexList indexes = selectionModel()->selectedRows();
     if(!tagModel||indexes.isEmpty())
         return;
@@ -1346,7 +1346,7 @@ void teTagListView::finishRowEdit(int row)
 {
     if(!m_model||row<0||row>=m_model->rowCount())
         return;
-    teTag* raw = m_model->index(row,0).data(teTagListModel::TagCoreRole).value<teTag*>();
+    teTag* raw = m_model->index(row,0).data(TagListModel::TagCoreRole).value<teTag*>();
     if(raw&&static_cast<QString>(*raw).trimmed().isEmpty()){
         // An empty tag is not worth keeping: this is how the old inline editor
         // behaved for a freshly inserted tag.
@@ -1380,7 +1380,7 @@ bool teTagListView::eventFilter(QObject* watched,QEvent* event)
                 hideTagDisplay();
                 break;
             }
-            teTag* raw = index.data(teTagListModel::TagCoreRole).value<teTag*>();
+            teTag* raw = index.data(TagListModel::TagCoreRole).value<teTag*>();
             if(!raw)
                 break;
             for(const std::shared_ptr<teTag>& core:*showing_list)

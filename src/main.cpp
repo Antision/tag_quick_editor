@@ -9,8 +9,6 @@
 #include <cstdlib>
 
 using namespace std;
-BS::thread_pool<> thread_pool;
-
 namespace {
 /// The program's tag completion source. It starts empty and answers nothing
 /// until load_tags() filled `ctags`; installing it here is what keeps the editor

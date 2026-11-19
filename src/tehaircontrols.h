@@ -297,7 +297,7 @@ struct hair_and_eyes_color_list : public teTagListControl{
                 lineedit->start(tagtext);
                 tag->layout->insertWidget(0,lineedit);
                 tag->clearWordWidgets();
-                connect(lineedit,&suggestionLineEdit::editingFinished,this,&teRefTagListWidget::onLineEditStop,Qt::DirectConnection);
+                connect(lineedit,&SuggestionEdit::editingFinished,this,&teRefTagListWidget::onLineEditStop,Qt::DirectConnection);
                 lineedit->containerParent=this;
                 lineedit->show();
                 lineedit->moveSuggestionBox();
