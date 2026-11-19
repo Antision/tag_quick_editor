@@ -858,7 +858,7 @@ void teSelectionTagListView::keyPressEvent(QKeyEvent *event) {
         // selection to the tag whose text starts with what is being typed. Only
         // Ctrl/Alt/Meta combinations fall through (to the window, so that its
         // shortcuts keep working).
-        if(teTypeSearch::isSearchKey(event)){
+        if(TypeSearch::isSearchKey(event)){
             typeSearch(event->text());
             event->accept();
         } else {

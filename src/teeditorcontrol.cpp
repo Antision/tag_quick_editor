@@ -77,7 +77,7 @@ bool EditorControl::linked(std::shared_ptr<teTag>tag){
     return linked_tags.find(tag)!=linked_tags.end();
 }
 
-void EditorControl::setTaglistwidget(teTagListView *in_taglistwidget){
+void EditorControl::setTaglistwidget(TagListView *in_taglistwidget){
     taglistwidget=in_taglistwidget;
 }
 
@@ -490,7 +490,7 @@ void teTagCheckBoxPlus::clear(){
 }
 
 
-teTagListControl::teTagListControl(colorsWidget *in_onEdit_widget, teTagListView *parentlist, QWidget *parent, QString *styleSheet,QString title)
+teTagListControl::teTagListControl(colorsWidget *in_onEdit_widget, TagListView *parentlist, QWidget *parent, QString *styleSheet,QString title)
     : teRefTagListWidget(parentlist,parent),onEdit_widget(in_onEdit_widget){
     // link() needs the main tag list to reach the teTagList it mirrors; it is
     // known here already, so it can never be left unset.

@@ -2,6 +2,7 @@
 #include "litewidget2.h"
 #include "windowglyphbutton.h"
 #include "picturefilecaptionsource.h"
+#include "tagviewhost.h"
 #include "teselectiontaglist.h"
 #include "tepicturelistview.h"
 #include "ui_mainwindow.h"
@@ -259,6 +260,9 @@ MainWindow::MainWindow(QWidget *parent)
     picturefileModel = picturefileListView->fileModel();
     captionSource = new PictureFileCaptionSource(picturefileModel);
     ui->taglist->setCaptionSource(captionSource);
+    // The popup and the sentence window are tqe's; the view only knows the
+    // interfaces (TV-03), which is what lets it live in common.
+    ui->taglist->setViewHost(new TqeTagViewHost(ui->taglist));
     // The tag view is a child widget, so ~QWidget deletes it *after* this
     // destructor body; the source it points at has to go last. `destroyed` is
     // emitted once the children are gone.
@@ -342,8 +346,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->editorlist->tagListWidget = ui->taglist;
     global_window=this;
-    connect(ui->action_undo,&QAction::triggered,ui->taglist,&teTagListView::undo,Qt::DirectConnection);
-    connect(ui->action_redo,&QAction::triggered,ui->taglist,&teTagListView::redo,Qt::DirectConnection);
+    connect(ui->action_undo,&QAction::triggered,ui->taglist,&TagListView::undo,Qt::DirectConnection);
+    connect(ui->action_redo,&QAction::triggered,ui->taglist,&TagListView::redo,Qt::DirectConnection);
 
     QHBoxLayout* menulayout = new QHBoxLayout(ui->menuBar);
     QSpacerItem *menuspacer1 = new QSpacerItem(0,0,QSizePolicy::Expanding,QSizePolicy::Fixed);

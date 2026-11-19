@@ -406,7 +406,7 @@ struct ClothesList : public teTagListControl {
      */
     QVector<std::shared_ptr<teTag>> clothes_order;
 
-    ClothesList(colorsWidget*in_onEdit_widget,teTagListView*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr)
+    ClothesList(colorsWidget*in_onEdit_widget,TagListView*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr)
         :teTagListControl(in_onEdit_widget,parentlist,parent,styleSheet,"clothes"){
         this->info=QStringLiteral("ClothesList");
         sc->setMinimumHeight(110);

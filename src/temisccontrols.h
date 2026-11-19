@@ -152,7 +152,7 @@
     struct Object_list : public teTagListControl{
         std::shared_ptr<teTag>editcore=nullptr;
 
-        Object_list(colorsWidget*in_onEdit_widget,teTagListView*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr)
+        Object_list(colorsWidget*in_onEdit_widget,TagListView*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr)
             :teTagListControl(in_onEdit_widget,parentlist,parent,styleSheet,"object"){
             sc->setMinimumHeight(110);
         }

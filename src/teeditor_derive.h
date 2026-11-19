@@ -11,7 +11,7 @@ public:
     QVBoxLayout*mainLayout=new QVBoxLayout(this);
     QFlowLayout*flowLayout=new QFlowLayout;
     QFlowLayoutReorderer*controlReorderer=nullptr;
-    teEditor_custom(teTagListView*in_taglistwidget,QString&& name=QStringLiteral("custom"),QString*styleSheet=nullptr,QWidget*parent=nullptr);
+    teEditor_custom(TagListView*in_taglistwidget,QString&& name=QStringLiteral("custom"),QString*styleSheet=nullptr,QWidget*parent=nullptr);
     teCustomControlList string_controls;
     customControlWidget controlWidget;
     EditorControl* findControl(const QString& str) const;
@@ -33,14 +33,14 @@ public:
 
 class teEditor_pretreat:public teEditor_standard{
 public:
-    teEditor_pretreat(teTagListView*in_taglistwidget,QString&& name=QStringLiteral("pretreat"),QWidget*parent=nullptr);
+    teEditor_pretreat(TagListView*in_taglistwidget,QString&& name=QStringLiteral("pretreat"),QWidget*parent=nullptr);
     ~teEditor_pretreat(){}
 };
 
 class teEditor_hair_and_eyes : public teEditor_standard
 {
 public:
-    teEditor_hair_and_eyes(teTagListView*in_taglistwidget,QString&& name=QStringLiteral("hair and eyes"),QWidget*parent=nullptr);
+    teEditor_hair_and_eyes(TagListView*in_taglistwidget,QString&& name=QStringLiteral("hair and eyes"),QWidget*parent=nullptr);
     ~teEditor_hair_and_eyes(){}
 };
 
@@ -48,12 +48,12 @@ public:
 class teEditor_clothes:public teEditor_standard
 {
 public:
-    teEditor_clothes(teTagListView*in_taglistwidget,QString &&name=QStringLiteral("clothes"), QWidget *parent=nullptr);
+    teEditor_clothes(TagListView*in_taglistwidget,QString &&name=QStringLiteral("clothes"), QWidget *parent=nullptr);
 };
 
 class teEditor_nsfw:public teEditor_standard
 {
 public:
-    teEditor_nsfw(teTagListView*in_taglistwidget,QString &&name=QStringLiteral("nsfw"), QWidget *parent=nullptr);
+    teEditor_nsfw(TagListView*in_taglistwidget,QString &&name=QStringLiteral("nsfw"), QWidget *parent=nullptr);
 };
 #endif // TEEDITOR_DERIVE_H

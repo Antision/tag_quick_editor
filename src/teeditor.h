@@ -27,15 +27,15 @@ class teEditor:public QFrame,public teObject{
 public:
     QString name;
     bool ifrun=true;
-    teEditor(teTagListView*in_taglistwidget,const QString& name,QWidget*parent=nullptr);
+    teEditor(TagListView*in_taglistwidget,const QString& name,QWidget*parent=nullptr);
     QList<EditorControl*>controls;
-    teTagListView*taglistwidget;
+    TagListView*taglistwidget;
     teTagList*taglist=nullptr;
     virtual void reset();
     virtual TagHandling read(std::shared_ptr<teTag>tag);
     virtual TagHandling re_read(std::shared_ptr<teTag>tag);
     virtual void clear();
-    void setTagListWidget(teTagListView*listwidget);
+    void setTagListWidget(TagListView*listwidget);
     /// Wires one control into this editor: it learns which tag list it works for
     /// and is added to `controls`. Every control goes through here exactly once.
     void registerControl(EditorControl* control);
@@ -61,7 +61,7 @@ public:
      *        switch button's text: the sheet itself is shared (res/style/editor.qss),
      *        so a new page adds one accent rule instead of a copy of the QSS.
      */
-    teEditor_standard(teTagListView*in_taglistwidget,const QString& name,const QString& accent=QString(),QWidget*parent=nullptr);
+    teEditor_standard(TagListView*in_taglistwidget,const QString& name,const QString& accent=QString(),QWidget*parent=nullptr);
     /// Adds one row: the optional caption, then the controls, then registers them.
     void addRow(teEditorRow row){ addRowTo(contentLayout,row); }
     /**

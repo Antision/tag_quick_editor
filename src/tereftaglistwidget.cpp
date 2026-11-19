@@ -308,7 +308,7 @@ void teRefTagListWidget::tagInsertBelow(bool edit, std::shared_ptr<teTag>newtag,
         return;
     }
     // ui->taglist is the view now; the controller behind it owns the tag list.
-    teTagListView* mainTagList = mwptr->ui->taglist;
+    TagListView* mainTagList = mwptr->ui->taglist;
     if(select_current==nullptr){
         taginsert(mainTagList->showing_list->size(),newtag,mainTagList->showing_list,removeDuplicate);
     }else{

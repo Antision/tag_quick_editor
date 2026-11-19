@@ -1,43 +1,12 @@
 #ifndef TETAGDISPLAYWIDGET_H
 #define TETAGDISPLAYWIDGET_H
 #include "tetag.h"
+#include "tagviewcontracts.h"
 
 class QFlowLayout;
 class QFlowLayoutReorderer;
 class teTagListWidgetBase;
-class teTagListView;
-
-/**
- * @brief What teTagDisplayWidget needs from the list showing it.
- *
- * The popup used to know teTagListWidgetBase, which forced the controller of the
- * model/view list (a plain QObject) to inherit that widget class just to be able
- * to show a popup. This interface is the whole dependency: whichever list shows
- * the popup implements these five methods.
- */
-class teTagDisplayOwner {
-public:
-    virtual ~teTagDisplayOwner()=default;
-    /// The tag list currently shown (used to check whether a tag still exists).
-    virtual teTagList* shownList() const = 0;
-    /// Selects the tag the popup belongs to.
-    virtual void setSelectCurrentCore(std::shared_ptr<teTag> core,bool ifclear=true) = 0;
-    /// Edits a tag that has no widget of its own.
-    virtual void tagEditCore(std::shared_ptr<teTag> core) = 0;
-    /// Replaces the text of a tag.
-    virtual void tagEdit(std::shared_ptr<teTag> tag,QString text,int removeDuplicate=1,bool ifemit=true) = 0;
-    /// Hides the popup.
-    virtual void hideTagDisplay() = 0;
-    /// True when `widget` belongs to the list (a click inside the list keeps the
-    /// popup open, a click anywhere else closes it).
-    virtual bool ownsWidget(QWidget* widget) const = 0;
-    /// The popup body was dragged. Only a list whose tags have widgets can move a
-    /// tag that way, so the default does nothing.
-    virtual void tagDragged(teTagWidgetBase* tag,Qt::KeyboardModifiers modifiers){
-        Q_UNUSED(tag);
-        Q_UNUSED(modifiers);
-    }
-};
+class TagListView;
 
 /**
  * @brief Floating, magnified view of the tag the pointer currently rests on.
@@ -56,11 +25,11 @@ public:
  * The popup is a focus-less tool window so it neither steals the keyboard from
  * the tag list nor disappears when the pointer moves from the tag to the popup.
  */
-class teTagDisplayWidget : public teTagWidgetBase
+class teTagDisplayWidget : public QFrame, public teObject, public TagDisplay
 {
     Q_OBJECT
 public:
-    explicit teTagDisplayWidget(teTagDisplayOwner* owner);
+    explicit teTagDisplayWidget(TagDisplayOwner* owner);
     ~teTagDisplayWidget();
 
     /// Makes the popup show `source` and places it next to `globalMousePos`.
@@ -73,24 +42,31 @@ public:
      * moves the source tag) is only available in the widget based list; word
      * dragging and double-click editing work the same.
      */
-    void showForCore(std::shared_ptr<teTag> tagCore,const QPoint& globalMousePos);
+    void showForCore(std::shared_ptr<teTag> tagCore,const QPoint& globalMousePos) override;
+    /// The tag shown. The popup used to inherit teTagWidgetBase just to get this
+    /// member; the base also brought a widget-per-word layout the popup does not
+    /// use (it has its own flow layout), so it is a plain QFrame + teObject now.
+    std::shared_ptr<teTag> core;
     /// Hides the popup and forgets the tag.
-    void hideDisplay();
+    void hideDisplay() override;
+    // -- TagDisplay -----------------------------------------------------------
+    QWidget* widget() override { return this; }
+    bool isVisible() const override { return QFrame::isVisible(); }
+    QRect frameGeometry() const override { return QFrame::frameGeometry(); }
+    void setPointerLeftHandler(std::function<void()> handler) override {
+        m_pointerLeft=std::move(handler);
+    }
     /// True while the tag it shows is still part of the owner's list.
     bool isCoreStillListed() const;
 
-    void readCore(std::shared_ptr<teTag> in_core) override;
-    void load() override;
-    void worddroped(teWordWidgetBase* in_word,int xpos) override;
+    void readCore(std::shared_ptr<teTag> in_core);
+    void load();
+    void worddroped(teWordWidgetBase* in_word,int xpos);
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
     void mouseDoubleClickEvent(QMouseEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
-
-signals:
-    /// The pointer left the popup; the owner decides whether to hide it.
-    void pointerLeft();
 
 protected:
     void leaveEvent(QEvent* event) override;
@@ -129,8 +105,11 @@ private:
     void showIdle();
     void setOpaque();
 
-    teTagDisplayOwner* m_owner=nullptr;
+    TagDisplayOwner* m_owner=nullptr;
     teTagWidgetBase* m_source=nullptr;
+    /// The tag shown. The popup used to inherit teTagWidgetBase just to get this
+    /// member; the base also brought a widget-per-word layout the popup does not
+    /// use (it has its own flow layout), so it is a plain QFrame + teObject now.
     /// True while this widget filters the application's events (popup is up).
     bool m_watching=false;
     /// Width the popup would like (single line, uncapped); the cap is applied when
@@ -138,6 +117,8 @@ private:
     int m_naturalWidth=0;
     /// Where it was placed last, so a reload while shown can refit itself.
     QPoint m_lastAnchor;
+    /// The view's "pointer left" callback (see TagDisplay).
+    std::function<void()> m_pointerLeft;
     QFlowLayout* m_flow=nullptr;
     QFlowLayoutReorderer* m_wordReorderer=nullptr;
     QPlainTextEdit* m_editor=nullptr;

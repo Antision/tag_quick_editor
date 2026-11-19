@@ -62,29 +62,29 @@ class teDisplayWord : public teWordWidgetBase {
 public:
     explicit teDisplayWord(teWord& wordCore) : teWordWidgetBase(wordCore) {}
     void mousePressEvent(QMouseEvent* event) override {
-        if (auto* tag = qobject_cast<teTagWidgetBase*>(parentWidget()))
+        if (auto* tag = qobject_cast<teTagDisplayWidget*>(parentWidget()))
             tag->mousePressEvent(event);
     }
     void mouseMoveEvent(QMouseEvent* event) override {
-        if (auto* tag = qobject_cast<teTagWidgetBase*>(parentWidget()))
+        if (auto* tag = qobject_cast<teTagDisplayWidget*>(parentWidget()))
             tag->mouseMoveEvent(event);
     }
     void mouseReleaseEvent(QMouseEvent* event) override {
-        if (auto* tag = qobject_cast<teTagWidgetBase*>(parentWidget()))
+        if (auto* tag = qobject_cast<teTagDisplayWidget*>(parentWidget()))
             tag->mouseReleaseEvent(event);
     }
     void mouseDoubleClickEvent(QMouseEvent* event) override {
         // The words cover the whole popup, so without this the popup never saw a
         // double click (editing a sentence tag did nothing).
-        if (auto* tag = qobject_cast<teTagWidgetBase*>(parentWidget()))
+        if (auto* tag = qobject_cast<teTagDisplayWidget*>(parentWidget()))
             tag->mouseDoubleClickEvent(event);
     }
 };
 
 }
 
-teTagDisplayWidget::teTagDisplayWidget(teTagDisplayOwner* owner)
-    : teTagWidgetBase(), m_owner(owner)
+teTagDisplayWidget::teTagDisplayWidget(TagDisplayOwner* owner)
+    : QFrame(), m_owner(owner)
 {
     // A tool window: it floats above the main window, never takes focus by being
     // shown and is not part of the window's z-order. It deliberately does *not*
@@ -108,8 +108,6 @@ teTagDisplayWidget::teTagDisplayWidget(teTagDisplayOwner* owner)
 teTagDisplayWidget::~teTagDisplayWidget()
 {
     deleteWordWidgets();
-    // teTagBase's destructor clears core->widget when it still holds a core;
-    // that pointer belongs to the tag list, so drop our reference first.
     m_source = nullptr;
     core.reset();
 }
@@ -409,7 +407,8 @@ void teTagDisplayWidget::hideDisplay()
 void teTagDisplayWidget::leaveEvent(QEvent* event)
 {
     Q_UNUSED(event);
-    emit pointerLeft();
+    if(m_pointerLeft)
+        m_pointerLeft();
 }
 
 void teTagDisplayWidget::mousePressEvent(QMouseEvent* event)
@@ -647,7 +646,7 @@ void teTagDisplayWidget::syncWordOrderFromLayout()
     core->words = ordered;
 
     std::shared_ptr<teTag> tag = core;
-    teTagDisplayOwner* owner = m_owner;
+    TagDisplayOwner* owner = m_owner;
     if (!owner)
         return;
     const QString text = static_cast<QString>(*core);
@@ -672,5 +671,5 @@ void teTagDisplayWidget::keyPressEvent(QKeyEvent* event)
         event->accept();
         return;
     }
-    teTagWidgetBase::keyPressEvent(event);
+    event->ignore();
 }

@@ -161,7 +161,7 @@ inline QVector<bool> hairLengthAfterClick(int clicked,const QVector<bool>& check
 }
 
 struct hair_and_eyes_color_list : public teTagListControl{
-        hair_and_eyes_color_list(colorsWidget*in_onEdit_widget,teTagListView*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr)
+        hair_and_eyes_color_list(colorsWidget*in_onEdit_widget,TagListView*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr)
             :teTagListControl(in_onEdit_widget,parentlist,parent,styleSheet,"color"){
             QPushButton*yellow_button=nullptr;
             auto&&color_buttons = ((colorsWidget*)onEdit_widget)->colors_buttongroup->buttons();
@@ -434,7 +434,7 @@ struct hair_and_eyes_color_list : public teTagListControl{
 
 struct BangsList : public teTagListControl{
     std::shared_ptr<teTag>editcore=nullptr;
-    BangsList(colorsWidget*in_onEdit_widget,teTagListView*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr)
+    BangsList(colorsWidget*in_onEdit_widget,TagListView*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr)
         :teTagListControl(in_onEdit_widget,parentlist,parent,styleSheet,"bangs"){
         QPushButton*curtained_button=nullptr;
         auto&&bangs_buttons = ((colorsWidget*)onEdit_widget)->objectLayoutList[1].second->buttons();

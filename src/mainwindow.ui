@@ -260,7 +260,7 @@ QTabBar::tab:only-one {
          <number>1</number>
         </property>
         <item>
-         <widget class="teTagListView" name="taglist"/>
+         <widget class="TagListView" name="taglist"/>
         </item>
        </layout>
       </widget>
@@ -548,9 +548,9 @@ font-size:13px;
    <header>teselectiontaglist.h</header>
   </customwidget>
   <customwidget>
-   <class>teTagListView</class>
+   <class>TagListView</class>
    <extends>QListView</extends>
-   <header>tetaglistwidget.h</header>
+   <header>taglistview.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

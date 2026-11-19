@@ -66,7 +66,7 @@ extern bool autoMerge;
 extern bool MergeSwitch;
 extern QStringList custom_tags;
 extern teCustomControlList* custom_controls;
-teEditor_custom::teEditor_custom(teTagListView*in_taglistwidget,QString&& name, QString* styleSheet, QWidget* parent):teEditor(in_taglistwidget,name, parent) {
+teEditor_custom::teEditor_custom(TagListView*in_taglistwidget,QString&& name, QString* styleSheet, QWidget* parent):teEditor(in_taglistwidget,name, parent) {
     if(!styleSheet)
         setStyleSheet(teStyle::sheet(QStringLiteral("editor_custom")));
     QPushButton* newtagButton = new QPushButton("add custom tags");
@@ -234,7 +234,7 @@ void teEditor_custom::setControls(const QStringList& order){
  * editor - there is no second list to keep in step, and no `controls.push_back`
  * to forget (a forgotten one used to be a control that silently never saw a tag).
  */
-teEditor_pretreat::teEditor_pretreat(teTagListView*in_taglistwidget,QString&& name, QWidget* parent) :teEditor_standard(in_taglistwidget,name, QStringLiteral("pretreat"), parent) {
+teEditor_pretreat::teEditor_pretreat(TagListView*in_taglistwidget,QString&& name, QWidget* parent) :teEditor_standard(in_taglistwidget,name, QStringLiteral("pretreat"), parent) {
     // One page, no sub page: the character types are a menu of their own and the
     // three counts sit where they are used. The old design put both behind a
     // "(nobody)" button that had to be opened and closed for every picture.
@@ -305,7 +305,7 @@ teEditor_pretreat::teEditor_pretreat(teTagListView*in_taglistwidget,QString&& na
     addControl(new Breast_Buttongroup);
 }
 
-teEditor_hair_and_eyes::teEditor_hair_and_eyes(teTagListView*in_taglistwidget,QString &&name, QWidget *parent):teEditor_standard(in_taglistwidget,name, QStringLiteral("hair"), parent){
+teEditor_hair_and_eyes::teEditor_hair_and_eyes(TagListView*in_taglistwidget,QString &&name, QWidget *parent):teEditor_standard(in_taglistwidget,name, QStringLiteral("hair"), parent){
     addControl(new hair_and_eyes_color_list(
         new colorsWidget({{{qsl("gradient"),qsl("streaked")},true},{{qsl("hair"),qsl("eyes")},true}},nullptr),
         taglistwidget));
@@ -342,7 +342,7 @@ teEditor_hair_and_eyes::teEditor_hair_and_eyes(teTagListView*in_taglistwidget,QS
 }
 
 
-teEditor_clothes::teEditor_clothes(teTagListView*in_taglistwidget,QString &&name, QWidget *parent):teEditor_standard(in_taglistwidget,name, QStringLiteral("clothes"), parent){
+teEditor_clothes::teEditor_clothes(TagListView*in_taglistwidget,QString &&name, QWidget *parent):teEditor_standard(in_taglistwidget,name, QStringLiteral("clothes"), parent){
     addControl(new ClothesList(new colorsWidget(
         {
             { {qsl("torn"),qsl("striped"),qsl("fishnet"),qsl("frilled")}, false },
@@ -375,7 +375,7 @@ teEditor_clothes::teEditor_clothes(teTagListView*in_taglistwidget,QString &&name
 }
 
 
-teEditor_nsfw::teEditor_nsfw(teTagListView*in_taglistwidget,QString &&name, QWidget *parent):teEditor_standard(in_taglistwidget,name, QStringLiteral("nsfw"), parent){
+teEditor_nsfw::teEditor_nsfw(TagListView*in_taglistwidget,QString &&name, QWidget *parent):teEditor_standard(in_taglistwidget,name, QStringLiteral("nsfw"), parent){
     addControl(new Object_list(new colorsWidget({{QStringList{object1.begin(),object1.end()},true},{QStringList{preposwords.begin(),preposwords.end()},true},{QStringList{bodyparts.begin(),bodyparts.end()},true}},nullptr,-1),taglistwidget));
 
     addRow({{qsl("type")},{},{new teTagCheckBox({ "sex" }),

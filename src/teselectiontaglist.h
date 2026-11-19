@@ -241,7 +241,7 @@ public:
 
     /// Type-to-search state; the per-image tag list needs the same behaviour, so
     /// the algorithm lives in one place (type_search.h).
-    teTypeSearch typeSearchState;
+    TypeSearch typeSearchState;
     /// Moves the current row to the tag starting with what has been typed.
     void typeSearch(const QString& text);
 private slots:

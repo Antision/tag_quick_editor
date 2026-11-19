@@ -3,7 +3,7 @@
 #include"tetag.h"
 #include"tereftaglistwidget.h"
 #include"tesignalwidget.h"
-class teTagListView;
+class TagListView;
 struct teEditor;
 struct anytype{
     template<typename...Args>
@@ -31,7 +31,7 @@ class EditorControl:virtual public teObject{
 public:
     std::set<std::shared_ptr<teTag>>linked_tags;
     teEditor* editor=nullptr;
-    teTagListView* taglistwidget=nullptr;
+    TagListView* taglistwidget=nullptr;
     std::set<QString>captureList;
     /// "Is this my tag?" - deliberately still a plain question, not a TagHandling:
     /// it changes nothing and only the control itself decides what to do with the
@@ -68,7 +68,7 @@ public:
      */
     virtual void refreshState(){}
     virtual bool linked(std::shared_ptr<teTag>tag);
-    virtual void setTaglistwidget(teTagListView* in_taglistwidget);
+    virtual void setTaglistwidget(TagListView* in_taglistwidget);
     /**
      * @brief The widget that displays `core` in this editor's tag list.
      *
@@ -418,7 +418,7 @@ public:
     bool filter(std::shared_ptr<teTag> tag) const override;
     colorsWidget*onEdit_widget;
     QHBoxLayout* buttonLayout= new QHBoxLayout();
-    teTagListControl(colorsWidget*in_onEdit_widget,teTagListView*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr,QString title = QString{});
+    teTagListControl(colorsWidget*in_onEdit_widget,TagListView*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr,QString title = QString{});
     ~teTagListControl(){
         delete onEdit_widget;
     }

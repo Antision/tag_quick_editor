@@ -1,6 +1,7 @@
 #include "teeditorlist.h"
 #include "teeditorcontrol.h"
 #include "tetaglistwidget.h"
+#include "teeditorhelpers.h"
 #include "testyle.h"
 #include "pch.h"
 
@@ -130,7 +131,7 @@ void teEditorList::setEditorsToPages(){
     }
 }
 
-void teEditorList::connectTaglistWidget(teTagListView *in_listWidget){
+void teEditorList::connectTaglistWidget(TagListView *in_listWidget){
     if(tagListWidget){
         tagListWidget->setEditorHost(nullptr);
         disconnect(tagListWidget,0,this,0);
@@ -148,6 +149,16 @@ void teEditorList::connectTaglistWidget(teTagListView *in_listWidget){
 
 void teEditorList::readAll(teTagList *list){
     readList(list);
+}
+
+bool teEditorList::mergeEnabled() const
+{
+    return MergeSwitch;
+}
+
+void teEditorList::setMergeEnabled(bool enabled)
+{
+    MergeSwitch=enabled;
 }
 
 void teEditorList::clearAll(){

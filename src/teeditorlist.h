@@ -5,7 +5,7 @@
 
 extern const QString editorliststyle;
 extern const QString editorListScrollAreaStyle;
-class teTagListView;
+class TagListView;
 
 
 class teEditorList:public QWidget,public teObject,public TagEditorHost
@@ -14,7 +14,7 @@ class teEditorList:public QWidget,public teObject,public TagEditorHost
 public:
     QVector<teEditor*> editorlist;
     QHBoxLayout* layout = new QHBoxLayout(this);
-    teTagListView* tagListWidget=nullptr;
+    TagListView* tagListWidget=nullptr;
     teTagList* connectedList=nullptr;
     QSplitter* pageSplitter = new QSplitter(Qt::Horizontal,this);
     editorListLayout* editorLayout;
@@ -28,11 +28,15 @@ public:
     teEditorList(QWidget* parent=nullptr):QWidget(parent){}
     void loadEditors(const QVector<teEditor*>& input_vector_ptr,editorListLayout*in_listpage);
     void setEditorsToPages();
-    void connectTaglistWidget(teTagListView*in_taglist);
+    void connectTaglistWidget(TagListView*in_taglist);
     /// TagEditorHost: the tag view loaded `list`; make every editor read it.
     void readAll(teTagList* list) override;
     /// TagEditorHost: the shown list is gone; drop what the editors display.
     void clearAll() override;
+    /// TagEditorHost: see TagEditorHost::mergeEnabled(). tqe keeps it as the
+    /// global MergeSwitch the editor controls already consult.
+    bool mergeEnabled() const override;
+    void setMergeEnabled(bool enabled) override;
     void onNewTaglistLoaded();
     void readList(teTagList*input_taglist);
     void unloadList();
