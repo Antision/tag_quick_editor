@@ -3,6 +3,7 @@
 #include "windowglyphbutton.h"
 #include "picturefilecaptionsource.h"
 #include "tagviewhost.h"
+#include "decorationeditorpage.h"
 #include "teselectiontaglist.h"
 #include "tepicturelistview.h"
 #include "ui_mainwindow.h"
@@ -255,6 +256,7 @@ MainWindow::MainWindow(QWidget *parent)
         licenseWidget->show();
     });
     connect(editorlistlayoutwidget,&EditorListLayoutWidget::cancelSignal,ui->editorlist,&teEditorList::setEditorsToPages);
+    connect(editorlistlayoutwidget,&EditorListLayoutWidget::pagesChanged,ui->editorlist,&teEditorList::setEditorsToPages);
 
     picturefileListView=ui->picturelist;
     picturefileModel = picturefileListView->fileModel();
@@ -394,9 +396,15 @@ MainWindow::MainWindow(QWidget *parent)
         ,new teEditor_hair_and_eyes{ui->taglist,QStringLiteral("hair and eyes")}
         ,new teEditor_clothes{ui->taglist,QStringLiteral("clothes")}
         ,new teEditor_nsfw{ui->taglist,QStringLiteral("nsfw")}
+        // Last on purpose (MARK-07): it has no tag controls, it only explains
+        // where the painting-time decoration rules come from.
+        ,new DecorationEditorPage{ui->taglist,QStringLiteral("decorations")}
     };
     extern int nsfwMode;
     ui->editorlist->loadEditors(allEditors,&editorlistlayout);
+    for(teEditor* editor:ui->editorlist->editorlist)
+        if(auto* decorations=dynamic_cast<DecorationEditorPage*>(editor))
+            decorations->setEditorList(ui->editorlist);
 
     // NSFW 编辑器始终构造出来,开关只决定它是否参与分栏与显示;
     // 这样切换时不用重建整个 editorlist(也就不会丢掉控件状态)

@@ -1,4 +1,5 @@
 #include "teeditorcontrol.h"
+#include "tagmarks.h"
 #include "tetag.h"
 #include "tetaglistwidget.h"
 
@@ -12,6 +13,11 @@ TagHandling EditorControl::re_read(std::shared_ptr<teTag>tag){
         unlink(tag);
         return TagHandling::NotMine;
     }
+    // The text changed (a merge, an edit): keep the decoration in step. The
+    // decoration page skips claimed tags, so this is the only writer here.
+    refreshTagDecoration(tag);
+    if(auto* widget=tagWidgetFor(tag))
+        widget->refreshStyle();
     return TagHandling::Linked;
 }
 
@@ -23,6 +29,10 @@ TagHandling EditorControl::read(std::shared_ptr<teTag>tag){
         return TagHandling::Consumed;
     }
     if(iffilt){
+        // Write the decoration before the tag widget is created/linked: the
+        // widget reads it while building its sheet, so a tag switched to for the
+        // first time is coloured immediately instead of on the second visit.
+        ensureTagDecoration(tag);
         if(taglistwidget)
             taglistwidget->ensureWidgetFor(tag);
         link(tag);
@@ -37,6 +47,10 @@ TagHandling EditorControl::read(std::shared_ptr<teTag>tag){
 }
 
 void EditorControl::link(std::shared_ptr<teTag>in_tag){
+    // A control that claims a tag owns its look too. The decoration page only
+    // handles tags nobody claimed, so without this a "blonde hair" tag would be
+    // skipped by the decoration control and lose its colour entirely.
+    ensureTagDecoration(in_tag);
     in_tag->teConnect(teCallbackType::destroy,this,&EditorControl::unlink,in_tag);
     in_tag->teConnect(teCallbackType::edit,this,&EditorControl::re_read,in_tag);
     in_tag->teConnect(teCallbackType::edit_with_layout,this,&EditorControl::re_read,in_tag);

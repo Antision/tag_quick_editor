@@ -69,6 +69,17 @@ public:
     tePictureFileDelegate picturefileDelegate;
     tePictureFileModel picturefileModel;
     explicit tePictureListView(QWidget*parent=nullptr);
+    /**
+     * @brief Detaches the model before the members die.
+     *
+     * picturefileModel is a member, so it is destroyed *before* ~QListView runs
+     * (Qt destroys the members first and the QObject base last). The view and its
+     * selection model still hold persistent model indexes at that point, and
+     * releasing them after their model is gone trips
+     * "QPersistentModelIndex: persistent model indexes corrupted" when the
+     * program shuts down. Detach while both sides are still alive.
+     */
+    ~tePictureListView() override;
 
     tePictureFileModel* fileModel(){ return &picturefileModel; }
 

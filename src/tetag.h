@@ -65,6 +65,10 @@ public:
         QLabel::setText(text);
     }
     void initialize();
+    /// Text colour for this word (white, or black on a white-dominant tag).
+    void setTextColor(const QColor& color);
+    QColor textColor=Qt::white;
+    void applyWordSheet();
     virtual void readCore(teWord*in);
     bool event(QEvent*e)override;
     void mousePressEvent(QMouseEvent *event) override;
@@ -372,6 +376,12 @@ public:
     bool inWidgetPool=false;
     /// The sheet currently applied by setStyle(); -1 means "none yet".
     int currentStyle=-1;
+    /// Base sheet + the mark colours, so an unchanged style is not re-parsed.
+    QString currentSheet;
+    /// Colour part of the sheet for `core` (empty when it has no marks).
+    QString markStyleSheet() const;
+    /// Re-applies the current style (after the decoration changed).
+    void refreshStyle(){ setStyle(teTagStyle(currentStyle<0?normal:currentStyle)); }
 signals:
     void rightButtonPress(teTagWidgetBase*,QPoint,int);
     void leftButtonPress(teTagWidgetBase*,QPoint,int);

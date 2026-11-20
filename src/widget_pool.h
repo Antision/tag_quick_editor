@@ -129,7 +129,11 @@ struct WidgetPool:public teObject{
             in_word->core = nullptr;
             purgeDead();
             if(words_free.size() >= total_words_count){
-                delete typed;           // the pool is full, do not keep it around
+                // Never delete here: give_back() runs from an editor button's
+                // click, and the widget being handed back can be the one whose
+                // signal is still on the stack. deleteLater() lets the current
+                // event finish first.
+                typed->deleteLater();
                 return;
             }
             typed->inWidgetPool = true;
@@ -167,7 +171,9 @@ struct WidgetPool:public teObject{
                 return;                 // already parked: a second give_back is a no-op
             purgeDead();
             if(tags_free.size() >= total_tags_count){
-                delete typed;           // the pool is full, do not keep it around
+                // See the word case above: a tag widget can be given back from
+                // inside its own click, so deletion has to wait for the event.
+                typed->deleteLater();
                 return;
             }
             typed->inWidgetPool = true;

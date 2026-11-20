@@ -115,6 +115,8 @@ public:
 signals:
     /// 关闭窗口时通知主窗口把编辑器排布还原(不再是 teSignalWidget 的那套)。
     void cancelSignal();
+    /// A drag/drop between pages changed the order; apply it immediately.
+    void pagesChanged();
 };
 
 #endif // TEEDITORLISTPAGEVIEW_H

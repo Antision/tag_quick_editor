@@ -1,4 +1,5 @@
 #include "tereftaglistwidget.h"
+#include "tagmarks.h"
 #include "teeditorcontrol.h"
 #include "mainwindow.h"
 #include "func.h"
@@ -31,6 +32,19 @@ void teRefTagWidget::load(){
         wordWidgets.insert(newword);
         connectWord(newword);
     }
+    // The pool hands out empty widgets first and readCore() assigns the core
+    // later, so the constructor's setStyle() may have run before the tag was
+    // known. Re-apply it here: this is also what keeps the colour in step with
+    // edits/merges (the survivor's text changes without a new widget).
+    //
+    // The decoration is recomputed first: it is a function of the tag text, and
+    // the tag's own edit callbacks (this one included) run *before* the list
+    // announces tagEdited, so waiting for the editor would draw the old colours.
+    // A widget built during read() got its core after the control asked for it,
+    // which is why the colour used to appear only on the next click.
+    if(core)
+        refreshTagDecoration(core);
+    setStyle(teTagStyle(currentStyle<0?normal:currentStyle));
 }
 
 void teRefTagWidget::clearWordWidgets(){
@@ -141,6 +155,9 @@ void teRefTagListWidget::clear(teTagList *in){
     if(in==nullptr){
         setUnselect();
         for(auto&[reftag,list]:tags){
+            // The widget is about to be recycled: it must not stay in the
+            // selection (see forgetSelection()).
+            forgetSelection(reftag);
             reftag->clearWordWidgets();
             widgetpool_ref.give_back(reftag);
         }
@@ -151,30 +168,43 @@ void teRefTagListWidget::clear(teTagList *in){
 }
 
 int teRefTagListWidget::findindex(std::shared_ptr<teTag> in_tag){
-    int tagcount = tags.size();
-    for(int i =0;i<tagcount;++i)
-        if(((teTagWidgetBase*)layout->itemAt(i)->widget())->core==in_tag)
+    // Walk the layout, not `tags.size()`: the map and the layout can disagree
+    // while widgets are being recycled, and itemAt(i) is then a spacer or null.
+    // Dereferencing it blind was one of the ways this list crashed on a switch.
+    if(!layout||!in_tag)
+        return -1;
+    for(int i=0;i<layout->count();++i){
+        auto* widget=dynamic_cast<teTagWidgetBase*>(layout->itemAt(i)->widget());
+        if(widget&&widget->core==in_tag)
             return i;
+    }
     telog("couldn't find in_tag in tags");
     return -1;
 }
 
 int teRefTagListWidget::findindex(teTagWidgetBase *in_tag){
-    int tagcount = tags.size();
-    for(int i =0;i<tagcount;++i)
-        if((teTagWidgetBase*)layout->itemAt(i)->widget()==in_tag)
+    if(!layout||!in_tag)
+        return -1;
+    for(int i=0;i<layout->count();++i)
+        if(layout->itemAt(i)->widget()==in_tag)
             return i;
     telog("couldn't find in_tag in tags");
     return -1;
 }
 
 void teRefTagListWidget::tagErase(int index){
-    if(index>tags.size()-1)telog("erase out of range");
-    teRefTagWidget* tag = (teRefTagWidget*)layout->itemAt(index)->widget();
+    if(!layout||index<0||index>=layout->count()){
+        telog("erase out of range");
+        return;
+    }
+    auto* tag=dynamic_cast<teRefTagWidget*>(layout->itemAt(index)->widget());
+    if(!tag)
+        return;
     if(isSelected(tag))
         setUnselect(tag);
+    // findAndErase() already hands the widget back to the pool and drops the map
+    // entry; the extra give_back() here only looked harmless.
     findAndErase(tag->core);
-    widgetpool_ref.give_back(tag);
 }
 
 void teRefTagListWidget::tagErase(std::shared_ptr<teTag> tag){
@@ -222,6 +252,10 @@ std::map<teRefTagWidget*,teTagList*,bool(*)(teRefTagWidget*,teRefTagWidget*)>::i
 void teRefTagListWidget::findAndErase(std::shared_ptr<teTag> in_core){
     auto it=findIterator(in_core);
     if(it!=tags.end()){
+        // Before the widget is parked/deleted: a stale selection entry is what
+        // crashed the next clear() (the widget may already be a recycled or a
+        // deleted object by then).
+        forgetSelection(it->first);
         widgetpool_ref.give_back(it->first);
         tags.erase(it);
     }else{

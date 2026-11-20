@@ -22,7 +22,16 @@ QPushButton#editor_switch:checked{
     border:2px solid #008b46;
 }
 
+/* 装饰页只是一个不可见的 control 的宿主:标题矮一点,不抢画面。 */
+QPushButton#editor_switch[small="true"]{
+    font-size:9pt;
+    padding:0px;
+}
+
 /* 主题色:每个页面的按钮文字渐变 */
+QPushButton#editor_switch[accent="decor"]{
+    color:#c8c8c8;
+}
 QPushButton#editor_switch[accent="pretreat"]{
     color:qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 rgba(0, 0, 0, 255), stop:1 rgba(255, 255, 255, 255));
 }

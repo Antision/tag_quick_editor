@@ -39,6 +39,8 @@ SOURCES += \
     src/testyle.cpp \
     src/suggestionsource.cpp \
     src/tagviewhost.cpp \
+    src/decorationeditorpage.cpp \
+    src/decorationcontrol.cpp \
     src/teeditor.cpp \
     src/teeditor_derive.cpp \
     src/teeditorcontrol.cpp \
@@ -68,6 +70,8 @@ HEADERS += \
     src/secondarymenu.h \
     src/suggestionsource.h \
     src/tagviewhost.h \
+    src/decorationeditorpage.h \
+    src/decorationcontrol.h \
     src/teeditor.h \
     src/teeditor_derive.h \
     src/teeditorcontrol.h \

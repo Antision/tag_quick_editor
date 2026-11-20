@@ -1,4 +1,5 @@
 #include "teeditor.h"
+#include "tagmarks.h"
 #include "tetag.h"
 #include "teeditorcontrol.h"
 #include "testyle.h"
@@ -21,6 +22,9 @@ void teEditor::registerControl(EditorControl* control){
 }
 
 TagHandling teEditor::read(std::shared_ptr<teTag>tag){
+    // Before any control builds a widget for it: a ref tag widget reads the
+    // decoration while applying its sheet.
+    ensureTagDecoration(tag);
     // Only Consumed stops the scan: several controls may claim the same tag (a
     // colour control and a length control, say), and a control that links it
     // without consuming it must not keep the others from seeing it.
@@ -32,6 +36,9 @@ TagHandling teEditor::read(std::shared_ptr<teTag>tag){
         if(handled==TagHandling::Linked)
             result=TagHandling::Linked;
     }
+    // Whoever claimed the tag, the decoration is written here: a control that
+    // overrides read() (the clothes list does) would otherwise skip it, and those
+    // tags stayed uncoloured while every unclaimed tag was decorated.
     return result;
 }
 TagHandling teEditor::re_read(std::shared_ptr<teTag>tag){
@@ -43,14 +50,19 @@ TagHandling teEditor::re_read(std::shared_ptr<teTag>tag){
     // re-check it through the tag's own edit callbacks (EditorControl::link
     // connects re_read for that), so calling re_read here as well would re-read
     // every linked tag twice.
+    bool claimed=false;
     for(EditorControl*ctrl_ptr:controls){
         if(!ctrl_ptr->linked(tag)){
             if(ctrl_ptr->read(tag)==TagHandling::Consumed)
                 return TagHandling::Consumed;
         }else if(tag->retired){
             return TagHandling::Consumed;
+        }else{
+            claimed=true;
         }
     }
+    if(claimed)
+        refreshTagDecoration(tag);
     return TagHandling::NotMine;
 }
 void teEditor::clear(){

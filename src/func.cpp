@@ -125,6 +125,14 @@ void editorLayoutFix(editorListLayout&layout){
             layout.editors[1].push_back(editorNames[i]);
             continue;
         }
+        // Decoration (and later the wiki page) lives in the second column even
+        // without NSFW: the default is two columns from the first start.
+        if(editorNames[i]==QStringLiteral("decorations")){
+            while(layout.editors.size()<2)
+                layout.editors.push_back({});
+            layout.editors[1].push_back(editorNames[i]);
+            continue;
+        }
         layout.editors[0].push_back(editorNames[i]);
     }
     delete[] ifExist;

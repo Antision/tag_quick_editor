@@ -22,7 +22,7 @@ QSet<QString> shades = { "light","deep","dark"};
 bool is_shade(const QString& shade_word){
     return shades.contains(shade_word);
 }
-QStringList editorNames{qsl("custom"),qsl("pretreat"),qsl("hair and eyes"),qsl("clothes"),qsl("nsfw")};
+QStringList editorNames{qsl("custom"),qsl("pretreat"),qsl("hair and eyes"),qsl("clothes"),qsl("nsfw"),qsl("decorations")};
 
 QPair<int,int> is_color(const teTag& tag,int offset) {
     int index;
@@ -38,19 +38,21 @@ QPair<int,int> is_color(const teTag& tag,int offset) {
     return {0,0};
 }
 QStringList extract_colors(std::shared_ptr<teTag> tag) {
+    // Every colour word in the tag, in order - not only the leading run.
+    // "yellow hair with blue streaks" has two colours (base + streak) and
+    // "gradient from red to blue" starts with no colour at all; stopping at the
+    // first non-colour word used to lose everything after "hair"/"from".
     QStringList colors;
-    int pos = 0;
-    while(pos < tag->words.size()) {
-        auto [color_pos, color_cnt] = is_color(*tag, pos);
-        if(color_cnt == 0) break;
-
-        QString color;
-        for(int i=color_pos; i<color_pos+color_cnt; ++i) {
-            color += *tag->words[i] + " ";
-        }
-        colors << color.trimmed();
-
-        pos = color_pos + color_cnt;
+    if(!tag)
+        return colors;
+    for(int i=0;i<tag->words.size();++i){
+        const QString word=*tag->words[i];
+        if(!all_colors.contains(word))
+            continue;
+        if(i>0&&is_shade(*tag->words[i-1]))
+            colors << (*tag->words[i-1]+QStringLiteral(" ")+word);
+        else
+            colors << word;
     }
     return colors;
 }

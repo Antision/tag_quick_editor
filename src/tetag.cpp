@@ -1,4 +1,7 @@
 #include "tetag.h"
+
+#include <algorithm>
+#include "tagmarks.h"
 #include "teeditorcontrol.h"
 teTagWidget::teTagWidget(const QString &str,QWidget*parent):
     teTagWidgetBase(std::make_shared<teTag>(str),parent)
@@ -71,22 +74,127 @@ extern QString teTagMulti_selectCurrentStyle;
 extern QString teTagMulti_selectStyle;
 extern QString teTagMulti_normalStyle;
 void teTagWidgetBase::setStyle(teTagStyle in){
-    // Qt re-parses a sheet on every setStyleSheet() call (about 3 ms for these
-    // small widgets), and the tag list sets the style of every tag on every
-    // load, so re-applying the sheet that is already in place is skipped.
-    if(currentStyle==int(in))
-        return;
     currentStyle=int(in);
+    QString base;
     switch(in){
-    case normal:setStyleSheet(teTag_normalStyle);break;
-    case select:setStyleSheet(teTag_selectStyle);break;
-    case select_current:setStyleSheet(teTag_selectCurrentStyle);break;
-    case multi:setStyleSheet(teTagMulti_normalStyle);break;
-    case multi_select:setStyleSheet(teTagMulti_selectStyle);break;
-    case multi_select_current:setStyleSheet(teTagMulti_selectCurrentStyle);break;
-
-    default:telog("unknown teTag style");
+    case normal:base=teTag_normalStyle;break;
+    case select:base=teTag_selectStyle;break;
+    case select_current:base=teTag_selectCurrentStyle;break;
+    case multi:base=teTagMulti_normalStyle;break;
+    case multi_select:base=teTagMulti_selectStyle;break;
+    case multi_select_current:base=teTagMulti_selectCurrentStyle;break;
+    default:telog("unknown teTag style");return;
     }
+    const QString sheet=base+markStyleSheet();
+    // Qt re-parses a sheet on every setStyleSheet() call (about 3 ms for these
+    // small widgets); skip when nothing changed, mark colours included.
+    if(sheet==currentSheet)
+        return;
+    currentSheet=sheet;
+    setStyleSheet(sheet);
+
+    // Word labels carry their own colour sheet (see teWordWidgetBase::initialize),
+    // so a parent QSS colour cannot reach them: a white tag would stay white text.
+    const bool blackText=core&&TagMarkRegistry::instance().resolve(*core).whiteDominant;
+    for(teWordWidgetBase* word : findChildren<teWordWidgetBase*>())
+        word->setTextColor(blackText?QColor(0,0,0):QColor(255,255,255));
+}
+
+QString teTagWidgetBase::markStyleSheet() const
+{
+    if(!core)
+        return {};
+    const TagVisual visual=TagMarkRegistry::instance().resolve(*core);
+    if(!visual.hasColor)
+        return {};
+
+    const bool selected=currentStyle==int(select);
+    const bool current=currentStyle==int(select_current);
+    auto cssColor=[](QColor color){
+        if(color.alpha()==255)
+            return color.name();
+        return QStringLiteral("rgba(%1,%2,%3,%4)")
+            .arg(color.red()).arg(color.green()).arg(color.blue()).arg(color.alpha());
+    };
+
+    auto bandsCss=[&cssColor](const QVector<QColor>& bands){
+        const int count=bands.isEmpty()?1:int(bands.size());
+        QString stops;
+        for(int i=0;i<count;++i){
+            const double left=double(i)/double(count);
+            const double right=double(i+1)/double(count);
+            if(!stops.isEmpty()) stops+=QStringLiteral(",");
+            stops+=QStringLiteral("stop:%1 %2,stop:%3 %2")
+                       .arg(left).arg(cssColor(bands[i])).arg(right);
+        }
+        return QStringLiteral("qlineargradient(spread:pad,x1:0,y1:0,x2:1,y2:0,%1)")
+            .arg(stops);
+    };
+
+    QString background;
+    if(visual.streaked&&!visual.gradientStops.isEmpty()){
+        const int streaks=visual.gradientStops.size();
+        int cells=12;
+        if(streaks+2>cells)
+            cells=streaks+2+(streaks&1);
+        QVector<QColor> bands(cells,visual.hasBase?visual.baseColor:QColor(0,0,0));
+        // Same as the delegate: a white (or absent) base is painted solid, a
+        // tinted one stays translucent. A 70/255 white over the dark page read as
+        // grey, which is what made "white hair with ... streaks" look dirty here.
+        const bool solidBase=visual.whiteDominant||!visual.hasBase;
+        for(int i=0;i<bands.size();++i)
+            bands[i].setAlpha(solidBase?255:70);
+        for(int i=0;i<streaks;++i){
+            QColor color=visual.gradientStops[i];
+            color.setAlpha(visual.whiteDominant?70:120);
+            bands[2+i]=color;
+        }
+        background=bandsCss(bands);
+    }else if(visual.striped&&!visual.gradientStops.isEmpty()){
+        const int colors=visual.gradientStops.size();
+        const int cells=std::max(12,colors);
+        QVector<QColor> bands(cells);
+        for(int i=0;i<cells;++i){
+            bands[i]=visual.gradientStops[i%colors];
+            bands[i].setAlpha(visual.whiteDominant?90:90);
+        }
+        background=bandsCss(bands);
+    }else if(visual.gradient&&!visual.gradientStops.isEmpty()){
+        QString stops;
+        for(int i=0;i<visual.gradientStops.size();++i){
+            if(!stops.isEmpty()) stops+=QStringLiteral(",");
+            const double pos=visual.gradientStops.size()>1
+                                 ?double(i)/double(visual.gradientStops.size()-1):0.0;
+            stops+=QStringLiteral("stop:%1 %2").arg(pos).arg(visual.gradientStops[i].name());
+        }
+        background=QStringLiteral("qlineargradient(spread:pad,x1:0,y1:0,x2:1,y2:0,%1)")
+                       .arg(stops);
+    }else if(visual.whiteDominant){
+        background=QStringLiteral("#f2f2f2");
+    }else{
+        QColor fill=visual.fill;
+        if(fill.alpha()==0)
+            fill=QColor(0,0,0);
+        background=cssColor(fill);
+    }
+
+    QString border;
+    if(current)
+        border=QStringLiteral("#00d96d");
+    else if(selected)
+        border=QStringLiteral("#2a6b45");
+    else if(visual.whiteDominant)
+        border=QStringLiteral("#f2f2f2");
+    else if(visual.streaked||visual.striped)
+        border=tagBorderColor(visual.hasBase?visual.baseColor:visual.gradientStops.value(0)).name();
+    else
+        border=tagBorderColor(visual.border).name();
+    const QString foreground=visual.whiteDominant?QStringLiteral("black"):QStringLiteral("white");
+
+    return QStringLiteral("teTagWidgetBase:!hover{border:1px solid %1;background-color:%2;color:%3;}"
+                          "teTagWidgetBase:hover{border:1px solid %1;background-color:%2;color:%3;}"
+                          "teTagWidgetBase QLabel{color:%3;}")
+        .arg(border,background,foreground);
 }
 
 teTagWidgetBase::~teTagWidgetBase(){
@@ -159,6 +267,9 @@ void teTagWidget::load(){
         layout->insertWidget(0,newword);
         connectWord(newword);
     }
+    // Marks may have changed with the edit that led here (a colour control just
+    // set one): re-apply the sheet, including its colours.
+    setStyle(teTagStyle(currentStyle<0?normal:currentStyle));
 }
 
 
@@ -248,9 +359,13 @@ void teWordWidgetBase::initialize(){
     setContentsMargins(0,0,0,0);
     setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
     setMaximumHeight(27);
+    applyWordSheet();
+}
+
+void teWordWidgetBase::applyWordSheet(){
     setStyleSheet(QStringLiteral(R"(
 teWordWidgetBase{
-    color: white;
+    color: %1;
 }
 QWidget{
     background-color:transparent;
@@ -263,7 +378,14 @@ teWordWidgetBase:!hover{
     border:1px solid transparent;
     padding:-1px;
 }
-)"));
+)").arg(textColor.name()));
+}
+
+void teWordWidgetBase::setTextColor(const QColor& color){
+    if(textColor==color)
+        return;
+    textColor=color;
+    applyWordSheet();
 }
 
 void teWordWidgetBase::readCore(teWord *in){

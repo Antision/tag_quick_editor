@@ -257,6 +257,12 @@ tePictureListView::tePictureListView(QWidget *parent):QListView(parent){
     setContextMenuPolicy(Qt::DefaultContextMenu);
 }
 
+tePictureListView::~tePictureListView(){
+    // setItemDelegate() is deliberately not touched: QAbstractItemView does not
+    // own the delegate, and ours is a member of this very object.
+    setModel(nullptr);
+}
+
 void tePictureListView::selectNext(){
     if(auto selections = selectionModel()->selectedRows();!selections.empty()&&selections[0].row()<model()->rowCount())
         selectionModel()->select(model()->index(selections[0].row()+1,0),QItemSelectionModel::ClearAndSelect);

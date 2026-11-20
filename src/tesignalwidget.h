@@ -166,6 +166,12 @@ public:
         connectSignals();
     }
     ~filterWidget(){
+        // myview is a child widget (destroyed by ~QWidget, after the members),
+        // while mymodel is a member and dies first. The view's selection model
+        // still holds persistent indexes into it at that point; Qt asserts
+        // "persistent model indexes corrupted" when they are released. Detach
+        // the model while both are alive.
+        myview->setModel(nullptr);
     }
     enum RuleType { AllOf, AnyOf, NoneOf, ExactOne };
     /// 筛选窗下面是图片列表,要的是"高窗口":四条规则 + 按钮 + 一屏缩略图。

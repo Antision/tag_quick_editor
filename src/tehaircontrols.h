@@ -55,6 +55,12 @@ inline bool hairTagsCanMerge(HairKind target,HairKind source)
     return matrix[t][src];
 }
 
+/// Hair and eyes never merge into each other (plain "hair"/"eyes" word).
+inline bool sameHairCategory(const teTag& first,const teTag& second)
+{
+    return first.contains(qsl("eyes"))==second.contains(qsl("eyes"));
+}
+
 /// The words of a merged streak tag: "yellow hair with blue streaks", or with
 /// several streak colours "yellow hair with blue and green streaks".
 inline QStringList streakedHairWords(const QStringList& colors)
@@ -205,6 +211,15 @@ struct hair_and_eyes_color_list : public teTagListControl{
         /// computed from the tag whenever it is needed. It used to be cached in a
         /// QHash keyed by tag, which had to be kept in step with every edit - the
         /// cache and the tag could disagree, and the entry kept the tag alive.
+        /// True while absorb() is editing the surviving tag (see its guard).
+        bool m_merging=false;
+        struct MergeGuard{
+            bool& flag;
+            explicit MergeGuard(bool& in_flag):flag(in_flag){ flag=true; }
+            ~MergeGuard(){ flag=false; }
+            MergeGuard(const MergeGuard&)=delete;
+            MergeGuard& operator=(const MergeGuard&)=delete;
+        };
         HairKind classify_tag(std::shared_ptr<teTag> tag) const {
             return tag?classifyHairTag(*tag):HairKind::None;
         }
@@ -213,7 +228,10 @@ struct hair_and_eyes_color_list : public teTagListControl{
             return hairTagsCanMerge(target_type,source_type);
         }
         std::shared_ptr<teTag> find_merge_target(std::shared_ptr<teTag> new_tag,HairKind type) {
-            for(int i = layout->count()-2; i >=0; --i) {
+            // Walk every layout item. The old loop started at count()-2, which
+            // silently skipped the last tag when the list had no trailing button;
+            // editing the first tag then found no target at all.
+            for(int i = layout->count()-1; i >=0; --i) {
                 teRefTagWidget* widget = dynamic_cast<teRefTagWidget*>(layout->itemAt(i)->widget());
                 std::shared_ptr<teTag> candidate;
                 if(widget&&widget->core)
@@ -222,6 +240,11 @@ struct hair_and_eyes_color_list : public teTagListControl{
                     continue;
                 if(candidate==new_tag)continue;
                 if(candidate->retired)continue;
+                // Hair and eyes never merge into each other: "blonde streaked
+                // hair" used to be absorbed by "yellow eyes" and produced a
+                // nonsensical "yellow hair with blonde streaks".
+                if(!sameHairCategory(*candidate,*new_tag))
+                    continue;
                 const HairKind candidateType = classify_tag(candidate);
                 if(candidateType==HairKind::None) continue;
 
@@ -265,7 +288,7 @@ struct hair_and_eyes_color_list : public teTagListControl{
          * picked up here just the same.
          */
         void onHairTagEdited(std::shared_ptr<teTag> edited_tag) {
-            if(!edited_tag||edited_tag->retired)
+            if(!edited_tag||edited_tag->retired||m_merging)
                 return;
             const HairKind still_valid = classify_tag(edited_tag);
             if(still_valid==HairKind::None)
@@ -276,6 +299,19 @@ struct hair_and_eyes_color_list : public teTagListControl{
                 edited_tag->retired=true;
                 perform_merge(new_target, edited_tag,still_valid);
             }
+        }
+        /**
+         * @brief Merges `just_edited` now, without waiting for the signal.
+         *
+         * The word edit above announces itself (edit_with_layout) and
+         * onHairTagEdited() normally merges from that. Doing it here as well is
+         * what makes [s]/[g] behave exactly like typing the same tag in the
+         * colour list: both end in absorb().
+         */
+        void mergeNow(std::shared_ptr<teTag> just_edited){
+            if(!just_edited||just_edited->retired)
+                return;
+            absorb(just_edited);
         }
         virtual void tagEdit(teTagWidgetBase*tag,teWordWidgetBase*word)override{
             if(std::shared_ptr<teTag>core =tag->core; core&&(classify_tag(core)==HairKind::StreakHair||classify_tag(core)==HairKind::GradientHair)){
@@ -314,6 +350,9 @@ struct hair_and_eyes_color_list : public teTagListControl{
             linked_tags.insert(in_tag);
             in_tag->teConnect(teCallbackType::destroy,this,&EditorControl::unlink,in_tag);
             in_tag->teConnect(teCallbackType::edit_with_layout,this,&hair_and_eyes_color_list::onHairTagEdited,in_tag);
+            // Some edits only announce `edit`; subscribing to both keeps the
+            // merge from depending on which one the caller emitted.
+            in_tag->teConnect(teCallbackType::edit,this,&hair_and_eyes_color_list::onHairTagEdited,in_tag);
             teTagWidgetBase*widget =taginsert(-1,in_tag,taglistwidget->showing_list);
             extraWidgetPushBack(in_tag,widget);
         }
@@ -328,6 +367,12 @@ struct hair_and_eyes_color_list : public teTagListControl{
         bool absorb(std::shared_ptr<teTag> in_tag){
             if(!autoMerge||!MergeSwitch)
                 return false;
+            // A merge edits the surviving tag, which re-enters this control
+            // through its edit signals. Without this guard the nested call can
+            // start a second merge on the tag that is being merged right now.
+            if(m_merging)
+                return false;
+            MergeGuard guard(m_merging);
             if(in_tag->contains("eyes"))
                 return false;
             if(is_color(*in_tag).second<=0)
@@ -365,12 +410,16 @@ struct hair_and_eyes_color_list : public teTagListControl{
                     if(*in_tag->words[i]==qsl("streaked"))
                         streaked_btn->setChecked(true);
                 connect(streaked_btn,&QPushButton::clicked,widget,[in_tag, streaked_btn, this](bool ifchecked){
+                    // See the gradient button: an explicit s/g click is a user
+                    // edit and clears the "already merged" mark.
+                    in_tag->mergeSuppressed=false;
                     auto* editorTag=tagWidgetFor(in_tag);
                     if(ifchecked){
                         if(in_tag->contains(qsl("streaked")))
                             return;                 // already there: never add a second one
                         if(editorTag)
                             editorTag->insertWord(-2,qsl("streaked"));
+                        mergeNow(in_tag);
                     }else{
                         // Remove without signalling between the steps: every
                         // destroyWord() re-enters this control, which rebuilds the
@@ -401,12 +450,14 @@ struct hair_and_eyes_color_list : public teTagListControl{
                     if(*in_tag->words[i]==qsl("gradient"))
                         gradient_btn->setChecked(true);
                 connect(gradient_btn,&QPushButton::clicked,widget,[in_tag, this, gradient_btn](bool ifchecked){
+                    in_tag->mergeSuppressed=false;
                     auto* editorTag=tagWidgetFor(in_tag);
                     if(ifchecked){
                         if(in_tag->contains(qsl("gradient")))
                             return;                 // already there: never a second one
                         if(editorTag)
                             editorTag->insertWord(-2,qsl("gradient"));
+                        mergeNow(in_tag);
                     }else{
                         // See the "streaked" button above: no signalling between the
                         // removals, one announcement at the end.

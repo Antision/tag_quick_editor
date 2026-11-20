@@ -79,6 +79,9 @@ struct editorListLayout{
     QVector<QStringList> editors;
 };
 extern editorListLayout editorlistlayout;
+/// Fills in editors missing from a loaded/default layout (and forces the
+/// decoration page into the second column).
+void editorLayoutFix(editorListLayout& layout);
 
 template<typename Container,typename T> requires requires(Container c){(*c.begin())->lock();}
 int sharedIndexInWeakContainer(const Container& container, const std::shared_ptr<T>& target) {

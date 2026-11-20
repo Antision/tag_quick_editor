@@ -1,9 +1,51 @@
 #include "teeditorlist.h"
+#include "tagmarks.h"
+#include "teeditor.h"
+
+#include <QApplication>
+#include <QDrag>
+#include <QDropEvent>
+#include <QMimeData>
+#include <QMouseEvent>
+#include <QTimer>
+
+#include <algorithm>
 #include "teeditorcontrol.h"
 #include "tetaglistwidget.h"
 #include "teeditorhelpers.h"
 #include "testyle.h"
 #include "pch.h"
+
+teEditorList::~teEditorList()
+{
+    // The view keeps a raw TagEditorHost pointer and calls clearAll() from its
+    // own destructor. When the window destroys the editor list before the tag
+    // list (child order is not something we control) that call reached freed
+    // memory - the crash on shutdown. Let go of the view first.
+    if(tagListWidget)
+        tagListWidget->setEditorHost(nullptr);
+    // The title buttons and the page containers carry our event filter. Remove
+    // it before the widgets go away: a destruction-time event used to land in
+    // eventFilter() with a page list that was already being torn down.
+    for(teEditor* editor:editorlist){
+        if(auto* standard=dynamic_cast<teEditor_standard*>(editor))
+            standard->editor_switch->removeEventFilter(this);
+    }
+    if(editorLayout){
+        for(QScrollArea* page:editorLayout->pages){
+            if(!page)
+                continue;
+            page->removeEventFilter(this);
+            if(page->viewport())
+                page->viewport()->removeEventFilter(this);
+            if(page->widget())
+                page->widget()->removeEventFilter(this);
+        }
+    }
+    for(teEditor* editor:editorlist)
+        delete editor;
+    editorlist.clear();
+}
 
 void teEditorList::loadEditors(const QVector<teEditor*>& input_vector_ptr,editorListLayout*in_listpage){
     editorLayout = in_listpage;
@@ -60,6 +102,7 @@ void teEditorList::loadEditors(const QVector<teEditor*>& input_vector_ptr,editor
             ((QVBoxLayout*)(page->widget()->layout()))->addItem(new QSpacerItem(0,0,QSizePolicy::Fixed,QSizePolicy::Expanding));
         }
     }
+    installEditorDrag();
 }
 
 void teEditorList::setEditorsToPages(){
@@ -129,6 +172,7 @@ void teEditorList::setEditorsToPages(){
     for(QScrollArea*page:editorLayout->pages){
         ((QVBoxLayout*)(page->widget()->layout()))->addItem(new QSpacerItem(0,0,QSizePolicy::Fixed,QSizePolicy::Expanding));
     }
+    installEditorDrag();
 }
 
 void teEditorList::connectTaglistWidget(TagListView *in_listWidget){
@@ -136,7 +180,11 @@ void teEditorList::connectTaglistWidget(TagListView *in_listWidget){
         tagListWidget->setEditorHost(nullptr);
         disconnect(tagListWidget,0,this,0);
     }
-    if(!in_listWidget){telog("input taglist is nullptr");return;}
+    if(!in_listWidget){
+        telog("input taglist is nullptr");
+        tagListWidget=nullptr;      // do not keep a pointer we just detached from
+        return;
+    }
     tagListWidget=in_listWidget;
     for(teEditor*e:editorlist){
         e->setTagListWidget(in_listWidget);
@@ -245,6 +293,10 @@ void teEditorList::onTagEdited(std::shared_ptr<teTag> in_tag){
             return;
         }
     }
+    // The text changed, and the decoration is a function of it. Doing it here
+    // covers every control, including the ones that handle their own edits and
+    // never go through EditorControl::re_read().
+    refreshTagDecoration(in_tag);
 }
 const QString editorListScrollAreaStyle = qsl(R"(QScrollArea{border:1px solid #4c399e;}
 QScrollArea:hover{
@@ -315,4 +367,130 @@ QScrollBar::add-line:horizontal {
     width:12px;
 })");
 
+namespace {
+constexpr auto kEditorDragMime = "application/x-tq-editor-name";
+}
 
+void teEditorList::installEditorDrag()
+{
+    for(teEditor* editor:editorlist){
+        auto* standard=dynamic_cast<teEditor_standard*>(editor);
+        if(!standard)
+            continue;
+        if(standard->editor_switch->property("tqEditorDrag").toBool())
+            continue;
+        standard->editor_switch->setProperty("tqEditorDrag",true);
+        standard->editor_switch->installEventFilter(this);
+        standard->editor_switch->setToolTip(QStringLiteral("Drag to another column"));
+    }
+    for(QScrollArea* page:editorLayout->pages){
+        page->setAcceptDrops(true);
+        page->viewport()->setAcceptDrops(true);
+        page->widget()->setAcceptDrops(true);
+        for(QWidget* widget:{static_cast<QWidget*>(page),page->viewport(),page->widget()}){
+            if(widget->property("tqEditorDrop").toBool())
+                continue;
+            widget->setProperty("tqEditorDrop",true);
+            widget->installEventFilter(this);
+        }
+    }
+}
+
+bool teEditorList::eventFilter(QObject* watched,QEvent* event)
+{
+    // Source: the title button of a page.
+    for(teEditor* editor:editorlist){
+        auto* standard=dynamic_cast<teEditor_standard*>(editor);
+        if(!standard||standard->editor_switch!=watched)
+            continue;
+        if(event->type()==QEvent::MouseButtonPress){
+            auto* mouse=static_cast<QMouseEvent*>(event);
+            if(mouse->button()==Qt::LeftButton){
+                m_editorDragStart=mouse->globalPosition().toPoint();
+                m_editorDragName=editor->name;
+            }
+        }else if(event->type()==QEvent::MouseMove&&!m_editorDragName.isEmpty()){
+            auto* mouse=static_cast<QMouseEvent*>(event);
+            if(!(mouse->buttons()&Qt::LeftButton))
+                return false;
+            if((mouse->globalPosition().toPoint()-m_editorDragStart).manhattanLength()
+                <QApplication::startDragDistance())
+                return false;
+            auto* drag=new QDrag(this);
+            drag->setPixmap(editor->grab());
+            auto* mime=new QMimeData;
+            mime->setData(kEditorDragMime,m_editorDragName.toUtf8());
+            drag->setMimeData(mime);
+            drag->exec(Qt::MoveAction);
+            m_editorDragName.clear();
+            return true;
+        }
+        return false;
+    }
+
+    // Target: a page column (scroll area, its viewport or its container).
+    int pageIndex=-1;
+    for(int i=0;i<editorLayout->pages.size();++i){
+        QScrollArea* page=editorLayout->pages[i];
+        if(watched==page||watched==page->viewport()||watched==page->widget()){
+            pageIndex=i;
+            break;
+        }
+    }
+    if(pageIndex<0)
+        return false;
+
+    const auto hasEditor=[&](const QMimeData* mime){
+        return mime&&mime->hasFormat(kEditorDragMime);
+    };
+    if(event->type()==QEvent::DragEnter||event->type()==QEvent::DragMove){
+        auto* drop=static_cast<QDropEvent*>(event);
+        if(hasEditor(drop->mimeData())){
+            drop->setDropAction(Qt::MoveAction);
+            drop->accept();
+            return true;
+        }
+        return false;
+    }
+    if(event->type()==QEvent::Drop){
+        auto* drop=static_cast<QDropEvent*>(event);
+        if(!hasEditor(drop->mimeData()))
+            return false;
+        const QString name=QString::fromUtf8(drop->mimeData()->data(kEditorDragMime));
+        if(name.isEmpty())
+            return false;
+        QWidget* container=editorLayout->pages[pageIndex]->widget();
+        // The drop event may be delivered to the viewport or to the scroll area,
+        // neither of which shares the container's origin. Using the raw event
+        // position compared that against widget geometry in another coordinate
+        // system, which shifted the row by one: A dropped on B's lower half used
+        // to land after C. Map from the receiving widget into the container.
+        QPoint pos=drop->position().toPoint();
+        if(auto* receiver=qobject_cast<QWidget*>(watched))
+            pos=container->mapFrom(receiver,pos);
+        QVector<QPair<QString,QRect>> anchors;
+        if(QLayout* layout=container->layout()){
+            for(int i=0;i<layout->count();++i){
+                auto* editorWidget=dynamic_cast<teEditor*>(layout->itemAt(i)->widget());
+                if(editorWidget)
+                    anchors.append({editorWidget->name,editorWidget->geometry()});
+            }
+        }
+        // See editorDropRow(): the dragged editor is not an anchor, so the row
+        // is already the index to insert at after it has been removed.
+        int row=editorDropRow(anchors,name,pos.y());
+        for(QStringList& page:editorLayout->editors)
+            page.removeAll(name);
+        if(pageIndex>=editorLayout->editors.size())
+            return false;
+        row=std::max(0,std::min(row,int(editorLayout->editors[pageIndex].size())));
+        editorLayout->editors[pageIndex].insert(row,name);
+        drop->setDropAction(Qt::MoveAction);
+        drop->accept();
+        // Rebuild after the drop event returns: setEditorsToPages() reparents and
+        // may delete empty pages.
+        QTimer::singleShot(0,this,[this]{ setEditorsToPages(); });
+        return true;
+    }
+    return false;
+}

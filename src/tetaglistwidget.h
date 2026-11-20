@@ -55,6 +55,22 @@ public:
     teTagWidgetBase::teTagStyle select_current_style_enum = teTagWidgetBase::teTagStyle::select_current;///< Current selection state style
     QAction *editAction,*deleteAction,*insertAction,*insertBelowAction,*cutAction,*copyAction,*pasteAction;
 
+    /**
+     * @brief Drops `widget` from the selection bookkeeping.
+     *
+     * The selection addresses tags by widget pointer. A widget handed back to the
+     * pool (or deleted) must not stay in it: setUnselect()/clear() compared and
+     * re-styled that pointer later, which was a use-after-free on the picture
+     * switch that followed a merge.
+     */
+    void forgetSelection(teTagWidgetBase* widget){
+        if(!widget)
+            return;
+        if(select_current==widget)
+            select_current=nullptr;
+        select.erase(widget);
+    }
+
 public slots:
     /**
      * @brief Sets a tag as the current selection
