@@ -18,15 +18,54 @@ enum class HairKind { None, BaseHair, StreakHair, GradientHair, RawStreakHair, R
 inline HairKind classifyHairTag(const teTag& tag)
 {
     if(is_color(tag).second==0||
-       (!(tag.contains(qsl("hair"))||tag.contains(qsl("gradient"))||tag.words.size()<3)))
+       (!(tag.contains(qsl("hair"))||tag.contains(qsl("eyes"))||tag.contains(qsl("gradient"))
+          ||tag.contains(qsl("streaks"))||tag.words.size()<3)))
         return HairKind::None;
     if(tag.contains(qsl("with")))
         return HairKind::StreakHair;
     if(tag.contains(qsl("from")))
         return HairKind::GradientHair;
+    // Danbooru's raw streak tag is "[colour] streaks" - no "hair", no "streaked".
+    if(!tag.words.empty()&&*tag.words.back()==qsl("streaks"))
+        return HairKind::RawStreakHair;
     if(tag.contains(qsl("streaked"))||tag.contains(qsl("gradient")))
         return tag.contains(qsl("gradient"))?HairKind::RawGradientHair:HairKind::RawStreakHair;
     return HairKind::BaseHair;
+}
+
+/// True when the tag is about eyes rather than hair.
+inline bool isEyesTag(const teTag& tag)
+{
+    return tag.contains(qsl("eyes"));
+}
+
+/// The raw streak tag for a set of colours: "blue streaks" (danbooru wording),
+/// or "blue and green streaks".
+inline QString rawStreakText(const QStringList& colors)
+{
+    return colors.join(qsl(" and "))+qsl(" streaks");
+}
+
+/**
+ * @brief The tag the "add tag" window produces for hair/eyes.
+ *
+ * The window keeps offering "streaked" and "hair" as buttons, but the tag it
+ * writes is danbooru's: "[colour] streaks" rather than "[colour] streaked hair".
+ * Eyes have no streak form at all, so the word is dropped there.
+ */
+inline QString composeHairTagText(QString text)
+{
+    const QString streakedHair=qsl(" streaked hair");
+    const QString streakedEyes=qsl(" streaked eyes");
+    if(text.endsWith(streakedHair)&&text.size()>streakedHair.size()){
+        text.chop(streakedHair.size());
+        return text+qsl(" streaks");
+    }
+    if(text.endsWith(streakedEyes)&&text.size()>streakedEyes.size()){
+        text.chop(streakedEyes.size());
+        return text+qsl(" eyes");
+    }
+    return text;
 }
 
 /**
@@ -77,10 +116,11 @@ inline QStringList streakedHairWords(const QStringList& colors)
     return words;
 }
 
-/// The text of a merged gradient tag: "gradient from yellow to blue".
-inline QString gradientHairText(const QStringList& colors)
+/// The text of a merged gradient tag: "hair gradient from yellow to blue" /
+/// "eyes gradient from yellow to blue" - the category is part of the tag now.
+inline QString gradientHairText(const QStringList& colors,bool eyes=false)
 {
-    return qsl("gradient from ")+colors.join(qsl(" to "));
+    return (eyes?qsl("eyes"):qsl("hair"))+qsl(" gradient from ")+colors.join(qsl(" to "));
 }
 
 /// The buttons of the ponytail control (index 6 is the "tail" label).
@@ -203,8 +243,11 @@ struct hair_and_eyes_color_list : public teTagListControl{
                  &&
                  ((is_color(*in_tag).second>0)||tagstring==qsl("streaked hair")||tagstring==qsl("gradient hair"))){
                 return true;
-            }else if(tagstring.startsWith(qsl("gradient from"))||tagstring.endsWith(qsl("streaks")))
-                return true;
+            }else if(tagstring.endsWith(qsl("streaks"))){
+                return true;        // danbooru's "[colour] streaks"
+            }else if(tagstring.contains(qsl("gradient from"))){
+                return true;        // "hair gradient from ..." / "eyes gradient from ..."
+            }
             return false;
         }
         /// The classification lives in classifyHairTag() (pure, testable) and is
@@ -277,7 +320,9 @@ struct hair_and_eyes_color_list : public teTagListControl{
             const QStringList all_colors = source_to_target
                     ? extract_colors(target)+extract_colors(source)
                     : extract_colors(source)+extract_colors(target);
-            taglistwidget->tagEdit(target,gradientHairText(all_colors));
+            // "hair gradient from ..." / "eyes gradient from ...": the survivor
+            // decides which one it is.
+            taglistwidget->tagEdit(target,gradientHairText(all_colors,isEyesTag(*target)));
         }
         /**
          * @brief A linked tag changed: see whether it can now be merged.
@@ -291,13 +336,15 @@ struct hair_and_eyes_color_list : public teTagListControl{
             if(!edited_tag||edited_tag->retired||m_merging)
                 return;
             const HairKind still_valid = classify_tag(edited_tag);
-            if(still_valid==HairKind::None)
+            if(!mergeKindAllowed(edited_tag,still_valid))
                 return;                     // not a mergeable hair tag any more
             std::shared_ptr<teTag> new_target = find_merge_target(edited_tag,still_valid);
             if(new_target&&mergeAllowed(*new_target,*edited_tag)) {
+                MergeGuard guard(m_merging);
                 markMerged(*new_target,*edited_tag);
                 edited_tag->retired=true;
                 perform_merge(new_target, edited_tag,still_valid);
+                foldRawSiblings(new_target);
             }
         }
         /**
@@ -364,6 +411,69 @@ struct hair_and_eyes_color_list : public teTagListControl{
          * has to retire it from the list. This is what filter() used to do from
          * inside its own predicate.
          */
+        /// Eyes only take part in the gradient merge: danbooru has no
+        /// "[colour] streaks" for eyes, and the [s] button is not offered there.
+        bool mergeKindAllowed(std::shared_ptr<teTag> tag,HairKind kind) const {
+            if(!tag||kind==HairKind::None)
+                return false;
+            if(isEyesTag(*tag))
+                return kind==HairKind::RawGradientHair||kind==HairKind::GradientHair;
+            return true;
+        }
+        /// The first candidate of `wanted` kind in this list (same category).
+        std::shared_ptr<teTag> findRawSibling(std::shared_ptr<teTag> anchor,HairKind wanted) const {
+            if(!layout||!anchor)
+                return nullptr;
+            for(int i=layout->count()-1;i>=0;--i){
+                auto* widget=dynamic_cast<teRefTagWidget*>(layout->itemAt(i)->widget());
+                if(!widget||!widget->core)
+                    continue;
+                std::shared_ptr<teTag> candidate=widget->core;
+                if(candidate==anchor||candidate->retired)
+                    continue;
+                if(!sameHairCategory(*candidate,*anchor))
+                    continue;
+                if(classify_tag(candidate)==wanted)
+                    return candidate;
+            }
+            return nullptr;
+        }
+        /**
+         * @brief Folds any remaining raw tag into a survivor that just merged.
+         *
+         * Adding "brown hair" next to "blue streaks" and "blonde streaks" used to
+         * absorb only the last one: the merge edits the survivor, and that edit
+         * re-enters this control under the merge guard, so the second raw tag was
+         * never looked at. This runs the remaining rounds explicitly.
+         */
+        void foldRawSiblings(std::shared_ptr<teTag> survivor) {
+            for(int round=0;round<8;++round){
+                if(!survivor||survivor->retired)
+                    return;
+                const HairKind kind=classify_tag(survivor);
+                const HairKind wanted=kind==HairKind::StreakHair?HairKind::RawStreakHair
+                                    :kind==HairKind::GradientHair?HairKind::RawGradientHair
+                                    :HairKind::None;
+                if(wanted==HairKind::None)
+                    return;
+                std::shared_ptr<teTag> extra=findRawSibling(survivor,wanted);
+                if(!extra||!mergeAllowed(*survivor,*extra))
+                    return;
+                markMerged(*survivor,*extra);
+                extra->retired=true;
+                // Nothing edits the absorbed tag, so no re_read() will retire it
+                // for us: drop it from the list here (readList() does the same for
+                // the tags it reads itself).
+                if(taglistwidget)
+                    taglistwidget->retire(extra);
+                const QStringList colors=extract_colors(survivor)+extract_colors(extra);
+                if(kind==HairKind::StreakHair)
+                    taglistwidget->tagEdit(survivor,streakedHairWords(colors).join(qsl(" ")));
+                else
+                    taglistwidget->tagEdit(survivor,
+                        gradientHairText(colors,isEyesTag(*survivor)));
+            }
+        }
         bool absorb(std::shared_ptr<teTag> in_tag){
             if(!autoMerge||!MergeSwitch)
                 return false;
@@ -372,8 +482,7 @@ struct hair_and_eyes_color_list : public teTagListControl{
             // start a second merge on the tag that is being merged right now.
             if(m_merging)
                 return false;
-            MergeGuard guard(m_merging);
-            if(in_tag->contains("eyes"))
+            if(!in_tag||in_tag->retired)
                 return false;
             if(is_color(*in_tag).second<=0)
                 return false;
@@ -382,6 +491,9 @@ struct hair_and_eyes_color_list : public teTagListControl{
                 telog("[hair_and_eyes]:unable to distinguish hair tag's type");
                 return false;
             }
+            if(!mergeKindAllowed(in_tag,new_type))
+                return false;
+            MergeGuard guard(m_merging);
             std::shared_ptr<teTag> target_tag = find_merge_target(in_tag,new_type);
             if(!target_tag)
                 return false;
@@ -390,6 +502,7 @@ struct hair_and_eyes_color_list : public teTagListControl{
             markMerged(*target_tag,*in_tag);
             in_tag->retired=true;
             perform_merge(target_tag,in_tag,new_type);
+            foldRawSiblings(target_tag);
             return true;
         }
 
@@ -400,86 +513,86 @@ struct hair_and_eyes_color_list : public teTagListControl{
         }
         void extraWidgetPushBack(std::shared_ptr<teTag>in_tag,teTagWidgetBase*widget){
             const HairKind kind = classify_tag(in_tag);
-            if(kind==HairKind::BaseHair||kind==HairKind::RawStreakHair||kind==HairKind::RawGradientHair){
-                int wordcount = in_tag->words.size();
+            if(kind!=HairKind::BaseHair&&kind!=HairKind::RawStreakHair
+                &&kind!=HairKind::RawGradientHair)
+                return;
+            const bool eyes=isEyesTag(*in_tag);
+            const int wordcount = in_tag->words.size();
+
+            // No [s] for eyes: danbooru has no "[colour] streaks" for them.
+            if(!eyes){
                 QPushButton*streaked_btn = new QPushButton("s",widget);
                 streaked_btn->setStyleSheet(qsl(R"(font:8pt "Sonsolas")"));
                 streaked_btn->setCheckable(true);
                 streaked_btn->setFixedSize(15,15);
-                for(int i =0;i<wordcount;++i)
-                    if(*in_tag->words[i]==qsl("streaked"))
-                        streaked_btn->setChecked(true);
-                connect(streaked_btn,&QPushButton::clicked,widget,[in_tag, streaked_btn, this](bool ifchecked){
-                    // See the gradient button: an explicit s/g click is a user
-                    // edit and clears the "already merged" mark.
+                streaked_btn->setChecked(kind==HairKind::RawStreakHair);
+                connect(streaked_btn,&QPushButton::clicked,widget,[in_tag, this](bool ifchecked){
+                    // An explicit s/g click is a user edit and clears the
+                    // "already merged" mark.
                     in_tag->mergeSuppressed=false;
-                    auto* editorTag=tagWidgetFor(in_tag);
                     if(ifchecked){
-                        if(in_tag->contains(qsl("streaked")))
-                            return;                 // already there: never add a second one
-                        if(editorTag)
-                            editorTag->insertWord(-2,qsl("streaked"));
+                        if(in_tag->contains(qsl("streaks")))
+                            return;                 // already a streak tag
+                        // Danbooru wording: "[colour] streaks", not
+                        // "[colour] streaked hair".
+                        taglistwidget->tagEdit(in_tag,rawStreakText(extract_colors(in_tag)));
                         mergeNow(in_tag);
                     }else{
-                        // Remove without signalling between the steps: every
-                        // destroyWord() re-enters this control, which rebuilds the
-                        // tag's words (same defect as the clothes "hair" button).
-                        bool removed=false;
-                        for(int i=in_tag->words.size()-1;i>=0;--i)
-                            if(*in_tag->words[i]==qsl("streaked")){
-                                if(editorTag)
-                                    editorTag->destroyWord(i,false);
-                                else{
-                                    delete in_tag->words[i];
-                                    in_tag->words.erase(in_tag->words.begin()+i);
-                                }
-                                removed=true;
-                            }
-                        if(removed)
-                            in_tag->edited_with_layout();
+                        if(!in_tag->contains(qsl("streaks")))
+                            return;
+                        // Back to the plain base tag.
+                        taglistwidget->tagEdit(in_tag,
+                            extract_colors(in_tag).join(qsl(" "))+qsl(" hair"));
                     }
                     if(in_tag->retired)
                         taglistwidget->tagErase(in_tag);
                 },Qt::DirectConnection);
                 widget->insertExtraWidgets(this,streaked_btn);
-                QPushButton*gradient_btn = new QPushButton("g",widget);
-                gradient_btn->setStyleSheet(qsl(R"(font:8pt "Sonsolas")"));
-                gradient_btn->setCheckable(true);
-                gradient_btn->setFixedSize(15,15);
-                for(int i =0;i<wordcount;++i)
-                    if(*in_tag->words[i]==qsl("gradient"))
-                        gradient_btn->setChecked(true);
-                connect(gradient_btn,&QPushButton::clicked,widget,[in_tag, this, gradient_btn](bool ifchecked){
-                    in_tag->mergeSuppressed=false;
-                    auto* editorTag=tagWidgetFor(in_tag);
-                    if(ifchecked){
-                        if(in_tag->contains(qsl("gradient")))
-                            return;                 // already there: never a second one
-                        if(editorTag)
-                            editorTag->insertWord(-2,qsl("gradient"));
-                        mergeNow(in_tag);
-                    }else{
-                        // See the "streaked" button above: no signalling between the
-                        // removals, one announcement at the end.
-                        bool removed=false;
-                        for(int i=in_tag->words.size()-1;i>=0;--i)
-                            if(*in_tag->words[i]==qsl("gradient")){
-                                if(editorTag)
-                                    editorTag->destroyWord(i,false);
-                                else{
-                                    delete in_tag->words[i];
-                                    in_tag->words.erase(in_tag->words.begin()+i);
-                                }
-                                removed=true;
-                            }
-                        if(removed)
-                            in_tag->edited_with_layout();
-                    }
-                    if(in_tag->retired)
-                        taglistwidget->tagErase(in_tag);
-                },Qt::DirectConnection);
-                widget->insertExtraWidgets(this,gradient_btn);
             }
+
+            QPushButton*gradient_btn = new QPushButton("g",widget);
+            gradient_btn->setStyleSheet(qsl(R"(font:8pt "Sonsolas")"));
+            gradient_btn->setCheckable(true);
+            gradient_btn->setFixedSize(15,15);
+            for(int i =0;i<wordcount;++i)
+                if(*in_tag->words[i]==qsl("gradient"))
+                    gradient_btn->setChecked(true);
+            connect(gradient_btn,&QPushButton::clicked,widget,[in_tag, this, gradient_btn](bool ifchecked){
+                in_tag->mergeSuppressed=false;
+                auto* editorTag=tagWidgetFor(in_tag);
+                if(ifchecked){
+                    if(in_tag->contains(qsl("gradient")))
+                        return;                 // already there: never a second one
+                    if(editorTag)
+                        editorTag->insertWord(-2,qsl("gradient"));
+                    mergeNow(in_tag);
+                }else{
+                    // See the "streaked" button above: no signalling between the
+                    // removals, one announcement at the end.
+                    bool removed=false;
+                    for(int i=in_tag->words.size()-1;i>=0;--i)
+                        if(*in_tag->words[i]==qsl("gradient")){
+                            if(editorTag)
+                                editorTag->destroyWord(i,false);
+                            else{
+                                delete in_tag->words[i];
+                                in_tag->words.erase(in_tag->words.begin()+i);
+                            }
+                            removed=true;
+                        }
+                    if(removed)
+                        in_tag->edited_with_layout();
+                }
+                if(in_tag->retired)
+                    taglistwidget->tagErase(in_tag);
+            },Qt::DirectConnection);
+            widget->insertExtraWidgets(this,gradient_btn);
+        }
+
+        /// The add-tag window keeps its buttons; only the tag it writes changes
+        /// ("blue streaked hair" -> "blue streaks", see composeHairTagText()).
+        void reciveWidgetSignal(QString data,bool ifadd)override{
+            teTagListControl::reciveWidgetSignal(composeHairTagText(data),ifadd);
         }
     };
 
