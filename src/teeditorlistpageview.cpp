@@ -129,36 +129,29 @@ void teEditorListPageDelegate::updateEditorGeometry(QWidget *editor, const QStyl
 void teEditorListPageDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const {
     painter->save();
     const QString* editorNamePtr = static_cast<QString*>(index.internalPointer());
+    // Same two states as the tag list (TagDelegate): purple when it is just there,
+    // green once it is the selection. The row itself stays black in both cases -
+    // a filled green block read as a button, not as a selected row.
+    const bool selected=option.state&QStyle::State_Selected;
+    const bool hovered=option.state&QStyle::State_MouseOver;
     QColor borderColor;
-    QColor bgColor;
-    if (option.state & QStyle::State_Selected) {
-        if (option.state & QStyle::State_MouseOver) {
-            bgColor = QColor(21, 63, 34);
-            borderColor = QColor(76, 230, 56);
-        } else {
-            bgColor = QColor(16, 43, 24);
-            borderColor = QColor(61, 194, 43);
-        }
-    } else {
-        bgColor = QColor(0, 0, 0);
-        if (option.state & QStyle::State_MouseOver) {
-            borderColor = QColor(132, 207, 205);
-        } else {
-            borderColor = QColor(41, 122, 122);
-        }
+    QColor textColor;
+    if(selected){
+        borderColor=QColor(0x00,0xd9,0x6d);
+        textColor=QColor(0x00,0xd9,0x6d);
+    }else{
+        borderColor=hovered?QColor(0xc9,0xaa,0xff):QColor(0xb2,0x88,0xff);
+        textColor=QColor(Qt::white);
     }
     QRect rect = option.rect;
     painter->setPen(Qt::NoPen);
-    painter->setBrush(bgColor);
+    painter->setBrush(QColor(0,0,0));
     painter->drawRect(rect);
 
     painter->setPen(QPen(borderColor, 1));
     painter->drawRect(rect.adjusted(1, 1, -1, -1));
 
-    painter->setPen(option.state & QStyle::State_Selected
-                        ? QColor(0, 217, 109) : QColor(178, 136, 255));
-
-    painter->setPen(Qt::white);
+    painter->setPen(textColor);
     painter->setFont(QFont(appFontFamily(), 15));
     painter->drawText(rect.adjusted(3, 0, 0, 0), Qt::AlignVCenter | Qt::AlignLeft, *editorNamePtr);
     painter->restore();

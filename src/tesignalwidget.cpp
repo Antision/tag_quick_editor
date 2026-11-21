@@ -420,7 +420,7 @@ void colorsWidget::input_and_show(std::shared_ptr<teTag> in_tag){
 }
 QString liteWindowStyle = QStringLiteral(R"(
 QWidget{
-    background-color:rgb(27,27,27);
+    background-color:rgb(3,3,3);
     color:white;
     font-size:12pt;
 }
