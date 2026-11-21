@@ -4,6 +4,7 @@
 
 #include <QColorDialog>
 #include <QDir>
+#include <QEventLoop>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QHeaderView>
@@ -23,14 +24,23 @@ QVector<TagMarkOverride> SettingsDialog::overrides() const
 }
 
 SettingsDialog::SettingsDialog(const QString& seedTag,QWidget* parent)
-    :QDialog(parent),ui(new Ui::SettingsDialog)
+    :LiteWindow(parent),ui(new Ui::SettingsDialog)
 {
-    ui->setupUi(this);
-    // The main window's sheet says `QWidget{color:white}`; a dialog is a child of
-    // it, so without its own sheet this one would be white text on the light
-    // system background. The dialog's own sheet is nearer, so it wins.
+    auto* content=new QWidget(this);
+    content->setObjectName(QStringLiteral("content"));
+    ui->setupUi(content);
+    setContentWidget(content);
+    setWindowTitle(QStringLiteral("Tag Decorations"));
+    setWindowModality(Qt::ApplicationModal);
+    // The table reports a narrow sizeHint of its own; the dialog is laid out for
+    // the widths the editor fields need (the QDialog it replaced was 540x460).
+    resize(560,520);
+    // The main window's sheet says `QWidget{color:white}`; this window is a child
+    // of it, so without its own sheet the text would be white on the light system
+    // background. The window body is painted by LiteWindow, the content stays
+    // transparent on top of it.
     setStyleSheet(QStringLiteral(
-        "QDialog{background-color:rgb(27,27,27);}"
+        "QWidget#content{background:transparent;}"
         "QLabel{color:white;background:transparent;}"
         "QGroupBox{color:white;border:1px solid #4c399e;border-radius:4px;"
         "margin-top:9px;padding-top:4px;}"
@@ -96,13 +106,36 @@ SettingsDialog::SettingsDialog(const QString& seedTag,QWidget* parent)
     connect(ui->colorEdit,&QLineEdit::textChanged,this,[this]{ writeEditorToItem(); });
     connect(ui->iconEdit,&QLineEdit::textChanged,this,[this]{ writeEditorToItem(); });
     // Save only: the caller writes config.json and repaints the lists.
-    connect(ui->buttonBox,&QDialogButtonBox::accepted,this,&QDialog::accept);
-    connect(ui->buttonBox,&QDialogButtonBox::rejected,this,&QDialog::reject);
+    connect(ui->buttonBox,&QDialogButtonBox::accepted,this,[this]{
+        emit accepted();
+        close();
+    });
+    connect(ui->buttonBox,&QDialogButtonBox::rejected,this,[this]{
+        emit rejected();
+        close();
+    });
 }
 
 SettingsDialog::~SettingsDialog()
 {
     delete ui;
+}
+
+int SettingsDialog::exec()
+{
+    bool acceptedRun=false;
+    QEventLoop loop;
+    connect(this,&SettingsDialog::accepted,&loop,[&acceptedRun,&loop]{
+        acceptedRun=true;
+        loop.quit();
+    });
+    connect(this,&SettingsDialog::rejected,&loop,&QEventLoop::quit);
+    // LiteWindow closes through close(); Esc and the close glyph must end the
+    // modal run as "cancelled" instead of leaving it spinning.
+    connect(this,&LiteWindow::closed,&loop,&QEventLoop::quit);
+    show();
+    loop.exec();
+    return acceptedRun?1:0;
 }
 
 void SettingsDialog::reloadTable()

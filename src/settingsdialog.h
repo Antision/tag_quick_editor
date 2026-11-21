@@ -11,15 +11,24 @@
  * decorations.json.
  */
 
+#include "litewindow.h"
 #include "tagmarks.h"
 
-#include <QDialog>
+class QWidget;
 
 namespace Ui {
 class SettingsDialog;
 }
 
-class SettingsDialog : public QDialog
+/**
+ * @brief The decorations editor, inside the program's own window frame.
+ *
+ * It used to be a QDialog, which meant the system title bar while every other
+ * window in the program is a LiteWindow. Same shell as the rest now: the frame,
+ * the three glyph buttons and the drag/resize rules come from LiteWindow, and
+ * the dialog part (modal, accepted/rejected) is the handful of lines in exec().
+ */
+class SettingsDialog : public LiteWindow
 {
     Q_OBJECT
 public:
@@ -32,9 +41,19 @@ public:
     explicit SettingsDialog(const QString& seedTag=QString(),QWidget* parent=nullptr);
     ~SettingsDialog() override;
 
+    /**
+     * @brief Runs the window modally. 1 = accepted (the value QDialog returned),
+     * 0 = closed or cancelled.
+     */
+    int exec();
+
     /// The overrides as edited: rows without a tag, or with neither a colour nor
     /// an icon, are dropped (they would do nothing in the registry).
     QVector<TagMarkOverride> overrides() const;
+
+signals:
+    void accepted();
+    void rejected();
 
 private:
     void reloadTable();
