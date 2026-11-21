@@ -407,6 +407,7 @@ font-size:13px;
      <string>Options</string>
     </property>
     <addaction name="action_editor_setting"/>
+    <addaction name="actionTag_Decorations"/>
     <addaction name="actionNsfw_Mode"/>
     <addaction name="actionAuto_Merge_Tags"/>
     <addaction name="actionAuto_Save_State"/>
@@ -462,6 +463,11 @@ font-size:13px;
    </property>
    <property name="shortcut">
     <string>Ctrl+Y</string>
+   </property>
+  </action>
+  <action name="actionTag_Decorations">
+   <property name="text">
+    <string>Tag Decorations</string>
    </property>
   </action>
   <action name="action_editor_setting">

@@ -204,6 +204,23 @@ bool teEditorList::mergeEnabled() const
     return MergeSwitch;
 }
 
+void teEditorList::refreshDecorations()
+{
+    for(teEditor* editor:editorlist){
+        if(!editor)
+            continue;
+        for(EditorControl* control:editor->controls){
+            if(!control)
+                continue;
+            for(const std::shared_ptr<teTag>& tag:control->linked_tags){
+                refreshTagDecoration(tag);
+                if(auto* widget=control->tagWidgetFor(tag))
+                    widget->refreshStyle();
+            }
+        }
+    }
+}
+
 void teEditorList::setMergeEnabled(bool enabled)
 {
     MergeSwitch=enabled;

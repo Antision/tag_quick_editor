@@ -138,6 +138,8 @@ void editorLayoutFix(editorListLayout&layout){
     delete[] ifExist;
 }
 
+QVector<TagMarkOverride> tagDecorations;
+
 int load_config(){
     QFile f("./config.json");
     QJsonObject configObj;
@@ -174,6 +176,18 @@ int load_config(){
         QJsonArray customTagsArray = configObj.value("customTags").toArray();
         for(QJsonValue v:customTagsArray){
             custom_tags.push_back(v.toString());
+        }
+
+        // Per-tag icon/colour overrides (settings dialog).
+        tagDecorations.clear();
+        for(const QJsonValue& value:configObj.value("tagDecorations").toArray()){
+            const QJsonObject item=value.toObject();
+            TagMarkOverride override;
+            override.tag=item.value("tag").toString();
+            override.color=item.value("color").toString();
+            override.icon=item.value("icon").toString();
+            if(!override.tag.isEmpty())
+                tagDecorations.push_back(override);
         }
 
         QJsonArray mainWindowSplitterLengthArr = configObj.value("mainWindowSplitterLength").toArray();
@@ -284,6 +298,17 @@ int save_config() {
     }
     configObj.insert("editorListPages", editorlistPages);
 
+    QJsonArray tagDecorationArr;
+    for(const TagMarkOverride& item:tagDecorations){
+        QJsonObject obj;
+        obj.insert("tag",item.tag);
+        if(!item.color.isEmpty())
+            obj.insert("color",item.color);
+        if(!item.icon.isEmpty())
+            obj.insert("icon",item.icon);
+        tagDecorationArr.append(obj);
+    }
+    configObj.insert("tagDecorations", tagDecorationArr);
 
     doc.setObject(configObj);
     QFile f("./config.json");

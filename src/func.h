@@ -9,6 +9,11 @@ extern QRect mainwindowGeometry;
 
 // 字体注册随 S5 搬进 common/ui/fonts.*,两程序共用。
 #include "fonts.h"
+#include "tagmarks.h"   // TagMarkOverride:用户自定义的图标/染色
+
+/// Per-tag icon/colour overrides, edited by the settings dialog and stored in
+/// config.json ("tagDecorations"). Applied by TagMarkRegistry after its rules.
+extern QVector<TagMarkOverride> tagDecorations;
 
 /**
  * @brief setStyleSheet() only when the sheet really changes.

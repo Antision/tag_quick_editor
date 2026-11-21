@@ -55,7 +55,22 @@ void EditorControl::link(std::shared_ptr<teTag>in_tag){
     in_tag->teConnect(teCallbackType::edit,this,&EditorControl::re_read,in_tag);
     in_tag->teConnect(teCallbackType::edit_with_layout,this,&EditorControl::re_read,in_tag);
     linked_tags.insert(in_tag);
+    applyMarks();               // MARK-02 A: the claim carries the look
     refreshState();
+}
+
+void EditorControl::applyMarks(){
+    if(mark.isEmpty())
+        return;
+    const QString owner=controlId();
+    if(owner.isEmpty())
+        return;                 // a control without a name owns no mark
+    markOwner=owner;
+    // No local copy: setMark() on an unchanged value is a no-op (see teTag), so
+    // re-linking a tag does not send it through every control again.
+    for(const std::shared_ptr<teTag>& tag:linked_tags)
+        if(tag)
+            tag->setMark(owner,mark);
 }
 
 QString EditorControl::controlId() const{
@@ -81,7 +96,11 @@ void EditorControl::unlink(std::shared_ptr<teTag>in_tag){
 void EditorControl::dropClaim(std::shared_ptr<teTag>in_tag,std::set<std::shared_ptr<teTag>>&tags){
     if(!in_tag)
         return;
+    // Disconnect first: clearing the mark announces an edit, and this control
+    // must not hear its own farewell (a re_read here would re-link the tag).
     in_tag->teDisconnect(this);
+    if(!markOwner.isEmpty())
+        in_tag->clearMark(markOwner);
     tags.erase(in_tag);
     if(ifrefreshState)
         refreshState();
@@ -125,7 +144,15 @@ void EditorControl::markMerged(teTag& survivor,teTag& absorbed){
 }
 
 void EditorControl::clearLinks(){
-    dropAll(linked_tags,this);
+    // Same order as dropClaim(), per tag: the mark goes with the claim, and the
+    // tag is held by a local shared_ptr while both happen.
+    while(!linked_tags.empty()){
+        std::shared_ptr<teTag> tag=*linked_tags.begin();
+        linked_tags.erase(linked_tags.begin());
+        tag->teDisconnect(this);
+        if(!markOwner.isEmpty())
+            tag->clearMark(markOwner);
+    }
 }
 
 teTagButtonGroup::teTagButtonGroup(const QVector<in_item>& in_buttons, QWidget *parent, QString *styleSheet_button, QString *styleSheet_label)

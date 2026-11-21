@@ -4,6 +4,7 @@
 #include "picturefilecaptionsource.h"
 #include "tagviewhost.h"
 #include "decorationeditorpage.h"
+#include "settingsdialog.h"
 #include "teselectiontaglist.h"
 #include "tepicturelistview.h"
 #include "ui_mainwindow.h"
@@ -194,6 +195,20 @@ MainWindow::MainWindow(QWidget *parent)
     editorlistlayoutwidget = new EditorListLayoutWidget(&editorlistlayout);
     connect(ui->action_editor_setting,&QAction::triggered,this,[this]{
         editorlistlayoutwidget->load();
+    });
+    connect(ui->actionTag_Decorations,&QAction::triggered,this,[this]{
+        // The row the user was looking at is offered as the tag to decorate: the
+        // usual reason to open this dialog is "this tag needs an icon".
+        const std::shared_ptr<teTag> current=ui->taglist->currentCore();
+        SettingsDialog dialog(current?static_cast<QString>(*current):QString(),this);
+        if(dialog.exec()!=QDialog::Accepted)
+            return;
+        tagDecorations=dialog.overrides();
+        TagMarkRegistry::instance().setOverrides(tagDecorations);
+        save_config();
+        // Re-resolve every shown row. The editors' own widgets follow through the
+        // editor host: TagListView::refreshDecorations() calls it for them.
+        ui->taglist->refreshDecorations();
     });
     connect(ui->actionAbout_Qt,&QAction::triggered,this,[this]{
         // 不用 QMessageBox::aboutQt():它是静态的,套不上单独的样式,而主窗口的

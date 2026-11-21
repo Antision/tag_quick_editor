@@ -37,6 +37,9 @@ int main(int argc, char *argv[])
     QLoggingCategory::setFilterRules(QStringLiteral("qt.gui.imageio=false"));
     setSuggestionSource(&g_tagSuggestions);
     load_config();
+    // config.json is the user's last word on tag icons/colours; the registry only
+    // applies them, so it has to know them before the first tag is read.
+    TagMarkRegistry::instance().setOverrides(tagDecorations);
     // Heap, not stack: the window has to be destroyed *before* the pool is drained
     // (its destructor is what cancels the queued thumbnail decodes), but only once
     // no worker is touching it any more. See the shutdown block below.

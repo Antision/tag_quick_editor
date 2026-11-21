@@ -40,6 +40,7 @@ SOURCES += \
     src/suggestionsource.cpp \
     src/tagviewhost.cpp \
     src/decorationeditorpage.cpp \
+    src/settingsdialog.cpp \
     src/decorationcontrol.cpp \
     src/teeditor.cpp \
     src/teeditor_derive.cpp \
@@ -71,6 +72,7 @@ HEADERS += \
     src/suggestionsource.h \
     src/tagviewhost.h \
     src/decorationeditorpage.h \
+    src/settingsdialog.h \
     src/decorationcontrol.h \
     src/teeditor.h \
     src/teeditor_derive.h \
@@ -98,7 +100,8 @@ HEADERS += \
     src/windows_frame.h
 
 FORMS += \
-    src/mainwindow.ui
+    src/mainwindow.ui \
+    src/settingsdialog.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

@@ -157,12 +157,28 @@ public:
     /**
      * @brief Extension point: repaint the marks this control puts on its tags.
      *
-     * Nothing marks anything yet, so nothing calls it: a control claims tags
-     * today and the marks arrive with the mark registry (S6), which is also what
-     * decides when a claim change is worth a repaint. It exists now so the
-     * controls have one agreed place for it instead of each growing its own.
+     * MARK-02 A: a control that gives its tags a look declares the mark here
+     * (`mark` = a colour name, an emoji or a PNG path) and the base class stamps
+     * it on every linked tag as `tag->setMark(controlId(), mark)`. The delegate
+     * then draws it through TagMarkRegistry::resolve(), exactly like the marks
+     * the annotation rules produce.
+     *
+     * The mark lives as long as the claim does: unlink()/clearLinks() drop it,
+     * which is what makes "unticking the box removes what ticking it wrote" hold
+     * for the look as well. Called from link() and after a claim is dropped.
+     * An empty `mark` means "this control paints nothing" and costs one branch.
      */
-    virtual void applyMarks(){}
+    virtual void applyMarks();
+    /// The mark this control stamps on its linked tags; empty means none.
+    QString mark;
+    /**
+     * @brief The owner id the current marks were written with.
+     *
+     * Remembered instead of asking controlId() again: clear() runs from
+     * destructors, where a virtual call would no longer reach the subclass, and
+     * a mark has to be dropped under the same key it was set with.
+     */
+    QString markOwner;
     virtual ~EditorControl(){}
 };
 

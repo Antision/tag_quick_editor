@@ -67,6 +67,9 @@ public:
     /// global MergeSwitch the editor controls already consult.
     bool mergeEnabled() const override;
     void setMergeEnabled(bool enabled) override;
+    /// TagEditorHost: the decoration rules/overrides changed - rebuild every
+    /// linked tag and re-style the widget that shows it.
+    void refreshDecorations() override;
     void onNewTaglistLoaded();
     void readList(teTagList*input_taglist);
     void unloadList();
