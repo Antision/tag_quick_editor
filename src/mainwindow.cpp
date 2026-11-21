@@ -201,7 +201,7 @@ MainWindow::MainWindow(QWidget *parent)
         // usual reason to open this dialog is "this tag needs an icon".
         const std::shared_ptr<teTag> current=ui->taglist->currentCore();
         SettingsDialog dialog(current?static_cast<QString>(*current):QString(),this);
-        if(dialog.exec()!=QDialog::Accepted)
+        if(dialog.exec()!=1)
             return;
         tagDecorations=dialog.overrides();
         TagMarkRegistry::instance().setOverrides(tagDecorations);
@@ -427,6 +427,14 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->actionNsfw_Mode, &QAction::toggled, this, &MainWindow::onNsfwModeToggled);
     applyNsfwMode(nsfwMode > 0, false);
 
+    // Off for a new user: the popup is then only a preview for a sentence or a
+    // tag the row has to elide (the green word frame covers the rest).
+    extern bool tagEditPopupAlways;
+    ui->actionTag_Edit_Popup->setChecked(tagEditPopupAlways);
+    connect(ui->actionTag_Edit_Popup, &QAction::toggled, this, &MainWindow::onTagEditPopupToggled);
+    for(TagListView* view: findChildren<TagListView*>())
+        view->setEditPopupAlways(tagEditPopupAlways);
+
     ui->editorlist->connectTaglistWidget(ui->taglist);
     // The pool gets the view as its parking parent (the view is the widget; the
     // controller is a plain QObject now). It no longer needs a layout: pooled
@@ -473,6 +481,15 @@ void MainWindow::applyNsfwMode(bool on, bool rebuildLayout)
 void MainWindow::onNsfwModeToggled(bool on)
 {
     applyNsfwMode(on, true);
+}
+
+void MainWindow::onTagEditPopupToggled(bool on)
+{
+    extern bool tagEditPopupAlways;
+    tagEditPopupAlways=on;
+    for(TagListView* view: findChildren<TagListView*>())
+        view->setEditPopupAlways(on);
+    save_config();
 }
 
 // 窗口没有真正的非矩形形状(无 mask),menubar 的 border-radius 只作用于

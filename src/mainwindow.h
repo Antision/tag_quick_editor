@@ -157,6 +157,9 @@ public slots:
     void dialog_LoadPath(bool clear=true);
     /// Options -> NSFW Mode: 开关 nsfw 编辑器并把它排到(或移出)第二栏
     void onNsfwModeToggled(bool on);
+    /// Options -> "Tag Edit Popup": the right-hand popup follows every row, or
+    /// only previews a selected sentence / over-long tag (see TagListView).
+    void onTagEditPopupToggled(bool on);
     /// Applies the pending picture-list selection (debounced).
     void applyPendingSelection();
     /// Runs autoSaveSec after the last change; safely on the GUI thread.

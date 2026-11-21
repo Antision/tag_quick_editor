@@ -139,6 +139,7 @@ void editorLayoutFix(editorListLayout&layout){
 }
 
 QVector<TagMarkOverride> tagDecorations;
+bool tagEditPopupAlways=false;
 
 int load_config(){
     QFile f("./config.json");
@@ -172,6 +173,9 @@ int load_config(){
         QJsonValue autoSaveSecV = configObj.value("autoSaveSecs");
         if(autoSaveSecV.isDouble())
             autoSaveSec = autoSaveSecV.toInt();
+
+        if(configObj.contains("tagEditPopup"))
+            tagEditPopupAlways = configObj.value("tagEditPopup").toBool();
 
         QJsonArray customTagsArray = configObj.value("customTags").toArray();
         for(QJsonValue v:customTagsArray){
@@ -265,6 +269,7 @@ int save_config() {
         }
     configObj.insert("customTags", customTags);
     configObj.insert("nsfwMode", nsfwMode);
+    configObj.insert("tagEditPopup", tagEditPopupAlways);
     // The splitter sizes and the geometry can only be read while the window exists.
     // A save that runs after it was destroyed used to dereference freed memory and
     // took the process down with an unhandled win32 exception on exit.

@@ -408,6 +408,7 @@ font-size:13px;
     </property>
     <addaction name="action_editor_setting"/>
     <addaction name="actionTag_Decorations"/>
+    <addaction name="actionTag_Edit_Popup"/>
     <addaction name="actionNsfw_Mode"/>
     <addaction name="actionAuto_Merge_Tags"/>
     <addaction name="actionAuto_Save_State"/>
@@ -478,6 +479,14 @@ font-size:13px;
   <action name="action_filt">
    <property name="text">
     <string>Filter</string>
+   </property>
+  </action>
+  <action name="actionTag_Edit_Popup">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Tag Edit Popup</string>
    </property>
   </action>
   <action name="actionNsfw_Mode">

@@ -16,6 +16,16 @@ extern QRect mainwindowGeometry;
 extern QVector<TagMarkOverride> tagDecorations;
 
 /**
+ * @brief Whether the right-hand tag edit popup follows the pointer for every tag.
+ *
+ * Off by default. Off means the popup is a preview for what the row cannot show
+ * (a sentence tag or a tag whose text is elided), and only while the pointer is
+ * over the *selected* one; on means the old behaviour - it opens on a click and
+ * follows the pointer across every row. Stored in config.json as "tagEditPopup".
+ */
+extern bool tagEditPopupAlways;
+
+/**
  * @brief setStyleSheet() only when the sheet really changes.
  *
  * Qt re-parses a stylesheet on every call, which costs on the order of a
