@@ -1,5 +1,10 @@
 #include "tesignalwidget.h"
 
+#include "mainwindow.h"     // editTagDecorations(): the one decorations entry point
+
+#include <QFileInfo>
+#include <QIcon>
+
 // 一组互斥按钮里只留一个勾选;colorsWidget 的构造函数里的 lambda 要用,
 // 所以先声明(定义在文件后半段)。
 static void buttons_mutual_exclusion(QAbstractButton* btn, bool checked, QButtonGroup* btn_gop);
@@ -711,6 +716,7 @@ QVariant teFilteredPictureModel::data(const QModelIndex &index, int role) const 
     return QVariant();
 }
 
+
 FilterTagWidget::FilterTagWidget(QWidget* parent) : QWidget(parent) {
     m_layout = new QFlowLayout(this);
     m_layout->setContentsMargins(2, 2, 2, 2);
@@ -722,27 +728,94 @@ QStringList FilterTagWidget::tagTexts() const {
     QStringList texts;
     for (int i = 0; i < m_layout->count(); ++i) {
         if (auto* button = qobject_cast<QPushButton*>(m_layout->itemAt(i)->widget()))
-            texts << button->text();
+            texts << chipTag(button);
     }
     return texts;
+}
+
+QString FilterTagWidget::chipTag(const QPushButton* button)
+{
+    if(!button)
+        return QString();
+    // The chip's label may carry an icon; the tag is what it was created with.
+    const QVariant stored=button->property("tagText");
+    return stored.isValid()?stored.toString():button->text();
+}
+
+void FilterTagWidget::relabel(QPushButton* button)
+{
+    if(!button)
+        return;
+    const QString tag=chipTag(button);
+    const QString icon=m_iconProvider?m_iconProvider(tag).trimmed():QString();
+    if(icon.isEmpty()){
+        button->setIcon(QIcon());
+        button->setText(tag);
+        return;
+    }
+    // A file name (PNG/ICO under data/icons, or an absolute path) becomes the
+    // button's icon; anything else is an emoji/character and goes into the text.
+    TagIconSpec spec;
+    spec.value=icon;
+    if(spec.isImage()){
+        const QString path=QFileInfo(icon).isAbsolute()
+                               ?icon
+                               :QCoreApplication::applicationDirPath()
+                                    +QStringLiteral("/data/icons/")+icon;
+        const QIcon image(path);
+        if(!image.isNull()){
+            button->setIcon(image);
+            button->setIconSize(QSize(16,16));
+            button->setText(tag);
+            return;
+        }
+    }
+    button->setIcon(QIcon());
+    button->setText(icon+QStringLiteral(" ")+tag);
+}
+
+void FilterTagWidget::setIconProvider(std::function<QString(const QString&)> provider)
+{
+    m_iconProvider=std::move(provider);
+    refreshIcons();
+}
+
+void FilterTagWidget::refreshIcons()
+{
+    for(QPushButton* button:tagItems)
+        relabel(button);
 }
 
 void FilterTagWidget::addTag(const QString &text) {
     const QString trimmed = text.trimmed();
     if (trimmed.isEmpty())
         return;
-    QPushButton* tagItem = new QPushButton(trimmed, this);
+    QPushButton* tagItem = new QPushButton(this);
+    tagItem->setProperty("tagText",trimmed);
     extern QString tagItemStyle;
     tagItem->setStyleSheet(tagItemStyle);
+    relabel(tagItem);
     // A plain click removes the chip; a drag reorders it. The reorderer eats the
     // release event of a drag, so `clicked` is only emitted for real clicks.
     connect(tagItem, &QPushButton::clicked, this, [this, tagItem]{
-        emit tagEdit(tagItem->text());
+        emit tagEdit(chipTag(tagItem));
         tagItems.removeAll(tagItem);
         m_layout->removeWidget(tagItem);
         tagItem->deleteLater();
         emit orderChanged();
     },Qt::DirectConnection);
+    if(m_iconEditing){
+        // Right-click edits the icon instead of removing the chip. The menu is
+        // only installed here: the filter rules share this widget and have no
+        // icons to offer.
+        tagItem->setContextMenuPolicy(Qt::CustomContextMenu);
+        connect(tagItem,&QWidget::customContextMenuRequested,this,[this,tagItem](const QPoint& pos){
+            QMenu menu;
+            QAction* editAction=menu.addAction(QStringLiteral("Set Icon..."));
+            if(menu.exec(tagItem->mapToGlobal(pos))==editAction)
+                emit iconEditRequested(chipTag(tagItem));
+        });
+    }
     tagItems.push_back(tagItem);
     if(lineedit)
         m_layout->insertWidget(-1,tagItem);
@@ -948,7 +1021,28 @@ void customControlWidget::initializeUI() {
     mainLayout->addLayout(buttonLayout);
 }
 
+void customControlWidget::showEvent(QShowEvent* event)
+{
+    LiteWidget2::showEvent(event);
+    tagWidget->refreshIcons();
+}
+
 void customControlWidget::connectSignals() {
+    // MARK-09: chips in this window show the tag's decoration icon and offer to
+    // edit it. The icon is *not* stored here any more: the decorations dialog is
+    // the only place a tag's look is set, and this window just asks the registry
+    // what that tag looks like right now.
+    tagWidget->setIconEditingEnabled(true);
+    tagWidget->setIconProvider([](const QString& tag){
+        const TagVisual visual=TagMarkRegistry::instance().decorate(teTag(tag));
+        return visual.icons.isEmpty()?QString():visual.icons.first().value;
+    });
+    connect(tagWidget,&FilterTagWidget::iconEditRequested,this,[this](const QString& tag){
+        // Opens the decorations dialog on that tag; the dialog does the writing.
+        if(editTagDecorations(this,tag))
+            tagWidget->refreshIcons();
+    });
+
     connect(lineEdit, &QLineEdit::returnPressed,this, [this]{
         tagWidget->addTag(lineEdit->text());
         lineEdit->clear();

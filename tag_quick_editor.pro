@@ -26,7 +26,10 @@ RC_ICONS = res/icon.ico
 # 公用代码库(与 gallery_info 共用,独立仓库,git submodule -> ../common)
 include($$PWD/common/common.pri)
 SOURCES += \
+    src/colorpicker.cpp \
+    src/connectivityoverlay.cpp \
     src/ctag.cpp \
+    src/linkgeometry.cpp \
     src/func.cpp \
     src/main.cpp \
     src/mainwindow.cpp \
@@ -59,7 +62,10 @@ SOURCES += \
     src/widget_pool.cpp
 
 HEADERS += \
+    src/colorpicker.h \
+    src/connectivityoverlay.h \
     src/ctag.h \
+    src/linkgeometry.h \
     src/func.h \
     src/mainwindow.h \
     src/pch.h \

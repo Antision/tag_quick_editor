@@ -146,16 +146,42 @@ public:
         }
     }
     /// The chip texts in *visual* order, i.e. including any drag reordering.
+    /// Always the tag text without the icon (MARK-09 keeps the two apart).
     QStringList tagTexts() const;
+    /**
+     * @brief MARK-09: chips show an icon in front of the tag and offer to edit it.
+     *
+     * Off by default - the filter rules use the same widget and have no icons.
+     * The tag text itself is never touched: the chip keeps it in a property, so
+     * `tagTexts()` stays the string the editors build controls from.
+     */
+    void setIconEditingEnabled(bool on){ m_iconEditing=on; }
+    /// Where a tag's icon comes from (the decoration registry). Empty = no icon.
+    void setIconProvider(std::function<QString(const QString&)> provider);
+    /// Relabels every chip - the decorations changed.
+    void refreshIcons();
 signals:
     void tagRemoved(QPushButton*);
     void tagEdit(QString);
     /// The user dragged a chip to another position.
     void orderChanged();
+    /**
+     * @brief The user asked to edit `tag`'s look.
+     *
+     * The chip does not edit anything itself any more: the decorations dialog is
+     * the one place a tag's colour/icon is set, and the host opens it.
+     */
+    void iconEditRequested(QString tag);
 private:
+    /// Tag text of a chip, icon excluded.
+    static QString chipTag(const QPushButton* button);
+    /// Writes icon + tag into the chip's label.
+    void relabel(QPushButton* button);
     QFlowLayout* m_layout;
     QFlowLayoutReorderer* m_reorderer=nullptr;
     QLineEdit* lineedit = nullptr;
+    std::function<QString(const QString&)> m_iconProvider;
+    bool m_iconEditing=false;
 };
 class filterWidget : public LiteWindow {
     Q_OBJECT
@@ -216,6 +242,10 @@ public:
     QPushButton* OK_Btn = nullptr;
     QPushButton* Bin_Btn = nullptr;
     QHBoxLayout*buttonLayout = new QHBoxLayout;
+protected:
+    /// The decorations can be edited while this window is closed (the decoration
+    /// page's title opens the same dialog), so the chips are relabelled on entry.
+    void showEvent(QShowEvent* event) override;
 private:
     void initializeUI();
     void connectSignals();

@@ -5,6 +5,7 @@
 #include "tagviewhost.h"
 #include "decorationeditorpage.h"
 #include "settingsdialog.h"
+#include "connectivityoverlay.h"
 #include "teselectiontaglist.h"
 #include "tepicturelistview.h"
 #include "ui_mainwindow.h"
@@ -81,6 +82,22 @@ void applyAboutQtStyle(QMessageBox& box)
         "background:transparent;padding:4px 18px;border-radius:3px;}"
         "QMessageBox QPushButton:hover{border-color:#a858f2;"
         "background:rgba(177,100,255,60);}"));
+}
+
+bool editTagDecorations(QWidget* parent,const QString& seedTag)
+{
+    SettingsDialog dialog(seedTag,parent);
+    if(dialog.exec()!=1)
+        return false;
+    tagDecorations=dialog.overrides();
+    applyTagDecorations();
+    save_config();
+    // Re-resolve every shown row. The editors' own widgets follow through the
+    // editor host: TagListView::refreshDecorations() calls it for them.
+    if(auto* window=dynamic_cast<MainWindow*>(global_window))
+        if(window->ui&&window->ui->taglist)
+            window->ui->taglist->refreshDecorations();
+    return true;
 }
 
 MainWindow::MainWindow(QWidget *parent)
@@ -200,15 +217,7 @@ MainWindow::MainWindow(QWidget *parent)
         // The row the user was looking at is offered as the tag to decorate: the
         // usual reason to open this dialog is "this tag needs an icon".
         const std::shared_ptr<teTag> current=ui->taglist->currentCore();
-        SettingsDialog dialog(current?static_cast<QString>(*current):QString(),this);
-        if(dialog.exec()!=1)
-            return;
-        tagDecorations=dialog.overrides();
-        TagMarkRegistry::instance().setOverrides(tagDecorations);
-        save_config();
-        // Re-resolve every shown row. The editors' own widgets follow through the
-        // editor host: TagListView::refreshDecorations() calls it for them.
-        ui->taglist->refreshDecorations();
+        editTagDecorations(this,current?static_cast<QString>(*current):QString());
     });
     connect(ui->actionAbout_Qt,&QAction::triggered,this,[this]{
         // 不用 QMessageBox::aboutQt():它是静态的,套不上单独的样式,而主窗口的
@@ -417,9 +426,6 @@ MainWindow::MainWindow(QWidget *parent)
     };
     extern int nsfwMode;
     ui->editorlist->loadEditors(allEditors,&editorlistlayout);
-    for(teEditor* editor:ui->editorlist->editorlist)
-        if(auto* decorations=dynamic_cast<DecorationEditorPage*>(editor))
-            decorations->setEditorList(ui->editorlist);
 
     // NSFW 编辑器始终构造出来,开关只决定它是否参与分栏与显示;
     // 这样切换时不用重建整个 editorlist(也就不会丢掉控件状态)
@@ -441,6 +447,16 @@ MainWindow::MainWindow(QWidget *parent)
     // widgets are parked on the parent until they are shown again.
     widgetpool.initialize(ui->taglist,nullptr);
     widgetpool_ref.initialize(ui->taglist,ui->editorlist->layout);
+
+    // The capture lines (S7). Built last on purpose: it overlays the splitter and
+    // has to be the topmost sibling; it resolves the columns and the tag rows at
+    // paint time, so it does not care when pages are rebuilt afterwards.
+    connectivityOverlay = new ConnectivityOverlay(this,ui->taglist,ui->editorlist);
+    // Things the overlay cannot see from the widgets it watches: a tab switch
+    // changes which list is visible, and a layout edit rebuilds the columns.
+    connect(ui->tagListTabWidget,&QTabWidget::currentChanged,connectivityOverlay,&ConnectivityOverlay::schedule);
+    connect(editorlistlayoutwidget,&EditorListLayoutWidget::pagesChanged,connectivityOverlay,&ConnectivityOverlay::schedule);
+    connect(editorlistlayoutwidget,&EditorListLayoutWidget::cancelSignal,connectivityOverlay,&ConnectivityOverlay::schedule);
 
     ui->actionAuto_Merge_Tags->setChecked(autoMerge);
 
@@ -805,6 +821,11 @@ MainWindow::~MainWindow()
     teSetLogTarget({});
 
     save_config();
+    // The overlay watches the splitter and the page columns: it has to go before
+    // the ui does, or its timer and its application wide filter would reach freed
+    // widgets.
+    delete connectivityOverlay;
+    connectivityOverlay = nullptr;
     delete filterWindow;
     delete imageWidget;
     delete logWindow;

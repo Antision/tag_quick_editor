@@ -1,8 +1,8 @@
 #include "settingsdialog.h"
 #include "ui_settingsdialog.h"
+#include "colorpicker.h"
 #include "func.h"
 
-#include <QColorDialog>
 #include <QDir>
 #include <QEventLoop>
 #include <QFileDialog>
@@ -57,7 +57,11 @@ SettingsDialog::SettingsDialog(const QString& seedTag,QWidget* parent)
         "QPushButton{color:white;border:1px solid #4c399e;background:transparent;"
         "padding:4px 14px;border-radius:3px;}"
         "QPushButton:hover{background:rgba(177,100,255,60);}"
-        "QPushButton:disabled{color:#777;border-color:#555;}"));
+        "QPushButton:disabled{color:#777;border-color:#555;}"
+        // The + and - buttons are 32px wide: the 14px horizontal padding above
+        // left 2px for the glyph, which clipped the "+" down to its vertical
+        // stroke. They get the whole button instead.
+        "QPushButton#addButton,QPushButton#removeButton{padding:0px;font-size:15pt;}"));
     ui->table->horizontalHeader()->setSectionResizeMode(0,QHeaderView::Stretch);
     ui->table->horizontalHeader()->setSectionResizeMode(1,QHeaderView::ResizeToContents);
     ui->table->horizontalHeader()->setSectionResizeMode(2,QHeaderView::ResizeToContents);
@@ -233,13 +237,13 @@ void SettingsDialog::removeItem()
 
 void SettingsDialog::pickColor()
 {
-    QColor initial(ui->colorEdit->text().trimmed());
-    if(!initial.isValid())
-        initial=Qt::white;
-    const QColor color=QColorDialog::getColor(initial,this,QStringLiteral("Tag colour"));
-    if(!color.isValid())
+    // Qt's own colour dialog, framed by a LiteWindow: on its own it is a light
+    // window whose labels inherit this dialog's `color:white` rule (white on
+    // white), and the native Windows one ignores every stylesheet.
+    QString text=ui->colorEdit->text().trimmed();
+    if(!ColorPickerWindow::pick(&text,this))
         return;
-    ui->colorEdit->setText(color.name());
+    ui->colorEdit->setText(text);
 }
 
 void SettingsDialog::pickIcon()

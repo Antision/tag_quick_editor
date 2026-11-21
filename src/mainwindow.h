@@ -41,12 +41,26 @@ class QMessageBox;
  */
 void applyAboutQtStyle(QMessageBox& box);
 
+/**
+ * @brief Opens the tag decorations dialog, applies the result and saves it.
+ *
+ * The one entry point for "this tag needs a look": the Options menu, the
+ * decoration page's title and the custom tag window's chip menu all come here.
+ * The dialog only edits the list; the registry, config.json and every shown row
+ * are updated here, because only the window knows them.
+ *
+ * @param seedTag tag to pre-select (empty = just open the list).
+ * @return true when the user pressed Save.
+ */
+bool editTagDecorations(QWidget* parent,const QString& seedTag);
+
 class tePictureFileModel;
 class PictureFileCaptionSource;
 class WindowGlyphButton;
 class teSelectionTagListView;
 class teSelectionTagModel;
 class LogWidget;
+class ConnectivityOverlay;
 
 /// Outcome of teResolveDuplicateStems().
 struct teDuplicateStemReport{
@@ -98,6 +112,8 @@ public:
     filterWidget*filterWindow=nullptr;
     EditorListLayoutWidget* editorlistlayoutwidget;
     LogWidget* logWindow=nullptr;
+    /// The capture lines over the splitter area (S7); owned by this window.
+    ConnectivityOverlay* connectivityOverlay=nullptr;
     QTimer* autoSaveTimer=nullptr;
     /// Coalesces picture list selection changes into one tag list reload.
     QTimer* selectionTimer=nullptr;

@@ -1,30 +1,14 @@
 #include "decorationcontrol.h"
-#include "teeditorlist.h"
 #include "tagmarks.h"
-
-bool DecorationControl::handledElsewhere(const std::shared_ptr<teTag>& tag) const
-{
-    if(!editorList||!tag)
-        return false;
-    for(teEditor* editor:editorList->editorlist){
-        if(!editor)
-            continue;
-        for(EditorControl* control:editor->controls){
-            if(!control||control==this)
-                continue;
-            if(control->linked_tags.find(tag)!=control->linked_tags.end())
-                return true;
-        }
-    }
-    return false;
-}
 
 bool DecorationControl::filter(std::shared_ptr<teTag> tag) const
 {
     if(!tag||tag->retired)
         return false;
-    if(handledElsewhere(tag))
-        return false;
+    // Whether another control claimed the tag does not matter: every editor sees
+    // every tag (that is the whole design), and the decoration is a function of
+    // the text. Asking the other controls made the result depend on which of them
+    // ran first.
     return !TagMarkRegistry::instance().decorate(*tag).isEmpty();
 }
 

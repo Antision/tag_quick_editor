@@ -16,6 +16,15 @@ extern QRect mainwindowGeometry;
 extern QVector<TagMarkOverride> tagDecorations;
 
 /**
+ * @brief Pushes the per-tag overrides into the decoration registry.
+ *
+ * config.json is the user's last word on a tag's look; the registry only applies
+ * it. Call after the overrides changed, then refresh the views - the registry has
+ * no way to announce a change.
+ */
+void applyTagDecorations();
+
+/**
  * @brief Whether the right-hand tag edit popup follows the pointer for every tag.
  *
  * Off by default. Off means the popup is a preview for what the row cannot show

@@ -141,6 +141,14 @@ void editorLayoutFix(editorListLayout&layout){
 QVector<TagMarkOverride> tagDecorations;
 bool tagEditPopupAlways=false;
 
+void applyTagDecorations(){
+    // One source, one place: the decorations dialog writes `tagDecorations` and
+    // the registry applies it. Everything that displays a tag's look reads the
+    // registry, so nothing else may keep a second copy of "this tag has an icon".
+    TagMarkRegistry::instance().setOverrides(tagDecorations);
+}
+
+
 int load_config(){
     QFile f("./config.json");
     QJsonObject configObj;

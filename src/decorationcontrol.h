@@ -3,15 +3,18 @@
 
 #include "teeditorcontrol.h"
 
-class teEditorList;
-
 /**
  * @brief The invisible control of the decoration page.
  *
- * It owns the `decorations.json` rules: for every tag no other editor control
- * claimed, it resolves the visual and stores it on the tag (teTag::decoration).
- * The delegate and the reftaglist QSS only read that stored value, so removing
- * this page/control removes the decoration - there is no paint-time fallback.
+ * It owns the `decorations.json` rules: for every tag the rules can decorate it
+ * resolves the visual and stores it on the tag (teTag::decoration). The delegate
+ * and the reftaglist QSS only read that stored value, so removing this
+ * page/control removes the decoration - there is no paint-time fallback.
+ *
+ * Every editor sees every tag: a tag another control has already claimed is
+ * decorated here as well. The decoration is a display value computed from the
+ * text, not a thing one control "owns", so the old "only the tags nobody else
+ * wanted" rule made the result depend on which control happened to run first.
  *
  * It has no widget. `teEditor_standard::addRowTo()` skips non-widget controls,
  * which is exactly what MARK-07 asks for: the page exists in the layout but
@@ -20,10 +23,6 @@ class teEditorList;
 class DecorationControl : public EditorControl
 {
 public:
-    /// The list is needed to ask the other controls whether they claimed a tag.
-    /// Set by DecorationEditorPage once teEditorList has loaded its editors.
-    teEditorList* editorList=nullptr;
-
     bool filter(std::shared_ptr<teTag> tag) const override;
     TagHandling read(std::shared_ptr<teTag> tag) override;
     TagHandling re_read(std::shared_ptr<teTag> tag) override;
@@ -31,7 +30,6 @@ public:
     void clear() override;
 
 private:
-    bool handledElsewhere(const std::shared_ptr<teTag>& tag) const;
     void applyDecoration(const std::shared_ptr<teTag>& tag) const;
     void clearDecoration(const std::shared_ptr<teTag>& tag) const;
 };

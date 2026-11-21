@@ -41,6 +41,10 @@ teEditorList::~teEditorList()
             if(page->widget())
                 page->widget()->removeEventFilter(this);
         }
+        // The page list lives in the layout struct, which outlives this widget.
+        // Left alone it would hand a dangling QScrollArea* to whoever builds the
+        // next window (the regression check builds several).
+        editorLayout->pages.clear();
     }
     for(teEditor* editor:editorlist)
         delete editor;
@@ -49,6 +53,11 @@ teEditorList::~teEditorList()
 
 void teEditorList::loadEditors(const QVector<teEditor*>& input_vector_ptr,editorListLayout*in_listpage){
     editorLayout = in_listpage;
+    // The pages belong to *this* editor list (they are children of pageSplitter).
+    // Anything still in the struct is left over from a previous window and its
+    // widgets are gone; appending to it would hand a dangling pointer to every
+    // reader of the page list.
+    editorLayout->pages.clear();
     setContentsMargins(0,0,0,0);
     int pagecount = editorLayout->editors.size();
     if(pagecount==0)
