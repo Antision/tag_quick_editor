@@ -17,20 +17,32 @@ enum class HairKind { None, BaseHair, StreakHair, GradientHair, RawStreakHair, R
  */
 inline HairKind classifyHairTag(const teTag& tag)
 {
-    if(is_color(tag).second==0||
-       (!(tag.contains(qsl("hair"))||tag.contains(qsl("eyes"))||tag.contains(qsl("gradient"))
-          ||tag.contains(qsl("streaks"))||tag.words.size()<3)))
+    if(is_color(tag).second==0||tag.words.isEmpty())
         return HairKind::None;
+    // Every form has to name what it colours. `gradient` used to be enough on its
+    // own, so a garment tag with a multi-colour pattern ("white to blue gradient
+    // gloves") was classified - and then captured - as hair. The new wording
+    // always carries the word it belongs to ("<c1> to <c2> gradient hair"), and
+    // the old one carried it too ("hair gradient from ..."), so requiring it costs
+    // nothing and stops the clothes palette from feeding this editor.
+    const bool hairOrEyes = tag.contains(qsl("hair"))||tag.contains(qsl("eyes"));
     if(tag.contains(qsl("with")))
-        return HairKind::StreakHair;
-    if(tag.contains(qsl("from")))
-        return HairKind::GradientHair;
+        return hairOrEyes ? HairKind::StreakHair : HairKind::None;
+    // "gradient" is a noun ("a white-to-blue gradient"): the merged form is
+    // "white to blue gradient hair". "from" is still recognised so tags written
+    // by the old wording ("hair gradient from white to blue") stay editable.
+    if(tag.contains(qsl("gradient"))&&(tag.contains(qsl("to"))||tag.contains(qsl("from"))))
+        return hairOrEyes ? HairKind::GradientHair : HairKind::None;
     // Danbooru's raw streak tag is "[colour] streaks" - no "hair", no "streaked".
-    if(!tag.words.empty()&&*tag.words.back()==qsl("streaks"))
+    if(*tag.words.back()==qsl("streaks"))
         return HairKind::RawStreakHair;
     if(tag.contains(qsl("streaked"))||tag.contains(qsl("gradient")))
-        return tag.contains(qsl("gradient"))?HairKind::RawGradientHair:HairKind::RawStreakHair;
-    return HairKind::BaseHair;
+        return hairOrEyes ? (tag.contains(qsl("gradient"))?HairKind::RawGradientHair
+                                                    :HairKind::RawStreakHair)
+                          : HairKind::None;
+    // A plain colour is only hair when the tag says so. Without this, "red skirt"
+    // (two words, a colour) was a base hair tag.
+    return hairOrEyes ? HairKind::BaseHair : HairKind::None;
 }
 
 /// True when the tag is about eyes rather than hair.
@@ -116,11 +128,13 @@ inline QStringList streakedHairWords(const QStringList& colors)
     return words;
 }
 
-/// The text of a merged gradient tag: "hair gradient from yellow to blue" /
-/// "eyes gradient from yellow to blue" - the category is part of the tag now.
+/// The text of a merged gradient tag: "yellow to blue gradient hair" /
+/// "yellow to blue gradient eyes". The colours come first because "gradient" is
+/// the noun the phrase is about; the old "hair gradient from yellow to blue"
+/// read it as a verb and put the category word in the middle of the tag.
 inline QString gradientHairText(const QStringList& colors,bool eyes=false)
 {
-    return (eyes?qsl("eyes"):qsl("hair"))+qsl(" gradient from ")+colors.join(qsl(" to "));
+    return colors.join(qsl(" to "))+qsl(" gradient ")+(eyes?qsl("eyes"):qsl("hair"));
 }
 
 /// The buttons of the ponytail control (index 6 is the "tail" label).
@@ -245,8 +259,14 @@ struct hair_and_eyes_color_list : public teTagListControl{
                 return true;
             }else if(tagstring.endsWith(qsl("streaks"))){
                 return true;        // danbooru's "[colour] streaks"
-            }else if(tagstring.contains(qsl("gradient from"))){
-                return true;        // "hair gradient from ..." / "eyes gradient from ..."
+            }else if(tagstring.contains(qsl("gradient"))
+                     &&(tagstring.contains(qsl(" to "))||tagstring.contains(qsl(" from ")))
+                     &&(tagstring.contains(qsl("hair"))||tagstring.contains(qsl("eyes")))){
+                // "white to blue gradient hair" (old: "hair gradient from ...").
+                // The hair/eyes word is required: without it every garment with a
+                // gradient pattern was captured here, and the clothes palette's
+                // own output vanished from the clothes editor.
+                return true;
             }
             return false;
         }
@@ -320,8 +340,8 @@ struct hair_and_eyes_color_list : public teTagListControl{
             const QStringList all_colors = source_to_target
                     ? extract_colors(target)+extract_colors(source)
                     : extract_colors(source)+extract_colors(target);
-            // "hair gradient from ..." / "eyes gradient from ...": the survivor
-            // decides which one it is.
+            // "white to blue gradient hair" / "... eyes": the survivor decides
+            // which category word closes the tag.
             taglistwidget->tagEdit(target,gradientHairText(all_colors,isEyesTag(*target)));
         }
         /**

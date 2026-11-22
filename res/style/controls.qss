@@ -6,15 +6,15 @@
  * 悬停、按下三种颜色都写在里面。放在源码里有两个问题:改一处配色要翻代码,而且
  * 二级按钮的菜单是独立窗口,拿不到那个字符串,只能再造一份。
  *
- * 现在这份表同时给三处用:
+ * 现在这份表给下面几处用:
  *   · 编辑器列的容器(teEditorList 的每一页)—— 一级控件;
  *   · 二级按钮的菜单窗口(SecondaryMenu)—— 菜单里的按钮;
- *   · 二级按钮自己(SecondaryButton,见文件末尾)。
+ *   · 二级按钮自己(SecondaryButton)的配色在 secondarybutton.qss,
+ *     teStyle::controls() 把两份合起来给前两处。
  *
  * 规则顺序有意义:Qt 里选择器优先级相同的规则,后写的赢。所以
- *   QPushButton  →  QPushButton:hover  →  QPushButton:checked  →  SecondaryButton*
- * 这个顺序不能调:SecondaryButton 的常态规则必须排在 QPushButton:hover 后面,
- * 否则悬停时会被通用的悬停底色盖掉;反过来,它自己的 :hover / :pressed 一条不少。
+ *   QPushButton  →  QPushButton:hover  →  QPushButton:checked
+ * 这个顺序不能调。
  */
 
 QWidget{
@@ -101,6 +101,17 @@ QAbstractItemView::item:hover{
     background-color: #4c4a5d;
 }
 
+/* 菜单里"带下一层"的条目(tomgirl / trap 这类基按钮):实线黄框 + 透明底,
+ * 和 add widget 里可激活的二级按钮同一套语言 —— 它是这一族的入口,不是普通选项。 */
+SecondaryMenu QPushButton[family="true"]{
+    border: 1px solid #d8b13a;
+    background-color: transparent;
+}
+SecondaryMenu QPushButton[family="true"]:hover{
+    border: 1px solid #f0c94a;
+    background-color: rgba(216,177,58,26);
+}
+
 /* ---- 二级按钮菜单里的项(SC-06/SC-11) ----
  * menuSelected:这一项写出来的 tag 集合正好是按钮现在捕获的那一组。由
  * SecondaryButton 在每次打开菜单时同步(属性 + repolish,不重解析样式表)。
@@ -145,44 +156,4 @@ NumberPad QPushButton:hover{
 }
 NumberPad QPushButton:pressed{
     background:#d8d8de;
-}
-
-/* ---- 二级按钮(SC-01) ----
- * 常态:黄色虚线框 + 淡青底;悬停深一档;捕获:绿边绿字 + 更深的青底;
- * 按下再深一档;禁用整体降透明度。
- * 文字颜色只在这里出现——控件构造函数不再写颜色(SC-09),paintEvent() 从被
- * 样式表改过的 palette 里取。 */
-SecondaryButton{
-    border: 1px dotted #d8b13a;
-    border-radius: 6px;
-    background-color: rgba(0,190,190,26);
-    color: #ffffff;
-    font-weight: 600;
-    padding: 0px 6px;
-}
-SecondaryButton:hover{
-    border: 1px dotted #f0c94a;
-    background-color: rgba(0,190,190,46);
-}
-SecondaryButton:pressed{
-    border: 1px dotted #f0c94a;
-    background-color: rgba(0,190,190,86);
-}
-SecondaryButton[captured="true"]{
-    border: 1px dotted #00b059;
-    background-color: rgba(0,190,190,66);
-    color: #00e07a;
-}
-SecondaryButton[captured="true"]:hover{
-    border: 1px dotted #00d96b;
-    background-color: rgba(0,190,190,86);
-}
-SecondaryButton[captured="true"]:pressed{
-    border: 1px dotted #00d96b;
-    background-color: rgba(0,190,190,106);
-}
-SecondaryButton:disabled{
-    border: 1px dotted rgba(216,177,58,102);
-    background-color: rgba(0,190,190,10);
-    color: rgba(255,255,255,102);
 }

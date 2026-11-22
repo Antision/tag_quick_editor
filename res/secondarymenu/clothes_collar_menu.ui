@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>clothes_collar_menu</class>
+ <widget class="QWidget" name="clothes_collar_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>60</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="chk_collar">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👔 collar</string></property>
+     <property name="tags" stdset="0"><string>collar</string></property>
+     <property name="group" stdset="0"><string>collar</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_sailor_collar">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>⚓ sailor collar</string></property>
+     <property name="tags" stdset="0"><string>sailor collar</string></property>
+     <property name="group" stdset="0"><string>collar</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_detached_collar">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🧷 detached collar</string></property>
+     <property name="tags" stdset="0"><string>detached collar</string></property>
+     <property name="group" stdset="0"><string>collar</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_wing_collar">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🦋 wing collar</string></property>
+     <property name="tags" stdset="0"><string>wing collar</string></property>
+     <property name="group" stdset="0"><string>collar</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_high_collar">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🧣 high collar</string></property>
+     <property name="tags" stdset="0"><string>high collar</string></property>
+     <property name="group" stdset="0"><string>collar</string></property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QPushButton" name="chk_fur_collar">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🧸 fur collar</string></property>
+     <property name="tags" stdset="0"><string>fur collar</string></property>
+     <property name="group" stdset="0"><string>collar</string></property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="chk_mandarin_collar">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🏮 mandarin collar</string></property>
+     <property name="tags" stdset="0"><string>mandarin collar</string></property>
+     <property name="group" stdset="0"><string>collar</string></property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QPushButton" name="chk_neck_ruff">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🌊 neck ruff</string></property>
+     <property name="tags" stdset="0"><string>neck ruff</string></property>
+     <property name="group" stdset="0"><string>collar</string></property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QPushButton" name="chk_usekh_collar">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🏺 usekh collar</string></property>
+     <property name="tags" stdset="0"><string>usekh collar</string></property>
+     <property name="group" stdset="0"><string>collar</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

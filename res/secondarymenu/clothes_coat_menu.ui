@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>clothes_coat_menu</class>
+ <widget class="QWidget" name="clothes_coat_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>60</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="chk_coat">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🧥 coat</string></property>
+     <property name="tags" stdset="0"><string>coat</string></property>
+     <property name="group" stdset="0"><string>coat</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_epaulettes">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🎖️ epaulettes</string></property>
+     <property name="tags" stdset="0"><string>epaulettes</string></property>
+     <property name="group" stdset="0"><string>coat</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_lapels">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🧥 lapels</string></property>
+     <property name="tags" stdset="0"><string>lapels</string></property>
+     <property name="group" stdset="0"><string>coat</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_aiguillette">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🪢 aiguillette</string></property>
+     <property name="tags" stdset="0"><string>aiguillette</string></property>
+     <property name="group" stdset="0"><string>coat</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_tailcoat">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🎩 tailcoat</string></property>
+     <property name="tags" stdset="0"><string>tailcoat</string></property>
+     <property name="group" stdset="0"><string>coat</string></property>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="QPushButton" name="chk_long_coat">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🧥 long coat</string></property>
+     <property name="tags" stdset="0"><string>long coat</string></property>
+     <property name="group" stdset="0"><string>coat</string></property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QPushButton" name="chk_winter_coat">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>❄️ winter coat</string></property>
+     <property name="tags" stdset="0"><string>winter coat</string></property>
+     <property name="group" stdset="0"><string>coat</string></property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="chk_trench_coat">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🕵️ trench coat</string></property>
+     <property name="tags" stdset="0"><string>trench coat</string></property>
+     <property name="group" stdset="0"><string>coat</string></property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QPushButton" name="chk_raincoat">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🌧️ raincoat</string></property>
+     <property name="tags" stdset="0"><string>raincoat</string></property>
+     <property name="group" stdset="0"><string>coat</string></property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QPushButton" name="chk_fur_coat">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🧸 fur coat</string></property>
+     <property name="tags" stdset="0"><string>fur coat</string></property>
+     <property name="group" stdset="0"><string>coat</string></property>
+    </widget>
+   </item>
+   <item row="4" column="1">
+    <widget class="QPushButton" name="chk_duffel_coat">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🧥 duffel coat</string></property>
+     <property name="tags" stdset="0"><string>duffel coat</string></property>
+     <property name="group" stdset="0"><string>coat</string></property>
+    </widget>
+   </item>
+   <item row="5" column="1">
+    <widget class="QPushButton" name="chk_overcoat">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🧥 overcoat</string></property>
+     <property name="tags" stdset="0"><string>overcoat</string></property>
+     <property name="group" stdset="0"><string>coat</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>clothes_hat_menu</class>
+ <widget class="QWidget" name="clothes_hat_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>60</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="chk_hat">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🎩 hat</string></property>
+     <property name="tags" stdset="0"><string>hat</string></property>
+     <property name="group" stdset="0"><string>hat</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_beret">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🎨 beret</string></property>
+     <property name="tags" stdset="0"><string>beret</string></property>
+     <property name="group" stdset="0"><string>hat</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_witch_hat">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🧙 witch hat</string></property>
+     <property name="tags" stdset="0"><string>witch hat</string></property>
+     <property name="group" stdset="0"><string>hat</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_mob_cap">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🌙 mob cap</string></property>
+     <property name="tags" stdset="0"><string>mob cap</string></property>
+     <property name="group" stdset="0"><string>hat</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_baseball_cap">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🧢 baseball cap</string></property>
+     <property name="tags" stdset="0"><string>baseball cap</string></property>
+     <property name="group" stdset="0"><string>hat</string></property>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="QPushButton" name="chk_peaked_cap">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🪖 peaked cap</string></property>
+     <property name="tags" stdset="0"><string>peaked cap</string></property>
+     <property name="group" stdset="0"><string>hat</string></property>
+    </widget>
+   </item>
+   <item row="6" column="0">
+    <widget class="QPushButton" name="chk_top_hat">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🎩 top hat</string></property>
+     <property name="tags" stdset="0"><string>top hat</string></property>
+     <property name="group" stdset="0"><string>hat</string></property>
+    </widget>
+   </item>
+   <item row="7" column="0">
+    <widget class="QPushButton" name="chk_santa_hat">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🎅 santa hat</string></property>
+     <property name="tags" stdset="0"><string>santa hat</string></property>
+     <property name="group" stdset="0"><string>hat</string></property>
+    </widget>
+   </item>
+   <item row="8" column="0">
+    <widget class="QPushButton" name="chk_tokin_hat">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🏔️ tokin hat</string></property>
+     <property name="tags" stdset="0"><string>tokin hat</string></property>
+     <property name="group" stdset="0"><string>hat</string></property>
+    </widget>
+   </item>
+   <item row="9" column="0">
+    <widget class="QPushButton" name="chk_sun_hat">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👒 sun hat</string></property>
+     <property name="tags" stdset="0"><string>sun hat</string></property>
+     <property name="group" stdset="0"><string>hat</string></property>
+    </widget>
+   </item>
+   <item row="10" column="0">
+    <widget class="QPushButton" name="chk_beanie">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🧶 beanie</string></property>
+     <property name="tags" stdset="0"><string>beanie</string></property>
+     <property name="group" stdset="0"><string>hat</string></property>
+    </widget>
+   </item>
+   <item row="11" column="0">
+    <widget class="QPushButton" name="chk_nurse_cap">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🏥 nurse cap</string></property>
+     <property name="tags" stdset="0"><string>nurse cap</string></property>
+     <property name="group" stdset="0"><string>hat</string></property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QPushButton" name="chk_straw_hat">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🌾 straw hat</string></property>
+     <property name="tags" stdset="0"><string>straw hat</string></property>
+     <property name="group" stdset="0"><string>hat</string></property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="chk_newsboy_cap">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>📰 newsboy cap</string></property>
+     <property name="tags" stdset="0"><string>newsboy cap</string></property>
+     <property name="group" stdset="0"><string>hat</string></property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QPushButton" name="chk_sailor_hat">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>⚓ sailor hat</string></property>
+     <property name="tags" stdset="0"><string>sailor hat</string></property>
+     <property name="group" stdset="0"><string>hat</string></property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QPushButton" name="chk_bonnet">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👶 bonnet</string></property>
+     <property name="tags" stdset="0"><string>bonnet</string></property>
+     <property name="group" stdset="0"><string>hat</string></property>
+    </widget>
+   </item>
+   <item row="4" column="1">
+    <widget class="QPushButton" name="chk_cowboy_hat">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🤠 cowboy hat</string></property>
+     <property name="tags" stdset="0"><string>cowboy hat</string></property>
+     <property name="group" stdset="0"><string>hat</string></property>
+    </widget>
+   </item>
+   <item row="5" column="1">
+    <widget class="QPushButton" name="chk_fedora">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🕵️ fedora</string></property>
+     <property name="tags" stdset="0"><string>fedora</string></property>
+     <property name="group" stdset="0"><string>hat</string></property>
+    </widget>
+   </item>
+   <item row="6" column="1">
+    <widget class="QPushButton" name="chk_jingasa">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>⛩️ jingasa</string></property>
+     <property name="tags" stdset="0"><string>jingasa</string></property>
+     <property name="group" stdset="0"><string>hat</string></property>
+    </widget>
+   </item>
+   <item row="7" column="1">
+    <widget class="QPushButton" name="chk_deerstalker">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🔍 deerstalker</string></property>
+     <property name="tags" stdset="0"><string>deerstalker</string></property>
+     <property name="group" stdset="0"><string>hat</string></property>
+    </widget>
+   </item>
+   <item row="8" column="1">
+    <widget class="QPushButton" name="chk_bucket_hat">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🪣 bucket hat</string></property>
+     <property name="tags" stdset="0"><string>bucket hat</string></property>
+     <property name="group" stdset="0"><string>hat</string></property>
+    </widget>
+   </item>
+   <item row="9" column="1">
+    <widget class="QPushButton" name="chk_ushanka">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>❄️ ushanka</string></property>
+     <property name="tags" stdset="0"><string>ushanka</string></property>
+     <property name="group" stdset="0"><string>hat</string></property>
+    </widget>
+   </item>
+   <item row="10" column="1">
+    <widget class="QPushButton" name="chk_mortarboard">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🎓 mortarboard</string></property>
+     <property name="tags" stdset="0"><string>mortarboard</string></property>
+     <property name="group" stdset="0"><string>hat</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

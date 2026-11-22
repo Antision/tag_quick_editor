@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>clothes_leotard_menu</class>
+ <widget class="QWidget" name="clothes_leotard_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>60</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="chk_leotard">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🩰 leotard</string></property>
+     <property name="tags" stdset="0"><string>leotard</string></property>
+     <property name="group" stdset="0"><string>leotard</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_playboy_bunny">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🐰 playboy bunny</string></property>
+     <property name="tags" stdset="0"><string>playboy bunny</string></property>
+     <property name="group" stdset="0"><string>leotard</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_strapless_leotard">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🩰 strapless leotard</string></property>
+     <property name="tags" stdset="0"><string>strapless leotard</string></property>
+     <property name="group" stdset="0"><string>leotard</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_see_through_leotard">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👻 see-through leotard</string></property>
+     <property name="tags" stdset="0"><string>see-through leotard</string></property>
+     <property name="group" stdset="0"><string>leotard</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

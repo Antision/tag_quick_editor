@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>clothes_crown_menu</class>
+ <widget class="QWidget" name="clothes_crown_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>60</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="chk_crown">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👑 crown</string></property>
+     <property name="tags" stdset="0"><string>crown</string></property>
+     <property name="group" stdset="0"><string>crown</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_tiara">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👸 tiara</string></property>
+     <property name="tags" stdset="0"><string>tiara</string></property>
+     <property name="group" stdset="0"><string>crown</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_circlet">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>⭕ circlet</string></property>
+     <property name="tags" stdset="0"><string>circlet</string></property>
+     <property name="group" stdset="0"><string>crown</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_headpiece">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>💐 headpiece</string></property>
+     <property name="tags" stdset="0"><string>headpiece</string></property>
+     <property name="group" stdset="0"><string>crown</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_head_wreath">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🌸 head wreath</string></property>
+     <property name="tags" stdset="0"><string>head wreath</string></property>
+     <property name="group" stdset="0"><string>crown</string></property>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="QPushButton" name="chk_laurel_crown">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🌿 laurel crown</string></property>
+     <property name="tags" stdset="0"><string>laurel crown</string></property>
+     <property name="group" stdset="0"><string>crown</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

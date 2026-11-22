@@ -3,6 +3,8 @@
 // The controls live in these headers now; they used to be declared inside the
 // editor constructors below, which made this file a 2400 line wall.
 #include "secondarybutton.h"     // the drop-down buttons (SC-01..SC-11)
+#include "clothesbuttons.h"      // the 73 clothes buttons, generated from the spec
+#include "clothesemoji.h"        // display-only emoji (never part of a tag)
 #include "teclothescontrol.h"
 #include "tefacecontrols.h"
 #include "tebodycontrols.h"
@@ -10,6 +12,8 @@
 #include "temisccontrols.h"
 #include "tetaglistwidget.h"
 #include "tesignalwidget.h"
+#include <QCursor>
+#include <QPointer>
 #include "testyle.h"
 QSet<QString> all_colors = { "red","blue","green","orange","yellow",
                     "blonde","purple","white","black","brown","pink","aqua"
@@ -25,17 +29,42 @@ bool is_shade(const QString& shade_word){
 QStringList editorNames{qsl("custom"),qsl("pretreat"),qsl("hair and eyes"),qsl("clothes"),qsl("nsfw"),qsl("decorations")};
 
 QPair<int,int> is_color(const teTag& tag,int offset) {
-    int index;
-    int size = tag.words.size();
-    for (index = offset; index < size; ++index) {
-        if (all_colors.contains(*tag.words[index])){
-            if (index > 0&&(*tag.words[index - 1] == "light" || *tag.words[index - 1] == "dark"))
-                return {index - 1,2};
-            else
-                return {index,1};
-        }
+    // The whole colour phrase, not only its first colour: "blue and white",
+    // "white to blue", with a shade in front of any of them and optionally closed
+    // by the pattern word of a multi-colour tag ("blue and white striped",
+    // "white to blue gradient").
+    //
+    // Returning a one-word slot is what let a modifier be inserted *inside* the
+    // phrase: "blue and white striped panties" + "frilled" became "blue frilled
+    // and white striped panties", i.e. the colour phrase was torn in half and the
+    // tag no longer read as the one the add widget wrote.
+    const int size=tag.words.size();
+    // The first colour may sit behind other words ("torn red dress"): the colour
+    // part of a tag is not tied to its first word.
+    int index=offset;
+    while(index<size&&!all_colors.contains(*tag.words[index]))
+        ++index;
+    if(index>=size)
+        return {0,0};
+    int first=index;
+    if(first>offset&&is_shade(*tag.words[first-1]))
+        --first;
+    int last=index;
+    ++index;
+    while(index<size&&(*tag.words[index]==qsl("and")||*tag.words[index]==qsl("to"))){
+        int next=index+1;
+        if(next<size&&is_shade(*tag.words[next]))
+            ++next;
+        if(next>=size||!all_colors.contains(*tag.words[next]))
+            break;
+        last=next;
+        index=next+1;
     }
-    return {0,0};
+    // striped / gradient are the two words that say which multi-colour form this
+    // is; they travel with the colours, not with the adjectives.
+    if(last+1<size&&(*tag.words[last+1]==qsl("striped")||*tag.words[last+1]==qsl("gradient")))
+        ++last;
+    return {first,last-first+1};
 }
 QStringList extract_colors(std::shared_ptr<teTag> tag) {
     // Every colour word in the tag, in order - not only the leading run.
@@ -344,29 +373,507 @@ teEditor_hair_and_eyes::teEditor_hair_and_eyes(TagListView*in_taglistwidget,QStr
 }
 
 
+namespace {
+/**
+ * @brief "🎩 hat" - what a clothes button or menu entry shows.
+ *
+ * The emoji is display text and nothing else: emoji_for_tag() is a display table,
+ * a tag never carries it (§1.8).
+ */
+QString clothesLabel(const QString& tag)
+{
+    const QString symbol = emoji_for_tag(tag);
+    return symbol.isEmpty() ? tag : symbol + QLatin1Char(' ') + tag;
+}
+
+/**
+ * @brief Give `widget` a font family list that has an emoji face behind the text.
+ *
+ * The embedded Ubuntu face has no emoji glyphs; Windows resolves a missing glyph
+ * per character, but only through the families the widget names.
+ */
+void applyEmojiFont(QWidget* widget)
+{
+    QFont font = widget->font();
+    font.setFamilies({appFontFamily(), QStringLiteral("Segoe UI Emoji")});
+    widget->setFont(font);
+}
+
+/**
+ * @brief One `>>T` / `>>P` button: it opens res/secondarymenu/clothes_<id>_menu.ui.
+ *
+ * The tag builder is what keeps a multi-word type together ("school uniform" is
+ * one word, §1.2), so a tag written from the menu reads back as the same type.
+ */
+SecondaryButton* clothesMenuButton(const QString& tag,char kind,QWidget* parent)
+{
+    auto* button = new SecondaryButton(clothesMenuPath(tag), clothesLabel(tag), parent);
+    button->setObjectName(clothesMenuId(tag));
+    button->setMaxCaptionLines(2);
+    button->setTagBuilder(clothesTagFromText);
+    // T writes its own tag when clicked (the menu's first entry is the same tag);
+    // P has no tag of its own and only opens its menu, which is also the style
+    // difference the sheet draws (solid vs dashed).
+    button->setOwnTag(kind=='T' ? tag : QString());
+    button->setDisplayName(clothesLabel(tag));
+    applyEmojiFont(button);
+    // The name is the point here: let the layout ask for the width the caption
+    // actually needs (with the font the sheet paints) instead of the old
+    // hand-measured +40, which was taken before that font was applied and left
+    // long labels squeezed below their text.
+    button->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
+    return button;
+}
+
+/// A `B` button: an ordinary toggle that writes its own word, caption with emoji.
+QPushButton* clothesPlainButton(const QString& tag,QWidget* parent,QButtonGroup* group)
+{
+    auto* button = new QPushButton(clothesLabel(tag),parent);
+    button->setCheckable(true);
+    // The caption carries the emoji, the tag does not: sendString() reads this.
+    button->setProperty("tag",tag);
+    applyEmojiFont(button);
+    group->addButton(button);
+    return button;
+}
+
+/// How one body area is laid out: which column of the dialog it sits in and how
+/// many buttons wide it is. Two areas share a column, which is what keeps the
+/// 74 buttons on one screen instead of in a strip.
+struct clothesAreaLayout {
+    int row;        // 0 = upper row of the category grid, 1 = lower row
+    int column;     // macro column (0..3); the colour column is outside this grid
+    int columns;    // how many button columns the block itself needs
+};
+/**
+ * @brief Hovering a reftag previews the menu of its type (§1.13).
+ *
+ * The add widget is not an editor control of the tag list in the button-group
+ * sense: the *tag* is what the list captured, and the menu is only a way to
+ * change which spelling of that type the tag uses. So the preview belongs to the
+ * tag, not to the button: the cursor over `microskirt` in the list shows the
+ * skirt menu right there, a click on the tag solidifies it, and dragging onto an
+ * entry switches the spelling.
+ *
+ * A timer is enough: the tag widgets are created and destroyed by the list, so an
+ * event filter would have to follow every one of them.
+ */
+class ClothesHoverPreview : public QObject {
+public:
+    ClothesHoverPreview(QWidget* page,const QVector<SecondaryButton*>& buttons,QObject* parent)
+        :QObject(parent),m_page(page),m_buttons(buttons){
+        m_timer.setInterval(120);
+        connect(&m_timer,&QTimer::timeout,this,[this]{ poll(); });
+        m_timer.start();
+    }
+protected:
+    bool eventFilter(QObject* watched,QEvent* event) override{
+        if(watched!=m_anchor)
+            return QObject::eventFilter(watched,event);
+        switch(event->type()){
+        case QEvent::MouseButtonPress: {
+            auto* mouse = static_cast<QMouseEvent*>(event);
+            // Left is the list's own tag drag, so this gesture is the right button
+            // here. Everything else is the SecondaryButton's own rule: a press
+            // *materialises* the menu (no longer the dimmed click-through preview)
+            // and the button stays down while the cursor walks onto an entry.
+            if(mouse->button()!=Qt::RightButton)
+                break;
+            if(!m_shown){
+                SecondaryButton* button = nullptr;
+                teTagWidgetBase* tagWidget = nullptr;
+                if(!resolve(m_anchor,button,tagWidget))
+                    break;
+                m_shown = button;
+                m_shown->showPreviewAt(QRect(m_anchor->mapToGlobal(QPoint(0,0)),m_anchor->size()));
+            }
+            // Undecided, exactly like a SecondaryButton's own right press: a
+            // drag materialises the hover menu, a click opens the tag operations
+            // (edit / delete / ... and later "merge"). Pinning on the press made
+            // the second impossible, and a tag whose type has a menu could then
+            // never be merged by hand.
+            m_pending = m_shown;
+            m_pendingPos = mouse->globalPosition().toPoint();
+            m_shown = nullptr;
+            m_rightUsed = true;
+            // Swallowing the press costs the implicit grab, and without it the
+            // moves that matter happen with the cursor already over the menu. The
+            // tag keeps the mouse until the release, exactly like the button does.
+            m_anchor->grabMouse();
+            return true;
+        }
+        case QEvent::MouseMove:
+            if(m_pending){
+                auto* mouse = static_cast<QMouseEvent*>(event);
+                if((mouse->buttons() & Qt::RightButton)
+                    &&(mouse->globalPosition().toPoint()-m_pendingPos).manhattanLength()
+                          >= QApplication::startDragDistance()){
+                    // The press turned into a drag: that is the menu gesture.
+                    m_pinned = m_pending;
+                    m_pending = nullptr;
+                    m_pinned->pinShownMenu();   // solid + interactive, like holding the button
+                    m_dragging = true;
+                }
+                return true;
+            }
+            if(m_dragging&&m_pinned&&m_pinned->menu()){
+                m_pinned->menu()->setHoverIndex(
+                    m_pinned->menu()->itemAt(static_cast<QMouseEvent*>(event)->globalPosition().toPoint()));
+                return true;
+            }
+            break;
+        case QEvent::MouseButtonRelease: {
+            auto* mouse = static_cast<QMouseEvent*>(event);
+            if(mouse->button()!=Qt::RightButton)
+                break;
+            if(m_pending){
+                // A right click that did not move: the tag's own operations.
+                teTagWidgetBase* tag = m_anchor;
+                m_pending = nullptr;
+                if(m_anchor)
+                    m_anchor->releaseMouse();
+                dismiss();
+                openTagMenu(tag);
+                m_rightUsed = false;
+                return true;
+            }
+            if(m_dragging){
+                m_dragging = false;
+                if(m_anchor)
+                    m_anchor->releaseMouse();
+                if(m_pinned&&m_pinned->menu()){
+                    SecondaryMenu* menu = m_pinned->menu();
+                    const int index = menu->itemAt(mouse->globalPosition().toPoint());
+                    menu->setHoverIndex(-1);
+                    if(index>=0){
+                        const SecondaryAction* action = menu->action(menu->itemId(index));
+                        if(action){
+                            m_rightUsed = false;
+                            m_pinned->activateAction(*action,false,false);
+                            m_pinned->dismissMenu();
+                            m_pinned = nullptr;
+                            dropAnchor();
+                            return true;
+                        }
+                    }
+                }
+                // Released outside every entry: the menu was materialised by the
+                // press, so it simply stays up and can be clicked normally.
+                m_rightUsed = false;
+                if(m_pinned)
+                    m_pinned = nullptr;         // it is pinned now, not ours
+                dropAnchor();
+                return true;
+            }
+            if(m_rightUsed){
+                m_rightUsed = false;
+                return true;
+            }
+            if(m_shown){
+                // A left click on the tag is the "solidify" gesture: the preview
+                // becomes interactive and the click stops here (it must not start a
+                // word edit).
+                m_shown->pinShownMenu();
+                m_shown = nullptr;
+                dropAnchor();
+                return true;
+            }
+            break;
+        }
+        case QEvent::Leave:
+        case QEvent::Hide:
+            if(!m_dragging)
+                dismiss();
+            break;
+        default:
+            break;
+        }
+        return QObject::eventFilter(watched,event);
+    }
+private:
+    /// The menu button that stands for `under`'s tag, and the tag widget itself.
+    bool resolve(QWidget* under,SecondaryButton*& button,teTagWidgetBase*& tagWidget){
+        button = nullptr;
+        tagWidget = nullptr;
+        for(QWidget* widget = under;widget;widget = widget->parentWidget())
+            if(auto* candidate = qobject_cast<teTagWidgetBase*>(widget)){
+                tagWidget = candidate;
+                break;
+            }
+        if(!tagWidget||!tagWidget->core)
+            return false;
+        // The same family rule the add widget uses: `wide sleeves` belongs to the
+        // pure `sleeves` button, `sailor collar` to `collar`, and the longest
+        // matching spelling wins.
+        const QString text = static_cast<QString>(*tagWidget->core);
+        QString best;
+        for(SecondaryButton* candidate : m_buttons){
+            const QString match = candidate->paletteTagFor(text);
+            if(match.size() > best.size()){
+                best = match;
+                button = candidate;
+            }
+        }
+        return !best.isEmpty();
+    }
+    void poll(){
+        if(!m_page->isVisible()){
+            dismiss();
+            return;
+        }
+        const QPoint global = QCursor::pos();
+        if(!m_page->rect().contains(m_page->mapFromGlobal(global))){
+            dismiss();
+            return;
+        }
+        if(m_shown&&!m_shown->previewVisible())
+            m_shown=nullptr;                    // pinned: it is the user's now
+        SecondaryButton* button = nullptr;
+        teTagWidgetBase* tagWidget = nullptr;
+        if(!resolve(QApplication::widgetAt(global),button,tagWidget))
+            return;
+        if(tagWidget==m_anchor)
+            return;
+        if(!button){
+            dismiss();
+            return;
+        }
+        dismiss();
+        m_shown = button;
+        m_anchor = tagWidget;
+        m_anchor->installEventFilter(this);
+        button->showPreviewAt(QRect(tagWidget->mapToGlobal(QPoint(0,0)),tagWidget->size()));
+    }
+    /// The tag list that owns `tag`: its context menu is the one every tag of
+    /// this editor uses, so a click here behaves exactly like a click there.
+    void openTagMenu(teTagWidgetBase* tag){
+        if(!tag)
+            return;
+        for(QWidget* widget=tag->parentWidget();widget;widget=widget->parentWidget())
+            if(auto* list=qobject_cast<teTagListWidgetBase*>(widget)){
+                list->onTagRightButtonClicked(tag,QPoint(),Qt::NoModifier);
+                return;
+            }
+    }
+    void dropAnchor(){
+        if(m_anchor)
+            m_anchor->removeEventFilter(this);
+        m_anchor = nullptr;
+    }
+    void dismiss(){
+        m_pending = nullptr;
+        if(m_dragging&&m_anchor){
+            m_dragging = false;
+            m_anchor->releaseMouse();
+        }
+        if(m_shown&&m_shown->previewVisible())
+            m_shown->dismissMenu();
+        m_shown = nullptr;
+        dropAnchor();
+    }
+
+    QWidget* m_page;
+    QVector<SecondaryButton*> m_buttons;
+    QTimer m_timer;
+    SecondaryButton* m_shown = nullptr;
+    /// The button whose menu the right press materialised (kept while dragging).
+    SecondaryButton* m_pinned = nullptr;
+    /// A right press that has not become a drag yet: the button whose menu it
+    /// would show, and where the press happened.
+    SecondaryButton* m_pending = nullptr;
+    QPoint m_pendingPos;
+    QPointer<teTagWidgetBase> m_anchor;   // switching the spelling destroys it
+    bool m_dragging = false;
+    bool m_rightUsed = false;
+};
+
+constexpr clothesAreaLayout kClothesAreaLayout[] = {
+    { 0, 0, 3 },   // head
+    { 1, 0, 3 },   // neck - collar/choker/necktie/bowtie/neckerchief/scarf/necklace
+    { 0, 1, 2 },   // upper body
+    { 1, 1, 2 },   // lower body
+    { 0, 2, 2 },   // legwear - thighhighs/kneehighs/socks/pantyhose/leggings/leg warmers
+    { 1, 2, 2 },   // feet
+    { 0, 3, 2 },   // full body / uniform / swimwear (+ the merged `clothes` button)
+    { 1, 3, 2 },   // accessories
+};
+} // namespace
+
+
 teEditor_clothes::teEditor_clothes(TagListView*in_taglistwidget,QString &&name, QWidget *parent):teEditor_standard(in_taglistwidget,name, QStringLiteral("clothes"), parent){
-    addControl(new ClothesList(new colorsWidget(
+    QVector<clothesAddArea> areas = clothesAddAreas();
+    // `clothes` (the traditional-clothes menu) is a one-button area in the
+    // generated table. One button does not need a block of its own: it joins the
+    // full-body block, which it fills exactly (11 + 1 = 12 = 2 x 6).
+    for(int i=areas.size()-1;i>=0;--i){
+        if(QString::fromUtf8(areas[i].heading)!=QStringLiteral("traditional"))
+            continue;
+        bool merged=false;
+        for(clothesAddArea& target:areas)
+            if(QString::fromUtf8(target.heading)==QStringLiteral("full body / uniform / swimwear")){
+                target.buttons+=areas[i].buttons;
+                merged=true;
+                break;
+            }
+        if(merged)
+            areas.removeAt(i);
+    }
+    // Split the neck accessories out of the generated `head` area. A scarf or a
+    // collar is not headwear, and the eight resulting blocks fill the 4 x 2
+    // category grid without an empty cell.
+    {
+        const QStringList neckTags{
+            QStringLiteral("collar"),QStringLiteral("choker"),QStringLiteral("necktie"),
+            QStringLiteral("bowtie"),QStringLiteral("neckerchief"),QStringLiteral("scarf"),
+            QStringLiteral("necklace")};
+        for(int i=0;i<areas.size();++i){
+            if(QString::fromUtf8(areas[i].heading)!=QStringLiteral("head"))
+                continue;
+            clothesAddArea neck;
+            neck.heading="neck";
+            QVector<clothesAddButton> headButtons;
+            for(const clothesAddButton& entry:areas[i].buttons)
+                if(neckTags.contains(QString::fromUtf8(entry.tag)))
+                    neck.buttons.push_back(entry);
+                else
+                    headButtons.push_back(entry);
+            areas[i].buttons=headButtons;
+            areas.insert(i+1,neck);
+            break;
+        }
+    }
+
+    // Every type button shares one exclusive group, so a clothes tag always keeps
+    // exactly one type word. The constructor is handed only the colour column (the
+    // shades, the palette and the four feature toggles); the garment categories are
+    // one grid to the right of it (see the block grid below).
+    auto* typeGroup = new QButtonGroup(nullptr);
+    // The colour column also carries the modifiers: what a garment *is* (colour,
+    // state, trim) is one composed tag, and these are the words that go in front
+    // of the type. They are all additive, so two trims can be on together. Only
+    // words that really combine are here - `naked apron`, `see-through dress`,
+    // `fur-trimmed coat` - a noun tag of its own (`frills`, `tassel`) is not a
+    // modifier and stays out of this column.
+    auto* widget = new colorsWidget(
         {
-            { {qsl("torn"),qsl("striped"),qsl("fishnet"),qsl("frilled")}, false },
-            { headAndNeckClothesTypes, true },
-            { upperBodyClothesTypes, true },
-            { lowerBodyClothesTypes, true },
-            { underwearClothesTypes, true },
-            { fullBodyClothesTypes, true },
-            { feetClothesTypes, true },
-            { accessoryClothesTypes, true },
+            // The two pattern words sit next to each other (they are the two
+            // triggers of the colour queue), the rest around them.
+            {{qsl("torn"),qsl("frilled"),qsl("striped"),qsl("gradient"),qsl("fishnet")},false},
+            {{qsl("naked"),qsl("open"),qsl("unworn")},false},
+            {{qsl("see-through"),qsl("wet"),qsl("backless")},false},
+            {{qsl("crotchless"),qsl("double-breasted")},false},
+            {{qsl("fur-trimmed"),qsl("lace-trimmed")},false},
+            {{qsl("ribbon-trimmed"),qsl("gold-trimmed")},false},
         },
         nullptr, 0, {},
-        { QString{}, qsl("head / neck"), qsl("upper body"), qsl("legs"),
-          qsl("underwear / swimwear"), qsl("full body"), qsl("feet"),
-          qsl("accessories") },
-        // Every type button belongs to one exclusive group, so a clothes tag
-        // always keeps exactly one type word. The columns put the colours and the
-        // features on the left and the clothes types on the right, which keeps
-        // this dialog square instead of a tall strip.
-        new QButtonGroup(nullptr),
+        { QString{}, QString{}, QString{}, QString{}, QString{}, QString{} },
+        typeGroup,
         false,
-        { 0, 1, 1, 1, 1, 1, 1, 1 }),taglistwidget));
+        { 0, 0, 0, 0, 0, 0 });
+    // "striped" and "gradient" describe a pattern of *several* colours, so they
+    // turn the colour column into a queue: "blue and white striped panties",
+    // "white to blue gradient pants".
+    widget->setMultiColorTriggers({qsl("striped"),qsl("gradient")});
+
+    // The type list reads tags before the buttons do, exactly as it did when it
+    // was the only control here.
+    addControl(new ClothesList(widget,taglistwidget));
+
+    // A choice made in one of the menus clears the plain type buttons that are
+    // still ticked: they live in another button group, so nothing else would.
+    const auto clearPlainTypes = [typeGroup]{
+        for(QAbstractButton* button : typeGroup->buttons())
+            button->setChecked(false);
+    };
+
+    // One grid for every garment category: the four macro columns hold
+    // head/legwear, upper/lower body, feet/full body and accessories, and the two
+    // macro rows start at the same height. A column of stacked sections used to
+    // let each section follow its own height, so `legwear` started halfway down
+    // while `lower body` started at the top.
+    auto* blockGrid = new QGridLayout;
+    blockGrid->setContentsMargins(0,0,0,0);
+    blockGrid->setHorizontalSpacing(14);
+    blockGrid->setVerticalSpacing(8);
+    QVector<SecondaryButton*> menuButtons;
+    for(int index=0;index<areas.size()&&index<int(std::size(kClothesAreaLayout));++index){
+        const clothesAddArea& area = areas[index];
+        const clothesAreaLayout& layout = kClothesAreaLayout[index];
+        const int columns = layout.columns;
+        const int rows = (area.buttons.size()+columns-1)/columns;
+        auto* grid = new QGridLayout;
+        grid->setContentsMargins(0,0,0,0);
+        grid->setSpacing(1);
+        int position = 0;
+        for(const clothesAddButton& entry : area.buttons){
+            const QString tag = QString::fromUtf8(entry.tag);
+            QWidget* control = nullptr;
+            if(entry.kind == 'B'){
+                control = clothesPlainButton(tag,widget,typeGroup);
+            }else{
+                auto* button = clothesMenuButton(tag,entry.kind,widget);
+                menuButtons.push_back(button);
+                // A control of the page (it writes tags itself), not of the dialog.
+                registerControl(button);
+                button->teConnect(teCallbackType::edit,clearPlainTypes);
+                control = button;
+            }
+            grid->addWidget(control,position%rows,position/rows);
+            ++position;
+        }
+        // The heading and its grid stay together as one block, and the block is
+        // pinned to the top of its grid cell: the row height is the tallest block
+        // in it, and the others must not stretch their label away from the buttons.
+        auto* block = new QWidget(widget);
+        auto* blockLayout = new QVBoxLayout(block);
+        blockLayout->setContentsMargins(0,0,0,0);
+        blockLayout->setSpacing(1);
+        blockLayout->addWidget(makeSectionHeading(QString::fromUtf8(area.heading),block));
+        blockLayout->addLayout(grid);
+        blockGrid->addWidget(block,layout.row,layout.column,Qt::AlignTop);
+    }
+    // One built section for the whole category grid; addBuiltSection() resets the
+    // spacing to its default single-pixel, so put the real gaps back afterwards.
+    widget->addBuiltSection(blockGrid,typeGroup,QString(),1);
+    blockGrid->setHorizontalSpacing(14);
+    blockGrid->setVerticalSpacing(8);
+    // A little air between the colour/modifier column and the garment categories:
+    // with only a 1px layout spacing the two groups read as one wide grid. A plain
+    // full-height rule (makeColumnSeparator() draws an 18px tick, right for a
+    // toolbar but not for a column that is 600px tall).
+    if(auto* box=qobject_cast<QHBoxLayout*>(widget->content_layout)){
+        auto* host=new QWidget(widget);
+        host->setFixedWidth(9);
+        auto* sepLayout=new QHBoxLayout(host);
+        sepLayout->setContentsMargins(4,4,4,4);
+        sepLayout->setSpacing(0);
+        auto* line=new QFrame(host);
+        line->setFixedWidth(1);
+        line->setStyleSheet(QStringLiteral("QFrame{background:#4c399e;border:none;}"));
+        sepLayout->addWidget(line);
+        box->insertWidget(1,host);
+    }
+    // Both columns keep their content at the top. The colour column is taller than
+    // the category grid; without the stretch its spare height would be spread
+    // between the modifier sections.
+    for(QVBoxLayout* column : widget->columns)
+        column->addStretch(1);
+    // The add widget edits one tag at a time: its type buttons light for that tag
+    // and for nothing else (a "skirt" somewhere else in the list is irrelevant).
+    // They also *select* the type instead of writing the tag list: `+` is what
+    // turns the colour / modifier / type composition into a tag.
+    for(SecondaryButton* button : menuButtons){
+        button->setPaletteMode(true);
+        button->setComposeSink([widget](const QString& tag,bool toggle){
+            widget->chooseComposedType(tag,toggle);
+        });
+    }
+    connect(widget,&colorsWidget::editingTagChanged,this,[menuButtons](const QString& tagText){
+        for(SecondaryButton* button : menuButtons)
+            button->setCaptureFromTag(tagText);
+    });
+    // §1.13: hovering a tag in the list previews the menu of its type right there.
+    new ClothesHoverPreview(this,menuButtons,this);
 
     addRow({{},{},{new teTagCheckBox({ "torn clothes" }),
                     new teTagCheckBox({ "fishnets" })}});

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>clothes_ribbon_menu</class>
+ <widget class="QWidget" name="clothes_ribbon_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>60</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="chk_ribbon">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🎗️ ribbon</string></property>
+     <property name="tags" stdset="0"><string>ribbon</string></property>
+     <property name="group" stdset="0"><string>ribbon</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_hair_ribbon">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🎗️ hair ribbon</string></property>
+     <property name="tags" stdset="0"><string>hair ribbon</string></property>
+     <property name="group" stdset="0"><string>ribbon</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_neck_ribbon">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🎗️ neck ribbon</string></property>
+     <property name="tags" stdset="0"><string>neck ribbon</string></property>
+     <property name="group" stdset="0"><string>ribbon</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_tress_ribbon">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🎗️ tress ribbon</string></property>
+     <property name="tags" stdset="0"><string>tress ribbon</string></property>
+     <property name="group" stdset="0"><string>ribbon</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_leg_ribbon">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🦵 leg ribbon</string></property>
+     <property name="tags" stdset="0"><string>leg ribbon</string></property>
+     <property name="group" stdset="0"><string>ribbon</string></property>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="QPushButton" name="chk_arm_ribbon">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>💪 arm ribbon</string></property>
+     <property name="tags" stdset="0"><string>arm ribbon</string></property>
+     <property name="group" stdset="0"><string>ribbon</string></property>
+    </widget>
+   </item>
+   <item row="6" column="0">
+    <widget class="QPushButton" name="chk_thigh_ribbon">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🦵 thigh ribbon</string></property>
+     <property name="tags" stdset="0"><string>thigh ribbon</string></property>
+     <property name="group" stdset="0"><string>ribbon</string></property>
+    </widget>
+   </item>
+   <item row="7" column="0">
+    <widget class="QPushButton" name="chk_footwear_ribbon">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👟 footwear ribbon</string></property>
+     <property name="tags" stdset="0"><string>footwear ribbon</string></property>
+     <property name="group" stdset="0"><string>ribbon</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

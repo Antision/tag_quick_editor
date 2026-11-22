@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>clothes_shirt_menu</class>
+ <widget class="QWidget" name="clothes_shirt_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>60</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="chk_shirt">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👕 shirt</string></property>
+     <property name="tags" stdset="0"><string>shirt</string></property>
+     <property name="group" stdset="0"><string>shirt</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_collared_shirt">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👔 collared shirt</string></property>
+     <property name="tags" stdset="0"><string>collared shirt</string></property>
+     <property name="group" stdset="0"><string>shirt</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_sleeveless_shirt">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🎽 sleeveless shirt</string></property>
+     <property name="tags" stdset="0"><string>sleeveless shirt</string></property>
+     <property name="group" stdset="0"><string>shirt</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_dress_shirt">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🥼 dress shirt</string></property>
+     <property name="tags" stdset="0"><string>dress shirt</string></property>
+     <property name="group" stdset="0"><string>shirt</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_t_shirt">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👕 t-shirt</string></property>
+     <property name="tags" stdset="0"><string>t-shirt</string></property>
+     <property name="group" stdset="0"><string>shirt</string></property>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="QPushButton" name="chk_blouse">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👚 blouse</string></property>
+     <property name="tags" stdset="0"><string>blouse</string></property>
+     <property name="group" stdset="0"><string>shirt</string></property>
+    </widget>
+   </item>
+   <item row="6" column="0">
+    <widget class="QPushButton" name="chk_frilled_shirt">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🎀 frilled shirt</string></property>
+     <property name="tags" stdset="0"><string>frilled shirt</string></property>
+     <property name="group" stdset="0"><string>shirt</string></property>
+    </widget>
+   </item>
+   <item row="7" column="0">
+    <widget class="QPushButton" name="chk_off_shoulder_shirt">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>💃 off-shoulder shirt</string></property>
+     <property name="tags" stdset="0"><string>off-shoulder shirt</string></property>
+     <property name="group" stdset="0"><string>shirt</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

@@ -1,0 +1,81 @@
+/* ---- 二级按钮(SC-01) ----
+ * 常态:黄色虚线框 + 淡青底;悬停深一档;捕获:绿边绿字 + 更深的青底;
+ * 按下再深一档;禁用整体降透明度。
+ * 文字颜色只在这里出现——控件构造函数不再写颜色(SC-09),paintEvent() 从被
+ * 样式表改过的 palette 里取。
+ *
+ * 单独一份而不是留在 controls.qss:add widget(colorsWidget)有自己的一套窗口
+ * 配色,它不在编辑器列/菜单里,拿不到 controls.qss。按钮的配色是按钮自己的事,
+ * 所以两处都从这份取(见 teStyle::controls())。 */
+SecondaryButton{
+    border: 1px dotted #d8b13a;
+    border-radius: 6px;
+    background-color: rgba(0,190,190,26);
+    color: #ffffff;
+    font-weight: 600;
+    padding: 0px 6px;
+}
+SecondaryButton:hover{
+    border: 1px dotted #f0c94a;
+    background-color: rgba(0,190,190,46);
+}
+SecondaryButton:pressed{
+    border: 1px dotted #f0c94a;
+    background-color: rgba(0,190,190,86);
+}
+SecondaryButton[captured="true"]{
+    border: 1px dotted #00b059;
+    background-color: rgba(0,190,190,66);
+    color: #00e07a;
+}
+SecondaryButton[captured="true"]:hover{
+    border: 1px dotted #00d96b;
+    background-color: rgba(0,190,190,86);
+}
+SecondaryButton[captured="true"]:pressed{
+    border: 1px dotted #00d96b;
+    background-color: rgba(0,190,190,106);
+}
+SecondaryButton:disabled{
+    border: 1px dotted rgba(216,177,58,102);
+    background-color: rgba(0,190,190,10);
+    color: rgba(255,255,255,102);
+}
+
+/* ---- 可激活 / 纯二级按钮(SC-01, v3) ----
+ * add widget 里两者必须一眼分得开:
+ *   · 可激活(kind="activatable"):实线黄框、圆角、**透明底** —— 点它本身就会
+ *     选中/取消它自己的 tag(例:leotard),菜单只是它的补充;
+ *   · 纯(kind="pure",默认):黄色虚线圆角框 + 极淡的绿色透明底 —— 点它只开菜单,
+ *     本体不是 tag(例:top / sleeves / clothes)。
+ * 捕获态(menuSelected / captured)沿用上面的青色高亮。 */
+SecondaryButton[kind="activatable"]{
+    border: 1px solid #d8b13a;
+    border-radius: 6px;
+    background-color: transparent;
+    color: #ffffff;
+}
+SecondaryButton[kind="activatable"]:hover{
+    border: 1px solid #f0c94a;
+    background-color: rgba(216,177,58,22);
+}
+SecondaryButton[kind="activatable"]:pressed{
+    border: 1px solid #f0c94a;
+    background-color: rgba(216,177,58,48);
+}
+SecondaryButton[kind="activatable"][captured="true"]{
+    border: 1px solid #00b059;
+    background-color: rgba(0,190,120,40);
+    color: #00e07a;
+}
+SecondaryButton[kind="activatable"][captured="true"]:hover{
+    border: 1px solid #00d96b;
+    background-color: rgba(0,190,120,60);
+}
+
+/* 纯二级按钮:虚线 + 淡绿底(比上面那条通用规则更明确,避免和激活态混) */
+SecondaryButton[kind="pure"]{
+    border: 1px dotted #d8b13a;
+    border-radius: 6px;
+    background-color: rgba(0,190,120,18);
+}

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>clothes_clothes_menu</class>
+ <widget class="QWidget" name="clothes_clothes_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>60</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="chk_japanese_clothes">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👘 japanese clothes</string></property>
+     <property name="tags" stdset="0"><string>japanese clothes</string></property>
+     <property name="group" stdset="0"><string>japanese_clothes</string></property>
+     <property name="submenu" stdset="0"><string>:/secondarymenu/clothes_japanese_clothes_menu.ui</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_chinese_clothes">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🐉 chinese clothes</string></property>
+     <property name="tags" stdset="0"><string>chinese clothes</string></property>
+     <property name="group" stdset="0"><string>chinese_clothes</string></property>
+     <property name="submenu" stdset="0"><string>:/secondarymenu/clothes_chinese_clothes_menu.ui</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_greco_roman_clothes">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🏛️ greco-roman clothes</string></property>
+     <property name="tags" stdset="0"><string>greco-roman clothes</string></property>
+     <property name="group" stdset="0"><string>clothes</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_korean_clothes">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🎎 korean clothes</string></property>
+     <property name="tags" stdset="0"><string>korean clothes</string></property>
+     <property name="group" stdset="0"><string>clothes</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_arabian_clothes">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🧞 arabian clothes</string></property>
+     <property name="tags" stdset="0"><string>arabian clothes</string></property>
+     <property name="group" stdset="0"><string>clothes</string></property>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="QPushButton" name="chk_ancient_egyptian_clothes">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🏺 ancient egyptian clothes</string></property>
+     <property name="tags" stdset="0"><string>ancient egyptian clothes</string></property>
+     <property name="group" stdset="0"><string>clothes</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

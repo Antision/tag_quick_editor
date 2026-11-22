@@ -41,6 +41,9 @@ public:
     std::set<teTagWidgetBase*> select;///< Set of selected tags (excluding current)
 
     QMenu* menu = new QMenu(this);///< Context menu for right-click operations
+    /// True while that menu is open. It owns the focus for its lifetime, which
+    /// must not be mistaken for the list losing the selection.
+    bool m_contextMenuOpen = false;
     /// Widgets this list owns, by tag (see registerWidgetFor). This is the table
     /// that replaces teTag::widget: a QPointer so a widget recycled by the pool
     /// cannot leave a dangling entry behind.

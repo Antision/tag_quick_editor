@@ -40,6 +40,7 @@
         <file alias="editor.qss">../res/style/editor.qss</file>
         <file alias="editor_custom.qss">../res/style/editor_custom.qss</file>
         <file alias="controls.qss">../res/style/controls.qss</file>
+        <file alias="secondarybutton.qss">../res/style/secondarybutton.qss</file>
     </qresource>
     <!-- 二级按钮的菜单界面(SC-10)。一个控件一个 .ui,文件名 = 控件 id + _menu;
          运行时用 QUiLoader 按 :/secondarymenu/<id>_menu.ui 取,不依赖外部文件。
@@ -62,5 +63,58 @@
         <file alias="character_type_menu.ui">../res/secondarymenu/character_type_menu.ui</file>
         <file alias="faces_menu.ui">../res/secondarymenu/faces_menu.ui</file>
         <file alias="sexual_positions_menu.ui">../res/secondarymenu/sexual_positions_menu.ui</file>
+        <file alias="clothes_armor_menu.ui">../res/secondarymenu/clothes_armor_menu.ui</file>
+        <file alias="clothes_bikini_menu.ui">../res/secondarymenu/clothes_bikini_menu.ui</file>
+        <file alias="clothes_bodysuit_menu.ui">../res/secondarymenu/clothes_bodysuit_menu.ui</file>
+        <file alias="clothes_boots_menu.ui">../res/secondarymenu/clothes_boots_menu.ui</file>
+        <file alias="clothes_bow_menu.ui">../res/secondarymenu/clothes_bow_menu.ui</file>
+        <file alias="clothes_bracelet_menu.ui">../res/secondarymenu/clothes_bracelet_menu.ui</file>
+        <file alias="clothes_cape_menu.ui">../res/secondarymenu/clothes_cape_menu.ui</file>
+        <file alias="clothes_chinese_clothes_menu.ui">../res/secondarymenu/clothes_chinese_clothes_menu.ui</file>
+        <file alias="clothes_choker_menu.ui">../res/secondarymenu/clothes_choker_menu.ui</file>
+        <file alias="clothes_clothes_menu.ui">../res/secondarymenu/clothes_clothes_menu.ui</file>
+        <file alias="clothes_coat_menu.ui">../res/secondarymenu/clothes_coat_menu.ui</file>
+        <file alias="clothes_collar_menu.ui">../res/secondarymenu/clothes_collar_menu.ui</file>
+        <file alias="clothes_crown_menu.ui">../res/secondarymenu/clothes_crown_menu.ui</file>
+        <file alias="clothes_detached_sleeves_menu.ui">../res/secondarymenu/clothes_detached_sleeves_menu.ui</file>
+        <file alias="clothes_dress_menu.ui">../res/secondarymenu/clothes_dress_menu.ui</file>
+        <file alias="clothes_earrings_menu.ui">../res/secondarymenu/clothes_earrings_menu.ui</file>
+        <file alias="clothes_garter_straps_menu.ui">../res/secondarymenu/clothes_garter_straps_menu.ui</file>
+        <file alias="clothes_glasses_menu.ui">../res/secondarymenu/clothes_glasses_menu.ui</file>
+        <file alias="clothes_gloves_menu.ui">../res/secondarymenu/clothes_gloves_menu.ui</file>
+        <file alias="clothes_hair_ornament_menu.ui">../res/secondarymenu/clothes_hair_ornament_menu.ui</file>
+        <file alias="clothes_hat_menu.ui">../res/secondarymenu/clothes_hat_menu.ui</file>
+        <file alias="clothes_headband_menu.ui">../res/secondarymenu/clothes_headband_menu.ui</file>
+        <file alias="clothes_headphones_menu.ui">../res/secondarymenu/clothes_headphones_menu.ui</file>
+        <file alias="clothes_high_heels_menu.ui">../res/secondarymenu/clothes_high_heels_menu.ui</file>
+        <file alias="clothes_jacket_menu.ui">../res/secondarymenu/clothes_jacket_menu.ui</file>
+        <file alias="clothes_japanese_clothes_menu.ui">../res/secondarymenu/clothes_japanese_clothes_menu.ui</file>
+        <file alias="clothes_leotard_menu.ui">../res/secondarymenu/clothes_leotard_menu.ui</file>
+        <file alias="clothes_mask_menu.ui">../res/secondarymenu/clothes_mask_menu.ui</file>
+        <file alias="clothes_necklace_menu.ui">../res/secondarymenu/clothes_necklace_menu.ui</file>
+        <file alias="clothes_necktie_menu.ui">../res/secondarymenu/clothes_necktie_menu.ui</file>
+        <file alias="clothes_panties_menu.ui">../res/secondarymenu/clothes_panties_menu.ui</file>
+        <file alias="clothes_pants_menu.ui">../res/secondarymenu/clothes_pants_menu.ui</file>
+        <file alias="clothes_pantyhose_menu.ui">../res/secondarymenu/clothes_pantyhose_menu.ui</file>
+        <file alias="clothes_ribbon_menu.ui">../res/secondarymenu/clothes_ribbon_menu.ui</file>
+        <file alias="clothes_ring_menu.ui">../res/secondarymenu/clothes_ring_menu.ui</file>
+        <file alias="clothes_robe_menu.ui">../res/secondarymenu/clothes_robe_menu.ui</file>
+        <file alias="clothes_sandals_menu.ui">../res/secondarymenu/clothes_sandals_menu.ui</file>
+        <file alias="clothes_sash_menu.ui">../res/secondarymenu/clothes_sash_menu.ui</file>
+        <file alias="clothes_school_uniform_menu.ui">../res/secondarymenu/clothes_school_uniform_menu.ui</file>
+        <file alias="clothes_shirt_menu.ui">../res/secondarymenu/clothes_shirt_menu.ui</file>
+        <file alias="clothes_shoes_menu.ui">../res/secondarymenu/clothes_shoes_menu.ui</file>
+        <file alias="clothes_shorts_menu.ui">../res/secondarymenu/clothes_shorts_menu.ui</file>
+        <file alias="clothes_skirt_menu.ui">../res/secondarymenu/clothes_skirt_menu.ui</file>
+        <file alias="clothes_sleeves_menu.ui">../res/secondarymenu/clothes_sleeves_menu.ui</file>
+        <file alias="clothes_slippers_menu.ui">../res/secondarymenu/clothes_slippers_menu.ui</file>
+        <file alias="clothes_socks_menu.ui">../res/secondarymenu/clothes_socks_menu.ui</file>
+        <file alias="clothes_suit_menu.ui">../res/secondarymenu/clothes_suit_menu.ui</file>
+        <file alias="clothes_sweater_menu.ui">../res/secondarymenu/clothes_sweater_menu.ui</file>
+        <file alias="clothes_swimsuit_menu.ui">../res/secondarymenu/clothes_swimsuit_menu.ui</file>
+        <file alias="clothes_thigh_strap_menu.ui">../res/secondarymenu/clothes_thigh_strap_menu.ui</file>
+        <file alias="clothes_top_menu.ui">../res/secondarymenu/clothes_top_menu.ui</file>
+        <file alias="clothes_veil_menu.ui">../res/secondarymenu/clothes_veil_menu.ui</file>
+        <file alias="clothes_vest_menu.ui">../res/secondarymenu/clothes_vest_menu.ui</file>
     </qresource>
 </RCC>

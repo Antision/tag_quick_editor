@@ -441,6 +441,8 @@ public:
     void link(std::shared_ptr<teTag>in_tag)override;
     void unlink(std::shared_ptr<teTag>in_tag)override;
     virtual void onAddButtonClicked();
+    /// Ctrl+W in the list is the keyboard form of the "+" button.
+    void addButtonClicked()override{ onAddButtonClicked(); }
     /// The add-tag window produced `data`. Virtual: a control may normalise the
     /// wording before it becomes a tag (the hair list writes "[colour] streaks").
     virtual void reciveWidgetSignal(QString data,bool ifadd);

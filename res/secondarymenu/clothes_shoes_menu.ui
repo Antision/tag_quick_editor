@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>clothes_shoes_menu</class>
+ <widget class="QWidget" name="clothes_shoes_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>60</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="chk_shoes">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👟 shoes</string></property>
+     <property name="tags" stdset="0"><string>shoes</string></property>
+     <property name="group" stdset="0"><string>shoes</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_sneakers">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👟 sneakers</string></property>
+     <property name="tags" stdset="0"><string>sneakers</string></property>
+     <property name="group" stdset="0"><string>shoes</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_loafers">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🥿 loafers</string></property>
+     <property name="tags" stdset="0"><string>loafers</string></property>
+     <property name="group" stdset="0"><string>shoes</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_mary_janes">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🥿 mary janes</string></property>
+     <property name="tags" stdset="0"><string>mary janes</string></property>
+     <property name="group" stdset="0"><string>shoes</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_platform_shoes">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🥿 platform shoes</string></property>
+     <property name="tags" stdset="0"><string>platform shoes</string></property>
+     <property name="group" stdset="0"><string>shoes</string></property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QPushButton" name="chk_flats">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🥿 flats</string></property>
+     <property name="tags" stdset="0"><string>flats</string></property>
+     <property name="group" stdset="0"><string>shoes</string></property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="chk_dress_shoes">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👞 dress shoes</string></property>
+     <property name="tags" stdset="0"><string>dress shoes</string></property>
+     <property name="group" stdset="0"><string>shoes</string></property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QPushButton" name="chk_ballet_slippers">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🩰 ballet slippers</string></property>
+     <property name="tags" stdset="0"><string>ballet slippers</string></property>
+     <property name="group" stdset="0"><string>shoes</string></property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QPushButton" name="chk_high_tops">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👟 high tops</string></property>
+     <property name="tags" stdset="0"><string>high tops</string></property>
+     <property name="group" stdset="0"><string>shoes</string></property>
+    </widget>
+   </item>
+   <item row="4" column="1">
+    <widget class="QPushButton" name="chk_converse">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👟 converse</string></property>
+     <property name="tags" stdset="0"><string>converse</string></property>
+     <property name="group" stdset="0"><string>shoes</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

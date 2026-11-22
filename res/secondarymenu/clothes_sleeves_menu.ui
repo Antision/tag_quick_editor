@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>clothes_sleeves_menu</class>
+ <widget class="QWidget" name="clothes_sleeves_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>60</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="chk_long_sleeves">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🧥 long sleeves</string></property>
+     <property name="tags" stdset="0"><string>long sleeves</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_short_sleeves">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👕 short sleeves</string></property>
+     <property name="tags" stdset="0"><string>short sleeves</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_puffy_sleeves">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🎈 puffy sleeves</string></property>
+     <property name="tags" stdset="0"><string>puffy sleeves</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_wide_sleeves">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🌊 wide sleeves</string></property>
+     <property name="tags" stdset="0"><string>wide sleeves</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_frilled_sleeves">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🎀 frilled sleeves</string></property>
+     <property name="tags" stdset="0"><string>frilled sleeves</string></property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QPushButton" name="chk_juliet_sleeves">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🎈 juliet sleeves</string></property>
+     <property name="tags" stdset="0"><string>juliet sleeves</string></property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="chk_sleeves_rolled_up">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>💪 sleeves rolled up</string></property>
+     <property name="tags" stdset="0"><string>sleeves rolled up</string></property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QPushButton" name="chk_layered_sleeves">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🧵 layered sleeves</string></property>
+     <property name="tags" stdset="0"><string>layered sleeves</string></property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QPushButton" name="chk_sleeve_cuffs">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🧷 sleeve cuffs</string></property>
+     <property name="tags" stdset="0"><string>sleeve cuffs</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

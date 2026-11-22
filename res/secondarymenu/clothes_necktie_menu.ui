@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>clothes_necktie_menu</class>
+ <widget class="QWidget" name="clothes_necktie_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>60</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="chk_necktie">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👔 necktie</string></property>
+     <property name="tags" stdset="0"><string>necktie</string></property>
+     <property name="group" stdset="0"><string>necktie</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_ascot">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🎗️ ascot</string></property>
+     <property name="tags" stdset="0"><string>ascot</string></property>
+     <property name="group" stdset="0"><string>necktie</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_cross_tie">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>❌ cross tie</string></property>
+     <property name="tags" stdset="0"><string>cross tie</string></property>
+     <property name="group" stdset="0"><string>necktie</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_bolo_tie">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🤠 bolo tie</string></property>
+     <property name="tags" stdset="0"><string>bolo tie</string></property>
+     <property name="group" stdset="0"><string>necktie</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_tie_clip">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>📎 tie clip</string></property>
+     <property name="tags" stdset="0"><string>tie clip</string></property>
+     <property name="group" stdset="0"><string>necktie</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

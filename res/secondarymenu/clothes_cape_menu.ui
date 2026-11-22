@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>clothes_cape_menu</class>
+ <widget class="QWidget" name="clothes_cape_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>60</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="chk_cape">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🦸 cape</string></property>
+     <property name="tags" stdset="0"><string>cape</string></property>
+     <property name="group" stdset="0"><string>cape</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_capelet">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🧣 capelet</string></property>
+     <property name="tags" stdset="0"><string>capelet</string></property>
+     <property name="group" stdset="0"><string>cape</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_cloak">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🧥 cloak</string></property>
+     <property name="tags" stdset="0"><string>cloak</string></property>
+     <property name="group" stdset="0"><string>cape</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_hooded_cloak">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🧥 hooded cloak</string></property>
+     <property name="tags" stdset="0"><string>hooded cloak</string></property>
+     <property name="group" stdset="0"><string>cape</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_waist_cape">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🩱 waist cape</string></property>
+     <property name="tags" stdset="0"><string>waist cape</string></property>
+     <property name="group" stdset="0"><string>cape</string></property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QPushButton" name="chk_side_cape">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🦸 side cape</string></property>
+     <property name="tags" stdset="0"><string>side cape</string></property>
+     <property name="group" stdset="0"><string>cape</string></property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="chk_shawl">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🧶 shawl</string></property>
+     <property name="tags" stdset="0"><string>shawl</string></property>
+     <property name="group" stdset="0"><string>cape</string></property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QPushButton" name="chk_stole">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🧣 stole</string></property>
+     <property name="tags" stdset="0"><string>stole</string></property>
+     <property name="group" stdset="0"><string>cape</string></property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QPushButton" name="chk_feather_boa">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🪶 feather boa</string></property>
+     <property name="tags" stdset="0"><string>feather boa</string></property>
+     <property name="group" stdset="0"><string>cape</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

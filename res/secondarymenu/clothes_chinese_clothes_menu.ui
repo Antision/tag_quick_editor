@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>clothes_chinese_clothes_menu</class>
+ <widget class="QWidget" name="clothes_chinese_clothes_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>60</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="chk_chinese_clothes">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🐉 chinese clothes</string></property>
+     <property name="tags" stdset="0"><string>chinese clothes</string></property>
+     <property name="group" stdset="0"><string>chinese_clothes</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_qipao">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🧧 qipao</string></property>
+     <property name="tags" stdset="0"><string>qipao</string></property>
+     <property name="group" stdset="0"><string>chinese_clothes</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_hanfu">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🏮 hanfu</string></property>
+     <property name="tags" stdset="0"><string>hanfu</string></property>
+     <property name="group" stdset="0"><string>chinese_clothes</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_tangzhuang">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🏮 tangzhuang</string></property>
+     <property name="tags" stdset="0"><string>tangzhuang</string></property>
+     <property name="group" stdset="0"><string>chinese_clothes</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_changpao">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🏮 changpao</string></property>
+     <property name="tags" stdset="0"><string>changpao</string></property>
+     <property name="group" stdset="0"><string>chinese_clothes</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

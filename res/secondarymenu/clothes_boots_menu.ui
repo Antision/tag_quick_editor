@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>clothes_boots_menu</class>
+ <widget class="QWidget" name="clothes_boots_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>60</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="chk_boots">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👢 boots</string></property>
+     <property name="tags" stdset="0"><string>boots</string></property>
+     <property name="group" stdset="0"><string>boots</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_thigh_boots">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👢 thigh boots</string></property>
+     <property name="tags" stdset="0"><string>thigh boots</string></property>
+     <property name="group" stdset="0"><string>boots</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_knee_boots">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👢 knee boots</string></property>
+     <property name="tags" stdset="0"><string>knee boots</string></property>
+     <property name="group" stdset="0"><string>boots</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_high_heel_boots">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👢 high heel boots</string></property>
+     <property name="tags" stdset="0"><string>high heel boots</string></property>
+     <property name="group" stdset="0"><string>boots</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_lace_up_boots">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🥾 lace-up boots</string></property>
+     <property name="tags" stdset="0"><string>lace-up boots</string></property>
+     <property name="group" stdset="0"><string>boots</string></property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QPushButton" name="chk_ankle_boots">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👢 ankle boots</string></property>
+     <property name="tags" stdset="0"><string>ankle boots</string></property>
+     <property name="group" stdset="0"><string>boots</string></property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="chk_armored_boots">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🛡️ armored boots</string></property>
+     <property name="tags" stdset="0"><string>armored boots</string></property>
+     <property name="group" stdset="0"><string>boots</string></property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QPushButton" name="chk_platform_boots">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👢 platform boots</string></property>
+     <property name="tags" stdset="0"><string>platform boots</string></property>
+     <property name="group" stdset="0"><string>boots</string></property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QPushButton" name="chk_rubber_boots">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🥾 rubber boots</string></property>
+     <property name="tags" stdset="0"><string>rubber boots</string></property>
+     <property name="group" stdset="0"><string>boots</string></property>
+    </widget>
+   </item>
+   <item row="4" column="1">
+    <widget class="QPushButton" name="chk_cowboy_boots">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🤠 cowboy boots</string></property>
+     <property name="tags" stdset="0"><string>cowboy boots</string></property>
+     <property name="group" stdset="0"><string>boots</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

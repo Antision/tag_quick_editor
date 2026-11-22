@@ -1,6 +1,8 @@
 #include "tesignalwidget.h"
 
+#include "secondarybutton.h"   // the menu buttons of a dialog (kind / capture)
 #include "mainwindow.h"     // editTagDecorations(): the one decorations entry point
+#include "testyle.h"        // the SecondaryButton colours, shared with the editor columns
 
 #include <QFileInfo>
 #include <QIcon>
@@ -9,7 +11,25 @@
 // 所以先声明(定义在文件后半段)。
 static void buttons_mutual_exclusion(QAbstractButton* btn, bool checked, QButtonGroup* btn_gop);
 
-void addButtonsToGridLayout(QGridLayout *gridLayout, QButtonGroup *buttonGroup, QStringList &stringList) {
+QString buttonTagText(const QAbstractButton* button)
+{
+    if (!button)
+        return QString();
+    const QVariant tag = button->property("tag");
+    return tag.isValid() ? tag.toString() : button->text();
+}
+
+QLabel* makeSectionHeading(const QString& text, QWidget* parent)
+{
+    auto* label = new QLabel(text, parent);
+    label->setProperty("type","sectionHeading");
+    label->setStyleSheet(qsl("QLabel{color:#c8c8c8;font-size:12px;font-style:italic;border:none;background:transparent;}"));
+    return label;
+}
+
+void addButtonsToGridLayout(QGridLayout *gridLayout, QButtonGroup *buttonGroup,
+                            QStringList &stringList,
+                            const QHash<QString,QString>* captions) {
     if (!gridLayout || !buttonGroup || stringList.isEmpty()) {
         return;
     }
@@ -30,7 +50,12 @@ void addButtonsToGridLayout(QGridLayout *gridLayout, QButtonGroup *buttonGroup, 
     int currentCol = 0;
 
     for (QString &str : stringList) {
-        QPushButton *button = new QPushButton(std::move(str));
+        const QString caption = captions ? captions->value(str, str) : str;
+        QPushButton *button = new QPushButton(caption);
+        // Only a button whose caption is not its word needs to remember the word:
+        // the rest keep writing their text, which some windows rename at runtime.
+        if (caption != str)
+            button->setProperty("tag", str);
         button->setCheckable(true);
 
         buttonGroup->addButton(button);
@@ -67,12 +92,43 @@ void colorsWidget::addSectionToContent(QLayout* sectionLayout,const QString& hea
     QVBoxLayout* wrapper = new QVBoxLayout;
     wrapper->setContentsMargins(0,2,0,0);
     wrapper->setSpacing(0);
-    QLabel* label = new QLabel(heading,this);
-    label->setProperty("type","sectionHeading");
-    label->setStyleSheet(qsl("QLabel{color:#c8c8c8;font-size:12px;font-style:italic;border:none;background:transparent;}"));
-    wrapper->addWidget(label);
+    wrapper->addWidget(makeSectionHeading(heading,this));
     wrapper->addLayout(sectionLayout);
     target->addLayout(wrapper);
+}
+
+void colorsWidget::addBuiltSection(QGridLayout* grid,QButtonGroup* group,
+                                   const QString& heading,int column)
+{
+    if(!grid)
+        return;
+    auto* box = qobject_cast<QBoxLayout*>(content_layout);
+    if(!box||box->direction()!=QBoxLayout::LeftToRight)
+        return;                     // only the column arrangement has somewhere to put it
+    // Columns are opened on demand: the constructor only creates the ones its
+    // section list asked for (the clothes dialog passes just the colour column
+    // and adds the body areas afterwards).
+    while(column>=columns.size()){
+        auto* extra = new QVBoxLayout;
+        extra->setContentsMargins(0,0,0,0);
+        extra->setSpacing(1);
+        columns.push_back(extra);
+        box->addLayout(extra);
+    }
+    grid->setContentsMargins(0,0,0,0);
+    grid->setSpacing(1);
+    objectLayoutList.push_back({grid,group});
+    addSectionToContent(grid,heading,column);
+}
+
+void colorsWidget::startNewTag()
+{
+    uncheckAllButtons();
+    for(SecondaryButton* button : findChildren<SecondaryButton*>()){
+        button->setPaletteMode(true);
+        button->setCaptureFromTag(QString());
+    }
+    emit editingTagChanged(QString());
 }
 
 void colorsWidget::uncheckAllButtons(){
@@ -87,9 +143,37 @@ void colorsWidget::uncheckAllButtons(){
         for(QAbstractButton*btn:extra_buttongroup->buttons())
             btn->setChecked(false);
     otherWords.clear();
+    // The composition is empty again: the next tag starts from nothing. The type
+    // buttons are unlit by the caller (startNewTag/applyEditingTag broadcast the
+    // new tag), so this only forgets the word.
+    m_composedType.clear();
+    // A striped/gradient phrase belongs to the tag that was just written too: the
+    // next `+` must not silently reuse the colours of the previous one.
+    if(multiColorActive()||!m_colorQueue.isEmpty())
+        leaveMultiColor();
 }
 
-colorsWidget::colorsWidget(QVector<QPair<QStringList, bool> > &&objects, QWidget *parent, int colorListPos, std::optional<QStringList> extraButtons, QVector<QString> headings, QButtonGroup* sharedExclusiveGroup, bool verticalSections, QVector<int> sectionColumns):LiteWidget2(parent){
+void colorsWidget::chooseComposedType(const QString& tagText, bool toggle)
+{
+    QString next = tagText;
+    if (toggle && next == m_composedType)
+        next.clear();
+    m_composedType = next;
+    // One garment has one type: a menu choice replaces the plain type buttons,
+    // and a plain type button replaces the menu choice (see the shared group's
+    // toggled handler in the constructor).
+    if (!m_composedType.isEmpty() && shared_group) {
+        for (QAbstractButton* button : shared_group->buttons()) {
+            if (button->isChecked())
+                button->setChecked(false);
+        }
+    }
+    for (SecondaryButton* button : findChildren<SecondaryButton*>())
+        button->setCaptureFromTag(m_composedType);
+    emit editingTagChanged(m_composedType);
+}
+
+colorsWidget::colorsWidget(QVector<QPair<QStringList, bool> > &&objects, QWidget *parent, int colorListPos, std::optional<QStringList> extraButtons, QVector<QString> headings, QButtonGroup* sharedExclusiveGroup, bool verticalSections, QVector<int> sectionColumns, QHash<QString,QString> buttonCaptions):LiteWidget2(parent){
     applyLiteWindowStyle(this);
     // 每个窗口类各自记住自己上次的尺寸/位置。颜色窗和服饰窗都是 colorsWidget,
     // 内容差得多,用第一段的第一个词当后缀区分开。
@@ -165,12 +249,15 @@ colorsWidget::colorsWidget(QVector<QPair<QStringList, bool> > &&objects, QWidget
 
         if(stringlist.size()>4){
             object_layout=new QGridLayout;
-            addButtonsToGridLayout((QGridLayout*)object_layout,object_buttongroup,stringlist);
+            addButtonsToGridLayout((QGridLayout*)object_layout,object_buttongroup,stringlist,&buttonCaptions);
         }
         else{
             object_layout=new QVBoxLayout;
             for(QString&str:stringlist){
-                QPushButton*objbtn = new QPushButton(str,this);
+                const QString caption = buttonCaptions.value(str,str);
+                QPushButton*objbtn = new QPushButton(caption,this);
+                if(caption!=str)
+                    objbtn->setProperty("tag",str);
                 object_buttongroup->addButton(objbtn);
                 object_layout->addWidget(objbtn);
                 objbtn->setCheckable(true);
@@ -187,6 +274,17 @@ colorsWidget::colorsWidget(QVector<QPair<QStringList, bool> > &&objects, QWidget
         sharedExclusiveGroup->setParent(this);      // the dialog owns the group
         sharedExclusiveGroup->setExclusive(false);
         connect(sharedExclusiveGroup,&QButtonGroup::buttonToggled,this,[sharedExclusiveGroup](QAbstractButton*btn,bool checked){if(checked)buttons_mutual_exclusion(btn,checked,sharedExclusiveGroup);},Qt::DirectConnection);
+        // A plain type button and a menu type are the same choice: ticking one
+        // must drop the other, or `+` would write two garments into one tag.
+        connect(sharedExclusiveGroup,&QButtonGroup::buttonToggled,this,[this](QAbstractButton*btn,bool checked){
+            Q_UNUSED(btn);
+            if(!checked||m_composedType.isEmpty())
+                return;
+            m_composedType.clear();
+            for(SecondaryButton* button:findChildren<SecondaryButton*>())
+                button->setCaptureFromTag(QString());
+            emit editingTagChanged(QString());
+        },Qt::DirectConnection);
     }
 
     if(colorListPos>-1){
@@ -225,10 +323,47 @@ colorsWidget::colorsWidget(QVector<QPair<QStringList, bool> > &&objects, QWidget
         colors_layout.addWidget(getColorButton(qsl("white"),255,255,255,true),1,2);
         colors_layout.addWidget(getColorButton(qsl("black"),0,0,0),2,2);
         colors_layout.addWidget(getColorButton(qsl("grey"),127,127,127),3,2);
+        // A swatch of the queue is a plain square of the colour, so the dialog
+        // has to know what each word looks like. Same table as the buttons.
+        struct ColorValue{const char* word;int r,g,b;};
+        for(const ColorValue& value:QVector<ColorValue>{
+                {"red",255,0,0},{"orange",255,126,0},{"brown",96,48,0},{"yellow",255,255,0},
+                {"green",0,255,0},{"blue",0,0,255},{"pink",255,0,255},{"purple",126,0,255},
+                {"aqua",0,255,255},{"white",255,255,255},{"black",0,0,0},{"grey",127,127,127}})
+            m_colorValues.insert(QString::fromLatin1(value.word),
+                                 QColor(value.r,value.g,value.b));
+        // In striped/gradient mode a colour button is an "append" action, not a
+        // state: the queue owns the colours and the button never stays lit.
+        for(QAbstractButton* button:colors_buttongroup->buttons())
+            connect(button,&QPushButton::clicked,this,[this,button]{
+                onColorButtonClicked(buttonTagText(button));
+            });
         colorColumn->insertLayout(colorListPos+1,&colors_layout);
         objectLayoutList.insert(colorListPos+1,{&colors_layout,colors_buttongroup});
         colors_buttongroup->setExclusive(false);
         connect(colors_buttongroup,&QButtonGroup::buttonToggled,this,[this](QAbstractButton*btn,bool checked){if(checked)buttons_mutual_exclusion(btn,checked,colors_buttongroup);},Qt::DirectConnection);
+
+        // The colour queue of a striped/gradient phrase: a QFlowLayout row of
+        // small swatches under the colour buttons. Dragging one reorders the
+        // phrase, a click removes it (QFlowLayoutReorderer swallows the release
+        // of a drag, so a drag never turns into a removal).
+        m_colorListPos = colorListPos;
+        m_colorQueueHost = new QWidget(this);
+        m_colorQueueHost->setToolTip(QStringLiteral(
+            "Colours of the pattern: click a colour to append it, drag a swatch to "
+            "reorder, click a swatch to remove it."));
+        m_colorQueueLayout = new QFlowLayout(m_colorQueueHost,0,3,3);
+        m_colorQueueReorderer = new QFlowLayoutReorderer(m_colorQueueLayout,m_colorQueueHost,this);
+        connect(m_colorQueueReorderer,&QFlowLayoutReorderer::reordered,this,[this]{
+            QStringList order;
+            for(int i=0;i<m_colorQueueLayout->count();++i)
+                if(QWidget* swatch=m_colorQueueLayout->itemAt(i)->widget())
+                    order.append(swatch->property("colorWord").toString());
+            m_colorQueue=order;
+        });
+        m_colorQueueHost->setVisible(false);
+        colorColumn->insertWidget(colorListPos+2,m_colorQueueHost);
+        m_shadeButtons=shade_buttongroup->buttons();
     }
 
     if(extraButtons){
@@ -244,7 +379,10 @@ colorsWidget::colorsWidget(QVector<QPair<QStringList, bool> > &&objects, QWidget
                 }
         },Qt::DirectConnection);
         for(const QString&str:*extraButtons){
-            QPushButton*objbtn = new QPushButton(str,this);
+            const QString caption = buttonCaptions.value(str,str);
+            QPushButton*objbtn = new QPushButton(caption,this);
+            if(caption!=str)
+                objbtn->setProperty("tag",str);
             extra_buttongroup->addButton(objbtn);
             extra_layout->addWidget(objbtn);
             objbtn->setCheckable(true);
@@ -282,6 +420,25 @@ colorsWidget::colorsWidget(QVector<QPair<QStringList, bool> > &&objects, QWidget
         layout->addLayout(extra_layout);
     layout->addLayout(signal_button_layout);
 
+    // striped / gradient are ordinary section buttons, and the list that says
+    // which words they are arrives after construction (setMultiColorTriggers),
+    // so every button is wired once and decides at click time. This runs last:
+    // only now are the sections' buttons children of this widget (their layouts
+    // were parented by the addLayout() calls above), so findChildren() sees them.
+    for(QPushButton* button:findChildren<QPushButton*>()){
+        if(qobject_cast<SecondaryButton*>(button))
+            continue;
+        connect(button,&QPushButton::toggled,this,[this,button](bool on){
+            const QString word=buttonTagText(button);
+            if(!m_multiColorTriggers.contains(word))
+                return;
+            if(on)
+                enterMultiColor(word);
+            else if(m_multiColorTrigger==word)
+                leaveMultiColor();
+        });
+    }
+
 }
 
 QPushButton *colorsWidget::getColorButton(const QString &colorText, int r, int g, int b, bool ifblacktext){
@@ -318,7 +475,7 @@ void colorsWidget::sendString(bool ifadd){
     if(extra_buttongroup){
         for(QAbstractButton* b:extra_buttongroup->buttons()){
             if(b->isChecked()){
-                sendData=b->text();
+                sendData=buttonTagText(b);
                 emit stringSignal(sendData,ifadd);
                 uncheckAllButtons();
                 return;
@@ -350,38 +507,129 @@ void colorsWidget::sendString(bool ifadd){
     // dialog), so a button must only contribute its text once.
     QSet<QAbstractButton*> emitted;
     for(int i=0;i<objectLayoutListSize;++i){
-        if(i==otherWordsBefore&&!otherWords.isEmpty()){
-            sendData+=otherWords;
+        // The colours of a striped/gradient phrase belong where a single colour
+        // would have been: in front of the modifiers and the type word.
+        if(i==m_colorListPos){
+            const QString phrase=multiColorPhrase();
+            if(!phrase.isEmpty())
+                sendData+=phrase+' ';
+        }
+        if(i==otherWordsBefore){
+            // The words no button stands for, then the type chosen in the palette
+            // (`skirt`, `pleated skirt`, `school uniform`). Both go in front of the
+            // type sections, which is where the tag's type word belongs.
+            if(!otherWords.isEmpty())
+                sendData+=otherWords;
+            if(!m_composedType.isEmpty())
+                sendData+=m_composedType+' ';
         }
         auto&[layout,group] = objectLayoutList[i];
         if(group)
             for(QAbstractButton* b:group->buttons()){
                 if(b->isChecked()&&!emitted.contains(b)){
                     emitted.insert(b);
-                    sendData+=b->text()+' ';
+                    // The pattern word the phrase ends with is already written:
+                    // its button stays lit only to keep the colour queue open.
+                    // With an empty queue there is no phrase, so the word still
+                    // has to come from the button.
+                    if(multiColorActive()&&!m_colorQueue.isEmpty()
+                        &&buttonTagText(b)==m_multiColorTrigger)
+                        continue;
+                    sendData+=buttonTagText(b)+' ';
                 }
             }
         else
             sendData+=dynamic_cast<QLabel*>(layout->itemAt(0)->widget())->text()+' ';
     }
     if(!sendData.isEmpty())sendData.chop(1);
+    // Nothing chosen: `+` must not insert an empty tag (the empty row used to be
+    // how a stray click on the add button blanked the list).
+    if(sendData.isEmpty()){
+        uncheckAllButtons();
+        return;
+    }
     emit stringSignal(sendData,ifadd);
     uncheckAllButtons();
+    // The composition belongs to the tag that was just written. A palette that
+    // kept its old type lit would add the same tag again on the next `+`.
+    for(SecondaryButton* button:findChildren<SecondaryButton*>())
+        button->setCaptureFromTag(QString());
+    emit editingTagChanged(QString());
 }
 
-void colorsWidget::input_and_show(std::shared_ptr<teTag> in_tag){
+void colorsWidget::input_and_show(std::shared_ptr<teTag> in_tag)
+{
+    applyEditingTag(in_tag);
+    showNearCursor();
+}
+
+void colorsWidget::applyEditingTag(std::shared_ptr<teTag> in_tag){
+    // The dialog edits *one* tag: whatever was ticked for the previous one (or
+    // for a new tag that was never composed) goes away first, otherwise a stale
+    // "skirt" would stay lit while a pair of gloves is being edited.
+    uncheckAllButtons();
+    const QString edited = in_tag ? static_cast<QString>(*in_tag) : QString();
     if(in_tag){
-        QList<teWord*>&words = in_tag->words;
+        QStringList words;
+        words.reserve(in_tag->words.size());
+        for(teWord* word : in_tag->words)
+            words.append(word->text);
         int wordCount = words.count();
         if(extra_buttongroup){
             auto extrabuttonlist = extra_buttongroup->buttons();
-            QString tagText = *in_tag.get();
+            QString tagText = edited;
             for(QAbstractButton*btn:extrabuttonlist)
-                if(btn->text()==tagText){
+                if(buttonTagText(btn)==tagText){
                     btn->setChecked(true);
+                    for(SecondaryButton* button : findChildren<SecondaryButton*>()){
+                        button->setPaletteMode(true);
+                        button->setCaptureFromTag(edited);
+                    }
+                    emit editingTagChanged(edited);
                     show();
                     return;
                 }
+        }
+        // A striped/gradient phrase first: it owns its colour words, so they must
+        // not also light a single colour button (and "and"/"to" are no leftovers).
+        QStringList phraseColors;
+        QString phraseTrigger;
+        const bool phrase = takeMultiColorPhrase(words,phraseColors,phraseTrigger);
+        wordCount = words.count();
+        // The type is the *suffix* of the tag, and it can be longer than its last
+        // word: `pleated skirt` / `sailor collar` are menu entries of the skirt /
+        // collar button, `school uniform` is one type word. The longest suffix
+        // that some type button answers for is the one to keep; its words are not
+        // "leftovers" and must not be appended to otherWords a second time.
+        QString composedType;
+        QAbstractButton* plainType = nullptr;
+        for(SecondaryButton* button : findChildren<SecondaryButton*>()){
+            const QString candidate = button->paletteTagFor(edited);
+            if(candidate.size() > composedType.size())
+                composedType = candidate;
+        }
+        if(shared_group){
+            for(QAbstractButton* button : shared_group->buttons()){
+                const QString candidate = buttonTagText(button);
+                if(candidate.isEmpty())
+                    continue;
+                const bool suffix = edited == candidate
+                                    || edited.endsWith(QLatin1Char(' ') + candidate);
+                if(!suffix || candidate.size() < composedType.size())
+                    continue;
+                composedType = candidate;
+                plainType = button;
+            }
+        }
+        QVector<bool> typeWords(wordCount,false);
+        if(!composedType.isEmpty()){
+            const int typeWordCount = composedType.split(QLatin1Char(' '),Qt::SkipEmptyParts).size();
+            for(int i=0;i<typeWordCount&&i<wordCount;++i)
+                typeWords[wordCount-1-i]=true;
+            if(plainType)
+                plainType->setChecked(true);
+            else
+                m_composedType=composedType;
         }
         // Turns on the button with this text; true when one was found (or when a
         // label section claimed the word, which is how it was before).
@@ -390,7 +638,7 @@ void colorsWidget::input_and_show(std::shared_ptr<teTag> in_tag){
                 if(buttongroup){
                     auto buttonlist = buttongroup->buttons();
                     for(QAbstractButton*btn:buttonlist)
-                        if(btn->text()==wordtext){
+                        if(buttonTagText(btn)==wordtext){
                             btn->setChecked(true);
                             return true;
                         }
@@ -412,17 +660,252 @@ void colorsWidget::input_and_show(std::shared_ptr<teTag> in_tag){
         // "pink blonde hair". The remaining words are matched in their original
         // order so otherWords keeps the order of the tag.
         QVector<bool> matched(wordCount,false);
-        if(wordCount>0)
-            matched[wordCount-1]=lightWord(words.back()->text);
+        for(int i=0;i<wordCount;++i)
+            matched[i]=typeWords[i];
+        if(wordCount>0&&!typeWords[wordCount-1])
+            matched[wordCount-1]=lightWord(words.back());
         for(int i=0;i<wordCount;++i)
             if(i!=wordCount-1&&!matched[i])
-                matched[i]=lightWord(words[i]->text);
+                matched[i]=lightWord(words[i]);
         for(int i=0;i<wordCount;++i)
             if(!matched[i])
-                otherWords.append(*words[i]+' ');
+                otherWords.append(words[i]+' ');
+        if(phrase){
+            // Light the trigger through its own button - the tick is what puts the
+            // colour column into queue mode - and then hand it the colours.
+            for(QAbstractButton* button:findChildren<QAbstractButton*>())
+                if(buttonTagText(button)==phraseTrigger){
+                    button->setChecked(true);
+                    break;
+                }
+            // A tag that carried both pattern words (or a leftover one) must not
+            // leave the pair lit together.
+            uncheckOtherTriggers(phraseTrigger);
+            setColorQueue(phraseColors);
+        }
     }
-    showNearCursor();
+    // The buttons of this dialog are its children (clothesMenuButton makes them
+    // with the dialog as parent), so the dialog can light them itself. Depending on
+    // a signal connection elsewhere is what left them unlit.
+    for(SecondaryButton* button : findChildren<SecondaryButton*>()){
+        button->setPaletteMode(true);
+        button->setCaptureFromTag(edited);
+    }
+    emit editingTagChanged(edited);
 }
+QString colorsWidget::multiColorPhrase() const
+{
+    if(m_multiColorTrigger.isEmpty()||m_colorQueue.isEmpty())
+        return QString();
+    // "blue and white striped" / "white to blue gradient": the colours, their
+    // connector and the pattern word *as one run*. The trigger used to be left to
+    // its own button, which sits behind the other modifiers in the column - so
+    // "blue and white" + frilled + striped came out as
+    // "blue and white frilled striped", and once the clothes editor sorted that
+    // the phrase was torn in half. sendString() skips the trigger's button now
+    // that the phrase carries it.
+    return m_colorQueue.join(m_multiColorTrigger==qsl("gradient")?qsl(" to ")
+                                                               :qsl(" and "))
+           +QLatin1Char(' ')+m_multiColorTrigger;
+}
+
+void colorsWidget::setColorQueue(const QStringList& colors)
+{
+    m_colorQueue=colors;
+    refreshColorQueue();
+}
+
+void colorsWidget::clearColorQueue()
+{
+    m_colorQueue.clear();
+    refreshColorQueue();
+}
+
+void colorsWidget::clampToScreen()
+{
+    QScreen* screen=this->screen();
+    if(!screen)
+        screen=QGuiApplication::primaryScreen();
+    if(!screen)
+        return;
+    const QRect available=screen->availableGeometry();
+    QRect geometry=this->geometry();
+    geometry.setWidth(qMin(geometry.width(),available.width()));
+    geometry.setHeight(qMin(geometry.height(),available.height()));
+    geometry.moveLeft(qBound(available.left(),geometry.left(),
+                             qMax(available.left(),available.right()-geometry.width()+1)));
+    geometry.moveTop(qBound(available.top(),geometry.top(),
+                            qMax(available.top(),available.bottom()-geometry.height()+1)));
+    setGeometry(geometry);
+}
+
+void colorsWidget::onColorButtonClicked(const QString& word)
+{
+    if(!multiColorActive()||word.isEmpty())
+        return;
+    // The queue owns the colours: a click appends, it does not select.
+    if(!m_colorQueue.contains(word))
+        m_colorQueue.append(word);
+    for(QAbstractButton* button:colors_buttongroup->buttons())
+        if(buttonTagText(button)==word)
+            button->setChecked(false);
+    refreshColorQueue();
+    // One more swatch may be one more row: the window has to grow, and it is
+    // anchored at the cursor, so it is pushed back onto the screen afterwards.
+    adjustSize();
+    clampToScreen();
+}
+
+void colorsWidget::refreshColorQueue()
+{
+    if(!m_colorQueueLayout)
+        return;
+    // Rebuilt from the list: a handful of squares is cheaper to recreate than to
+    // keep in step with removals and drags.
+    while(QLayoutItem* item=m_colorQueueLayout->takeAt(0)){
+        if(QWidget* widget=item->widget()){
+            widget->hide();
+            widget->deleteLater();
+        }
+        delete item;
+    }
+    for(const QString& color:m_colorQueue){
+        auto* swatch=new QPushButton(m_colorQueueHost);
+        swatch->setProperty("colorWord",color);
+        swatch->setToolTip(color+QStringLiteral(" - click to remove"));
+        swatch->setFixedSize(20,20);
+        swatch->setCursor(Qt::PointingHandCursor);
+        // A plain square of the colour; its name is in the tooltip, not the label.
+        // "light blue" is stored with its shade, so the swatch paints the colour
+        // word itself.
+        const QString base=color.section(QLatin1Char(' '),-1);
+        const QColor value=m_colorValues.value(base,QColor(90,90,90));
+        swatch->setStyleSheet(QStringLiteral(
+            "QPushButton{background-color:rgb(%1,%2,%3);border:1px solid #b0b0b0;"
+            "border-radius:3px;padding:0px;}"
+            "QPushButton:hover{border:1px solid #00e07a;}")
+            .arg(value.red()).arg(value.green()).arg(value.blue()));
+        connect(swatch,&QPushButton::clicked,this,[this,swatch]{
+            const int index=m_colorQueue.indexOf(swatch->property("colorWord").toString());
+            if(index<0)
+                return;
+            m_colorQueue.removeAt(index);
+            refreshColorQueue();
+            adjustSize();
+            clampToScreen();
+        });
+        m_colorQueueLayout->addWidget(swatch);
+        if(m_colorQueueReorderer)
+            m_colorQueueReorderer->attach(swatch);
+    }
+    m_colorQueueHost->setVisible(multiColorActive());
+    // One swatch may be one more row: the window has to grow with the queue.
+    if(multiColorActive()){
+        adjustSize();
+        clampToScreen();
+    }
+}
+
+void colorsWidget::uncheckOtherTriggers(const QString& keep)
+{
+    // `striped` and `gradient` are the one pair of modifiers here that exclude
+    // each other: the composed phrase differs only in its connector
+    // ("blue and white striped" vs "white to blue gradient"), so both lit at once
+    // would leave the tag undecided.
+    for(QAbstractButton* button:findChildren<QAbstractButton*>()){
+        const QString word=buttonTagText(button);
+        if(button->isChecked()&&word!=keep&&m_multiColorTriggers.contains(word))
+            button->setChecked(false);
+    }
+}
+
+void colorsWidget::enterMultiColor(const QString& trigger)
+{
+    if(m_multiColorTrigger==trigger)
+        return;
+    // Switching between striped and gradient keeps the picked colours: they came
+    // first, the pattern is what the user is still deciding.
+    const bool switching=multiColorActive();
+    m_multiColorTrigger=trigger;
+    uncheckOtherTriggers(trigger);
+    // "light"/"dark"/"deep" prefix a single colour; a queue of colours has no slot
+    // for them, so they step aside while the queue is in use.
+    for(QAbstractButton* button:m_shadeButtons){
+        button->setChecked(false);
+        button->setEnabled(false);
+    }
+    if(!switching){
+        // A colour picked before the pattern was ticked becomes the first colour
+        // of the queue - colours first, pattern after, is the order one works in.
+        m_colorQueue.clear();
+        for(QAbstractButton* button:colors_buttongroup->buttons())
+            if(button->isChecked())
+                m_colorQueue.append(buttonTagText(button));
+    }
+    for(QAbstractButton* button:colors_buttongroup->buttons())
+        button->setChecked(false);
+    refreshColorQueue();
+    adjustSize();
+    clampToScreen();
+}
+
+void colorsWidget::leaveMultiColor()
+{
+    if(m_multiColorTrigger.isEmpty()&&m_colorQueue.isEmpty())
+        return;
+    m_multiColorTrigger.clear();
+    m_colorQueue.clear();
+    for(QAbstractButton* button:m_shadeButtons)
+        button->setEnabled(true);
+    refreshColorQueue();
+    adjustSize();
+    clampToScreen();
+}
+
+bool colorsWidget::takeMultiColorPhrase(QStringList& words,QStringList& colors,
+                                        QString& trigger) const
+{
+    if(m_multiColorTriggers.isEmpty()||words.isEmpty())
+        return false;
+    int triggerIndex=-1;
+    for(int i=0;i<words.size();++i)
+        if(m_multiColorTriggers.contains(words[i])){
+            triggerIndex=i;
+            trigger=words[i];
+            break;
+        }
+    if(triggerIndex<0)
+        return false;
+    // Everything in front of the trigger has to be colours and their connectors:
+    // "blue and white striped" / "white to blue gradient". Any other word means
+    // the tag is not a colour phrase ("blue torn striped ...").
+    QStringList picked;
+    QString pendingShade;
+    for(int i=0;i<triggerIndex;++i){
+        const QString& word=words[i];
+        if(m_colorValues.contains(word)){
+            picked.append(pendingShade.isEmpty()?word:pendingShade+' '+word);
+            pendingShade.clear();
+            continue;
+        }
+        if((word==qsl("and")||word==qsl("to"))&&!picked.isEmpty())
+            continue;
+        if((word==qsl("light")||word==qsl("dark")||word==qsl("deep"))
+            &&pendingShade.isEmpty()){
+            pendingShade=word;
+            continue;
+        }
+        return false;
+    }
+    if(picked.isEmpty())
+        return false;
+    // The phrase words leave the list: the trigger is carried by its own button
+    // (which is lit for the mode), the connectors are not words of the tag.
+    words.erase(words.begin(),words.begin()+triggerIndex+1);
+    colors=picked;
+    return true;
+}
+
 QString liteWindowStyle = QStringLiteral(R"(
 QWidget{
     background-color:rgb(3,3,3);
@@ -631,7 +1114,9 @@ static void applyLiteWindowStyleImpl(QWidget* window, QWidget* content)
     // 旧的整套窗口配色(深色底、白字、滚动条、按钮)搬到内容面板上。
     // `QWidget#content` 那条规则不会再命中 —— 面板不叫 content,
     // 所以不会在窗口自己的轮廓里再套一圈紫色边框。
-    content->setStyleSheet(liteWindowStyle);
+    // 二级按钮的配色单独一份(liteWindowStyle 是通用 QPushButton 规则,没有
+    // captured/kind 这几态):没有它,add widget 里的基按钮点选后不会亮。
+    content->setStyleSheet(liteWindowStyle + teStyle::sheet(QStringLiteral("secondarybutton")));
     window->setWindowIcon(QIcon(":/res/icon.ico"));
 }
 

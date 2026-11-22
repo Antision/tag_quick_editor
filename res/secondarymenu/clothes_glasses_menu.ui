@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>clothes_glasses_menu</class>
+ <widget class="QWidget" name="clothes_glasses_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>60</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="chk_glasses">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👓 glasses</string></property>
+     <property name="tags" stdset="0"><string>glasses</string></property>
+     <property name="group" stdset="0"><string>glasses</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_sunglasses">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🕶️ sunglasses</string></property>
+     <property name="tags" stdset="0"><string>sunglasses</string></property>
+     <property name="group" stdset="0"><string>glasses</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_goggles">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🥽 goggles</string></property>
+     <property name="tags" stdset="0"><string>goggles</string></property>
+     <property name="group" stdset="0"><string>glasses</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_monocle">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🔍 monocle</string></property>
+     <property name="tags" stdset="0"><string>monocle</string></property>
+     <property name="group" stdset="0"><string>glasses</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_pince_nez">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👁️ pince-nez</string></property>
+     <property name="tags" stdset="0"><string>pince-nez</string></property>
+     <property name="group" stdset="0"><string>glasses</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

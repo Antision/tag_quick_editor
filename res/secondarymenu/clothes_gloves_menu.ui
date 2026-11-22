@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>clothes_gloves_menu</class>
+ <widget class="QWidget" name="clothes_gloves_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>60</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="chk_gloves">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🧤 gloves</string></property>
+     <property name="tags" stdset="0"><string>gloves</string></property>
+     <property name="group" stdset="0"><string>gloves</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_elbow_gloves">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🧤 elbow gloves</string></property>
+     <property name="tags" stdset="0"><string>elbow gloves</string></property>
+     <property name="group" stdset="0"><string>gloves</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_fingerless_gloves">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🧤 fingerless gloves</string></property>
+     <property name="tags" stdset="0"><string>fingerless gloves</string></property>
+     <property name="group" stdset="0"><string>gloves</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_bridal_gauntlets">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👰 bridal gauntlets</string></property>
+     <property name="tags" stdset="0"><string>bridal gauntlets</string></property>
+     <property name="group" stdset="0"><string>gloves</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_mittens">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🧤 mittens</string></property>
+     <property name="tags" stdset="0"><string>mittens</string></property>
+     <property name="group" stdset="0"><string>gloves</string></property>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="QPushButton" name="chk_boxing_gloves">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🥊 boxing gloves</string></property>
+     <property name="tags" stdset="0"><string>boxing gloves</string></property>
+     <property name="group" stdset="0"><string>gloves</string></property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QPushButton" name="chk_yugake">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🏹 yugake</string></property>
+     <property name="tags" stdset="0"><string>yugake</string></property>
+     <property name="group" stdset="0"><string>gloves</string></property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="chk_wristband">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>⌚ wristband</string></property>
+     <property name="tags" stdset="0"><string>wristband</string></property>
+     <property name="group" stdset="0"><string>gloves</string></property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QPushButton" name="chk_armband">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🎗️ armband</string></property>
+     <property name="tags" stdset="0"><string>armband</string></property>
+     <property name="group" stdset="0"><string>gloves</string></property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QPushButton" name="chk_bracer">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🛡️ bracer</string></property>
+     <property name="tags" stdset="0"><string>bracer</string></property>
+     <property name="group" stdset="0"><string>gloves</string></property>
+    </widget>
+   </item>
+   <item row="4" column="1">
+    <widget class="QPushButton" name="chk_arm_guards">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🛡️ arm guards</string></property>
+     <property name="tags" stdset="0"><string>arm guards</string></property>
+     <property name="group" stdset="0"><string>gloves</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

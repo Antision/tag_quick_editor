@@ -178,6 +178,10 @@ void teTagListWidgetBase::ensureCoreVisible(std::shared_ptr<teTag> core){
 }
 
 void teTagListWidgetBase::tagEdit(teTagWidgetBase *tag, teWordWidgetBase *inw){
+    // Editing is one tag at a time. A multi selection is what the context menu
+    // works on; the editor itself must not inherit it.
+    if(tag&&(select_current!=tag||!select.empty()))
+        setSelectCurrent(tag,true);
     editingTag = tag;
     if(!tag||!tag->core)
         return;                             // unknown tag: nothing to edit
@@ -319,7 +323,10 @@ void teTagListWidgetBase::tagEdit(){
         tagEdit(select_current);
 }
 void teTagListWidgetBase::focusOutEvent(QFocusEvent *e){
-    setUnselect();
+    // The context menu is a focus-out, not a "clicked elsewhere": clearing the
+    // selection here made a multi-tag right click act on nothing.
+    if(!m_contextMenuOpen)
+        setUnselect();
     return QWidget::focusOutEvent(e);
 }
 
@@ -365,10 +372,18 @@ void teTagListWidgetBase::disconnectTag(teTagWidgetBase *tagwidget){
 }
 
 void teTagListWidgetBase::onTagRightButtonClicked(teTagWidgetBase *tag, QPoint point, int modifiers){
+    Q_UNUSED(point);
+    Q_UNUSED(modifiers);
     if(tag)
+        // Keep the multi selection: the menu acts on all selected tags, and a
+        // right click is how that set is reached (edit still edits one).
         setSelectCurrent(tag,false);
     menu->show();
+    // `exec` takes the focus away from the list; without this the list's
+    // focusOutEvent cleared the selection the menu was about to work on.
+    m_contextMenuOpen = true;
     QAction *action = menu->exec(QCursor::pos());
+    m_contextMenuOpen = false;
     if(action==editAction){
         tagEdit();
     }else if(action == deleteAction){

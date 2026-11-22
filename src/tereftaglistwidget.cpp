@@ -103,6 +103,14 @@ void teRefTagListWidget::keyPressEvent(QKeyEvent *event) {
         setSelectAll();
     } else if ((event->key() == Qt::Key_D && event->modifiers() == Qt::ControlModifier)||event->key() == Qt::Key_Delete) {
         tagDestroy();
+    } else if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter
+               || event->key() == Qt::Key_F3) {
+        // Enter / F3 open the *widget* editor (the add widget becomes this tag's
+        // temporary editor control); F2 and the context menu keep the inline
+        // lineedit, so "change the words" and "change the tag" stay two things.
+        if (select_current)
+            (this->*static_cast<void(teTagListWidgetBase::*)(teTagWidgetBase*,teWordWidgetBase*)>(
+                &teTagListWidgetBase::tagEdit))(select_current, nullptr);
     } else if ((event->key() == Qt::Key_E && event->modifiers() == Qt::ControlModifier)||event->key() == Qt::Key_F2) {
         teTagListWidgetBase::tagEdit();
     } else if (event->key() == Qt::Key_X && event->modifiers() == Qt::ControlModifier) {
@@ -111,6 +119,9 @@ void teRefTagListWidget::keyPressEvent(QKeyEvent *event) {
         copy();
     } else if (event->key() == Qt::Key_V && event->modifiers() == Qt::ControlModifier) {
         paste();
+    } else if (event->key() == Qt::Key_W && event->modifiers() == Qt::ControlModifier) {
+        // The same thing the "+" of this list does: the add widget for a new tag.
+        addButtonClicked();
     } else {
         QWidget::keyPressEvent(event);
     }

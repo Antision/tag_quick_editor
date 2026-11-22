@@ -63,6 +63,8 @@ SOURCES += \
 
 HEADERS += \
     src/colorpicker.h \
+    src/clothesbuttons.h \
+    src/clothesemoji.h \
     src/connectivityoverlay.h \
     src/ctag.h \
     src/linkgeometry.h \

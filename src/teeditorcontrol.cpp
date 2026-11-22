@@ -587,6 +587,8 @@ void teTagListControl::unlink(std::shared_ptr<teTag> in_tag){
 
 void teTagListControl::onAddButtonClicked(){
     ifedit=false;
+    // A new tag is not related to anything: no button may be lit.
+    onEdit_widget->startNewTag();
     onEdit_widget->showNearCursor();
 }
 

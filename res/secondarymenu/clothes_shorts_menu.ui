@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>clothes_shorts_menu</class>
+ <widget class="QWidget" name="clothes_shorts_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>60</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="chk_shorts">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🩳 shorts</string></property>
+     <property name="tags" stdset="0"><string>shorts</string></property>
+     <property name="group" stdset="0"><string>shorts</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_short_shorts">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🩳 short shorts</string></property>
+     <property name="tags" stdset="0"><string>short shorts</string></property>
+     <property name="group" stdset="0"><string>shorts</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_bike_shorts">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🚴 bike shorts</string></property>
+     <property name="tags" stdset="0"><string>bike shorts</string></property>
+     <property name="group" stdset="0"><string>shorts</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_denim_shorts">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🩳 denim shorts</string></property>
+     <property name="tags" stdset="0"><string>denim shorts</string></property>
+     <property name="group" stdset="0"><string>shorts</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_micro_shorts">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🩲 micro shorts</string></property>
+     <property name="tags" stdset="0"><string>micro shorts</string></property>
+     <property name="group" stdset="0"><string>shorts</string></property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QPushButton" name="chk_dolphin_shorts">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🐬 dolphin shorts</string></property>
+     <property name="tags" stdset="0"><string>dolphin shorts</string></property>
+     <property name="group" stdset="0"><string>shorts</string></property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="chk_shorts_under_skirt">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🩳 shorts under skirt</string></property>
+     <property name="tags" stdset="0"><string>shorts under skirt</string></property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QPushButton" name="chk_gym_shorts">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🏃 gym shorts</string></property>
+     <property name="tags" stdset="0"><string>gym shorts</string></property>
+     <property name="group" stdset="0"><string>shorts</string></property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QPushButton" name="chk_pleated_shorts">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🩳 pleated shorts</string></property>
+     <property name="tags" stdset="0"><string>pleated shorts</string></property>
+     <property name="group" stdset="0"><string>shorts</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

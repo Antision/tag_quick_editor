@@ -76,7 +76,7 @@ void teEditorList::loadEditors(const QVector<teEditor*>& input_vector_ptr,editor
         newscrollarea->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
         newscrollarea->setStyleSheet(editorListScrollAreaStyle);
         QVBoxLayout* containerLayout=new QVBoxLayout;
-        container->setStyleSheet(teStyle::sheet(QStringLiteral("controls")));
+        container->setStyleSheet(teStyle::controls());
         container->setLayout(containerLayout);
         containerLayout->setContentsMargins(0,0,0,0);
         containerLayout->setSpacing(0);
@@ -148,7 +148,7 @@ void teEditorList::setEditorsToPages(){
         newscrollarea->setStyleSheet(editorListScrollAreaStyle);
 
         QVBoxLayout* containerLayout=new QVBoxLayout;
-        container->setStyleSheet(teStyle::sheet(QStringLiteral("controls")));
+        container->setStyleSheet(teStyle::controls());
         container->setLayout(containerLayout);
         containerLayout->setContentsMargins(0,0,0,0);
         containerLayout->setSpacing(0);

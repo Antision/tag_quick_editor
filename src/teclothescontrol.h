@@ -8,40 +8,206 @@
 #pragma once
 #include "teeditorhelpers.h"
 
-// Clothes types, grouped by the body area they belong to. The groups are only
-// a visual aid: every button shares one exclusive group (built in
+// Clothes types, grouped by the body area they belong to. The groups are only a
+// visual aid: every type button shares one exclusive group (built in
 // teEditor_clothes), so a clothes tag still has exactly one type word.
-inline QStringList headAndNeckClothesTypes{
-    qsl("headdress"),qsl("headwear"),qsl("hat"),qsl("hood"),
-    qsl("hairclip"),qsl("hairband")
+//
+// The vocabulary is docs/clothes_add_widget_v2.md §2, one list per area. It holds
+// three kinds of word, all of them here for the same reason - filter() only ever
+// asks "is the last word a type?":
+//   * the word of a plain type button (B),
+//   * the word of a button that also opens a menu (T) and every entry of that
+//     menu (M), because a tag read back from a picture has to be recognised,
+//   * capture-only words (C), which have no button at all.
+// A multi-word type ("school uniform", "high tops", "mary janes") is one entry
+// here and is written into a tag as one word - see clothesTagFromText().
+//
+// `clothes`, `top` and `sleeves` are deliberately absent: they are the three
+// pure menu buttons and are not tags themselves (§1.6). Registering `top` or
+// `sleeves` would also make "tank top" / "detached sleeves" look like
+// derivations of a base word, which is exactly what §1.2 and §1.6 rule out.
+inline QStringList headClothesTypes{
+    qsl("hat"),qsl("beret"),qsl("witch hat"),qsl("mob cap"),qsl("baseball cap"),
+    qsl("peaked cap"),qsl("top hat"),qsl("santa hat"),qsl("tokin hat"),qsl("sun hat"),
+    qsl("beanie"),qsl("nurse cap"),qsl("straw hat"),qsl("newsboy cap"),qsl("sailor hat"),
+    qsl("bonnet"),qsl("cowboy hat"),qsl("fedora"),qsl("jingasa"),qsl("deerstalker"),
+    qsl("bucket hat"),qsl("ushanka"),qsl("mortarboard"),
+    qsl("helmet"),qsl("hood"),
+    qsl("crown"),qsl("tiara"),qsl("circlet"),qsl("headpiece"),qsl("head wreath"),
+    qsl("laurel crown"),
+    qsl("hairband"),
+    qsl("headband"),qsl("forehead protector"),qsl("hachimaki"),qsl("sweatband"),
+    qsl("veil"),qsl("bridal veil"),
+    qsl("headdress"),qsl("ornament"),qsl("headscarf"),qsl("bandana"),qsl("balaclava"),
+    qsl("coif"),qsl("ear covers"),qsl("wig"),
+    // bows and ribbons (§2.2): both are base words of their own family
+    qsl("bow"),qsl("hair bow"),qsl("back bow"),qsl("ear bow"),qsl("bow choker"),
+    qsl("bow legwear"),qsl("chest bow"),qsl("wrist bow"),
+    qsl("ribbon"),qsl("hair ribbon"),qsl("neck ribbon"),qsl("tress ribbon"),
+    qsl("leg ribbon"),qsl("arm ribbon"),qsl("thigh ribbon"),qsl("footwear ribbon"),
+    // hair ornaments (§2.3)
+    qsl("hair ornament"),qsl("hairclip"),qsl("hair flower"),qsl("hair tubes"),
+    qsl("hair bobbles"),qsl("hair scrunchie"),qsl("hair tie"),qsl("hair stick"),
+    qsl("kanzashi"),qsl("hair beads"),
+    // eyes, face, neck, shoulders (§2.4)
+    qsl("glasses"),qsl("sunglasses"),qsl("goggles"),qsl("monocle"),qsl("pince-nez"),
+    qsl("mask"),qsl("surgical mask"),
+    qsl("headphones"),qsl("headset"),qsl("earphones"),qsl("earpiece"),
+    qsl("earrings"),qsl("hoop earrings"),qsl("stud earrings"),qsl("earclip"),
+    qsl("ear chain"),
+    qsl("collar"),qsl("sailor collar"),qsl("detached collar"),qsl("wing collar"),
+    qsl("high collar"),qsl("fur collar"),qsl("mandarin collar"),qsl("neck ruff"),
+    qsl("usekh collar"),
+    qsl("choker"),qsl("neck bell"),qsl("spiked collar"),qsl("ribbon choker"),
+    qsl("o-ring choker"),qsl("pendant choker"),
+    qsl("necktie"),qsl("ascot"),qsl("cross tie"),qsl("bolo tie"),
+    qsl("bowtie"),qsl("neckerchief"),qsl("scarf"),
+    qsl("necklace"),qsl("brooch"),qsl("pendant"),
+    qsl("tie clip"),qsl("badge"),
+    qsl("cape"),qsl("capelet"),qsl("cloak"),qsl("hooded cloak"),qsl("waist cape"),
+    qsl("side cape"),
+    qsl("shawl"),qsl("stole"),qsl("epaulettes"),qsl("lapels"),qsl("aiguillette"),
+    qsl("feather boa")
 };
 inline QStringList upperBodyClothesTypes{
-    qsl("shirt"),qsl("jacket"),qsl("coat"),qsl("hoodie"),qsl("sweater"),
-    qsl("bra"),qsl("apron"),qsl("uniform")
+    qsl("shirt"),qsl("collared shirt"),qsl("sleeveless shirt"),qsl("dress shirt"),
+    qsl("t-shirt"),qsl("blouse"),qsl("frilled shirt"),qsl("off-shoulder shirt"),
+    qsl("crop top"),qsl("halterneck"),qsl("tank top"),qsl("camisole"),qsl("bandeau"),
+    qsl("tube top"),qsl("underbust"),qsl("bustier"),
+    qsl("turtleneck"),
+    qsl("sweater"),qsl("cardigan"),qsl("sweater vest"),qsl("turtleneck sweater"),
+    qsl("ribbed sweater"),qsl("virgin killer sweater"),qsl("aran sweater"),
+    qsl("jacket"),qsl("blazer"),qsl("cropped jacket"),qsl("suit jacket"),
+    qsl("leather jacket"),qsl("letterman jacket"),qsl("bomber jacket"),
+    qsl("denim jacket"),qsl("sukajan"),
+    qsl("coat"),qsl("tailcoat"),qsl("long coat"),qsl("winter coat"),qsl("trench coat"),
+    qsl("raincoat"),qsl("fur coat"),qsl("duffel coat"),qsl("overcoat"),
+    qsl("hoodie"),
+    qsl("vest"),qsl("waistcoat"),
+    qsl("apron"),
+    qsl("robe"),qsl("open robe"),qsl("bathrobe"),
+    qsl("poncho"),qsl("tabard"),qsl("surcoat"),qsl("tunic"),qsl("shrug (clothing)"),
+    qsl("corset"),qsl("muneate")
 };
 inline QStringList lowerBodyClothesTypes{
-    qsl("skirt"),qsl("shorts"),qsl("pants"),qsl("leotard"),
-    qsl("thighhighs"),qsl("pantyhose"),qsl("socks")
+    qsl("pants"),qsl("jeans"),qsl("yoga pants"),qsl("capri pants"),qsl("sweatpants"),
+    qsl("lowleg pants"),qsl("bell-bottoms"),qsl("detached pants"),
+    qsl("shorts"),qsl("short shorts"),qsl("bike shorts"),qsl("denim shorts"),
+    qsl("micro shorts"),qsl("dolphin shorts"),qsl("shorts under skirt"),
+    qsl("gym shorts"),qsl("pleated shorts"),
+    qsl("bloomers"),qsl("buruma"),
+    qsl("pelvic curtain"),qsl("petticoat"),qsl("sarong"),qsl("chaps"),
+    qsl("skirt"),qsl("pleated skirt"),qsl("miniskirt"),qsl("plaid skirt"),
+    qsl("long skirt"),qsl("high-waist skirt"),qsl("suspender skirt"),
+    qsl("microskirt"),qsl("showgirl skirt"),qsl("bubble skirt"),qsl("overskirt"),
+    qsl("tutu"),qsl("overall skirt"),
+    qsl("overalls")
 };
-inline QStringList underwearClothesTypes{
-    qsl("underwear"),qsl("panties"),qsl("swimsuit"),qsl("bikini")
-};
-inline QStringList fullBodyClothesTypes{
-    qsl("dress"),qsl("kimono")
+inline QStringList legwearClothesTypes{
+    qsl("thighhighs"),qsl("over-kneehighs"),qsl("kneehighs"),
+    qsl("socks"),qsl("tabi"),qsl("loose socks"),qsl("bobby socks"),qsl("ankle socks"),
+    qsl("pantyhose"),qsl("fishnet pantyhose"),qsl("thighband pantyhose"),
+    qsl("pantyhose under shorts"),
+    qsl("legwear"),qsl("leggings"),qsl("leg warmers")
 };
 inline QStringList feetClothesTypes{
-    qsl("shoes"),qsl("boots"),qsl("footwear")
+    qsl("shoes"),qsl("sneakers"),qsl("loafers"),qsl("mary janes"),
+    qsl("platform shoes"),qsl("flats"),qsl("dress shoes"),qsl("ballet slippers"),
+    qsl("high tops"),qsl("converse"),
+    qsl("boots"),qsl("thigh boots"),qsl("knee boots"),qsl("high heel boots"),
+    qsl("lace-up boots"),qsl("ankle boots"),qsl("armored boots"),
+    qsl("platform boots"),qsl("rubber boots"),qsl("cowboy boots"),
+    qsl("high heels"),qsl("pumps"),qsl("stiletto heels"),qsl("platform heels"),
+    qsl("wedge heels"),
+    qsl("sandals"),qsl("geta"),qsl("platform sandals"),qsl("zouri"),
+    qsl("flip-flops"),qsl("okobo"),qsl("gladiator sandals"),
+    qsl("slippers"),qsl("uwabaki"),qsl("crocs"),qsl("animal slippers"),
+    qsl("heels"),
+    // Older pictures say "footwear", and genericClothesTypes below still has to be
+    // able to absorb it into shoes/boots: a capture-only word, no button (§2.14).
+    qsl("footwear")
+};
+inline QStringList fullBodyClothesTypes{
+    qsl("dress"),qsl("sailor dress"),qsl("pinafore dress"),qsl("wedding dress"),
+    qsl("sundress"),qsl("halter dress"),qsl("sweater dress"),qsl("nightgown"),
+    qsl("evening gown"),
+    qsl("serafuku"),
+    qsl("school uniform"),qsl("gakuran"),qsl("gym uniform"),
+    qsl("meiji schoolgirl uniform"),
+    qsl("suit"),qsl("business suit"),qsl("skirt suit"),qsl("tuxedo"),qsl("pant suit"),
+    qsl("armor"),qsl("bikini armor"),qsl("armored dress"),
+    qsl("military uniform"),qsl("cheerleader"),
+    qsl("uniform"),qsl("costume"),
+    qsl("bodysuit"),qsl("mecha pilot suit"),qsl("bodystocking"),qsl("plugsuit"),
+    qsl("diving suit"),qsl("bikesuit"),qsl("wetsuit"),
+    qsl("leotard"),qsl("playboy bunny"),qsl("strapless leotard"),
+    qsl("see-through leotard"),
+    qsl("swimsuit"),qsl("bikini"),qsl("one-piece swimsuit"),qsl("school swimsuit"),
+    qsl("competition swimsuit"),qsl("slingshot swimsuit"),qsl("tankini"),
+    qsl("rash guard"),qsl("swim briefs"),
+    qsl("side-tie bikini bottom"),qsl("string bikini"),qsl("micro bikini"),
+    qsl("criss-cross halter"),qsl("thong bikini"),qsl("lowleg bikini"),
+    qsl("sports bikini"),
+    qsl("jumpsuit"),qsl("romper"),qsl("unitard"),qsl("harem outfit"),qsl("babydoll"),
+    qsl("kigurumi"),qsl("loincloth"),qsl("kesa"),qsl("cassock")
+};
+inline QStringList traditionalClothesTypes{
+    qsl("japanese clothes"),qsl("chinese clothes"),qsl("greco-roman clothes"),
+    qsl("korean clothes"),qsl("arabian clothes"),qsl("ancient egyptian clothes"),
+    qsl("hakama"),qsl("sarashi"),qsl("haori"),qsl("tabi"),qsl("fundoshi"),
+    qsl("tasuki"),qsl("happi"),qsl("kimono skirt"),
+    qsl("kimono"),qsl("yukata"),qsl("short kimono"),qsl("furisode"),
+    qsl("layered kimono"),qsl("uchikake"),
+    qsl("qipao"),qsl("hanfu"),qsl("tangzhuang"),qsl("changpao"),
+    qsl("hanbok"),qsl("ao dai"),qsl("dirndl")
 };
 inline QStringList accessoryClothesTypes{
-    qsl("bow"),qsl("ribbon"),qsl("bowtie"),qsl("gloves"),qsl("sleeves"),
-    qsl("wings"),qsl("glasses"),qsl("horns"),qsl("bag")
+    // sleeves (§2.11) - `sleeves` itself is a pure menu button, not a type
+    qsl("long sleeves"),qsl("short sleeves"),qsl("puffy sleeves"),qsl("wide sleeves"),
+    qsl("frilled sleeves"),qsl("juliet sleeves"),qsl("sleeves rolled up"),
+    qsl("layered sleeves"),qsl("sleeve cuffs"),
+    qsl("detached sleeves"),qsl("arm warmers"),qsl("single detached sleeve"),
+    qsl("raglan sleeves"),
+    // hands and arms (§2.12)
+    qsl("gloves"),qsl("elbow gloves"),qsl("fingerless gloves"),qsl("bridal gauntlets"),
+    qsl("mittens"),qsl("boxing gloves"),qsl("yugake"),
+    qsl("bracelet"),qsl("bangle"),qsl("spiked bracelet"),
+    qsl("ring"),qsl("wedding ring"),
+    qsl("wrist cuffs"),qsl("wrist scrunchie"),qsl("wristband"),qsl("armband"),
+    qsl("armlet"),qsl("bracer"),qsl("arm guards"),qsl("knee pads"),qsl("anklet"),
+    qsl("thighlet"),
+    // waist and torso (§2.13)
+    qsl("belt"),
+    qsl("sash"),qsl("obi"),qsl("waist sash"),qsl("shoulder sash"),
+    qsl("suspenders"),
+    qsl("garter"),qsl("garter straps"),qsl("garter belt"),
+    qsl("thigh strap"),qsl("frilled thigh strap"),
+    qsl("harness"),
+    // underwear (§2.14)
+    qsl("panties"),qsl("bra"),qsl("lingerie"),qsl("sports bra"),qsl("pasties"),
+    qsl("boxer briefs"),
+    // "underwear" is the word the panties button deliberately does *not* use, but
+    // genericClothesTypes still absorbs it into panties - old tags keep working
+    // and stay editable (§2.14). Capture only, no button.
+    qsl("underwear"),
+    // non-garment types older pictures still rely on (§2.16.1)
+    qsl("bag"),qsl("wings"),qsl("horns"),qsl("animal ears"),
+    // a cut-out is a state of a garment, but it is captured like a type (§2.15)
+    qsl("clothing cutout")
 };
 
 /// Every word the clothes editor recognises as a garment type.
-inline QStringList allClothesTypes = QStringList{}
-    << headAndNeckClothesTypes << upperBodyClothesTypes << lowerBodyClothesTypes
-    << underwearClothesTypes << fullBodyClothesTypes << feetClothesTypes
-    << accessoryClothesTypes;
+inline QStringList allClothesTypes = []{
+    QStringList types;
+    for(const QStringList* group : {&headClothesTypes,&upperBodyClothesTypes,
+                                    &lowerBodyClothesTypes,&legwearClothesTypes,
+                                    &feetClothesTypes,&fullBodyClothesTypes,
+                                    &traditionalClothesTypes,&accessoryClothesTypes})
+        types.append(*group);
+    // A word may sit in two areas (tabi, swim briefs): one type is enough.
+    types.removeDuplicates();
+    return types;
+}();
 
 /// Generic garment words the user does not want, and the specific words they are
 /// absorbed by. A tag that says "underwear" or "footwear" is merged into an
@@ -50,6 +216,39 @@ inline QHash<QString,QSet<QString>> genericClothesTypes{
     {qsl("underwear"),{qsl("panties")}},
     {qsl("footwear"),{qsl("shoes"),qsl("boots")}},
 };
+
+/**
+ * @brief The tag `text` describes, keeping a multi-word type as *one* word.
+ *
+ * "school uniform", "high tops" and "mary janes" are each one type (§1.2), so a
+ * tag built from them has to keep them together: split into "school" + "uniform"
+ * the tag read back from the picture would be a different thing (the base word
+ * `uniform` with an adjective in front), and the button that wrote it would no
+ * longer claim it. "red school uniform" therefore becomes "red" + "school
+ * uniform", and a single-word type is split the way a tag always is.
+ *
+ * Everything else goes through teTag(text), exactly like a hand-typed tag.
+ */
+inline std::shared_ptr<teTag> clothesTagFromText(const QString& text)
+{
+    QString type;
+    for (const QString& candidate : allClothesTypes) {
+        if (!candidate.contains(QLatin1Char(' ')))
+            continue;
+        if (candidate.size() <= type.size())
+            continue;
+        if (text == candidate || text.endsWith(QLatin1Char(' ') + candidate))
+            type = candidate;
+    }
+    if (type.isEmpty())
+        return std::make_shared<teTag>(text);
+    auto tag = std::make_shared<teTag>();
+    const QString head = text.left(text.size() - type.size()).trimmed();
+    for (const QString& word : head.split(QLatin1Char(' '), Qt::SkipEmptyParts))
+        tag->words.append(new teWord{word});
+    tag->words.append(new teWord{type});
+    return tag;
+}
 
 /// True when the two type words mean the same garment, i.e. may not both exist in
 /// one tag list. A generic word matches every specific word of its family.
@@ -76,7 +275,16 @@ inline std::multimap<QString, QString> prefix_back{
     {qsl("swimsuit"),qsl("one-piece")},
     {qsl(""),qsl("fishnet")},
     {qsl(""),qsl("sleeveless")},
-    { qsl("dress"),qsl("china") }
+    { qsl("dress"),qsl("china") },
+    // trims that read as "<type> with <trim>", i.e. they follow the type in the
+    // canonical order (§2.15)
+    {qsl(""),qsl("fur trim")},
+    {qsl(""),qsl("ribbon trim")},
+    {qsl(""),qsl("gold trim")},
+    {qsl(""),qsl("lace trim")},
+    {qsl(""),qsl("white trim")},
+    {qsl(""),qsl("silver trim")},
+    {qsl(""),qsl("flower trim")}
 };
 inline std::multimap<QString, QString> prefix_front{
     {qsl(""),qsl("torn")},
@@ -84,7 +292,31 @@ inline std::multimap<QString, QString> prefix_front{
     {qsl(""),qsl("unworn")},
     {qsl(""),qsl("short")},
     {qsl(""),qsl("long")},
-    {qsl(""),qsl("frilled")}
+    {qsl(""),qsl("frilled")},
+    // garment details that stand in front of the type (§2.15)
+    {qsl(""),qsl("naked")},
+    {qsl(""),qsl("open")},
+    {qsl(""),qsl("wet")},
+    {qsl(""),qsl("see-through")},
+    {qsl(""),qsl("backless")},
+    {qsl(""),qsl("crotchless")},
+    {qsl(""),qsl("fur-trimmed")},
+    {qsl(""),qsl("lace-trimmed")},
+    {qsl(""),qsl("ribbon-trimmed")},
+    {qsl(""),qsl("gold-trimmed")},
+    {qsl(""),qsl("double-breasted")},
+    {qsl(""),qsl("criss-cross straps")},
+    {qsl(""),qsl("frills")},
+    {qsl(""),qsl("gathers")},
+    {qsl(""),qsl("buttons")},
+    {qsl(""),qsl("tassel")},
+    {qsl(""),qsl("o-ring")},
+    {qsl(""),qsl("buckle")},
+    {qsl(""),qsl("zipper")},
+    {qsl(""),qsl("dress flower")},
+    {qsl(""),qsl("chinese knot")},
+    {qsl(""),qsl("pentacle")},
+    {qsl(""),qsl("medallion")}
 };
 /// Groups of words that may not appear together in one clothes tag.
 inline QVector<QSet<QString>> exclusiveModifierGroups{
@@ -200,6 +432,32 @@ struct ClothesParts {
 };
 
 /**
+ * @brief The garment type a tag ends with, as one unit.
+ *
+ * A type may be more than one word ("fingerless gloves", "school uniform",
+ * "pleated skirt"). The add widget stores it as a single word, but a hand-typed
+ * or hand-merged tag can spell it as two - and then the *longest* registered
+ * suffix is the type. Reading only the last word made `fingerless` an adjective,
+ * so adding a modifier put it between the two words ("fingerless fishnet
+ * gloves") and the tag degraded to a plain `gloves`: the button that wrote it no
+ * longer claimed it and the type could not be edited as one thing any more.
+ */
+inline QString clothesTypeSuffix(const teTag& tag)
+{
+    if (tag.words.isEmpty())
+        return QString();
+    const QString text = static_cast<QString>(tag);
+    QString best;
+    for (const QString& candidate : allClothesTypes) {
+        if (candidate.size() <= best.size())
+            continue;
+        if (text == candidate || text.endsWith(QLatin1Char(' ') + candidate))
+            best = candidate;
+    }
+    return best.isEmpty() ? tag.words.back()->text : best;
+}
+
+/**
  * @brief Splits `tag` into its parts. Pure: it reads the tag and the tables.
  *
  * The per-word rule is clothesRoleAt(), so this is the whole-tag form of the
@@ -210,9 +468,13 @@ inline ClothesParts clothesParse(const teTag& tag)
     ClothesParts parts;
     if (tag.words.isEmpty())
         return parts;
-    parts.type = tag.words.back()->text;
+    parts.type = clothesTypeSuffix(tag);
+    // The words that spell the type are one part of the tag, even when the type
+    // is written as separate words.
+    const int typeWords = parts.type.split(QLatin1Char(' '), Qt::SkipEmptyParts).size();
+    const int adjectiveCount = qMax(0, tag.words.size() - typeWords);
     const auto colorSlot = is_color(tag);
-    for (int i = 0; i + 1 < tag.words.size(); ++i) {
+    for (int i = 0; i < adjectiveCount; ++i) {
         const QString& text = tag.words[i]->text;
         QStringList* bucket = nullptr;
         switch (clothesRoleAt(tag, i, parts.type, colorSlot)) {
@@ -254,7 +516,7 @@ inline bool clothesMergeable(const ClothesParts& target,const teTag& incoming)
 {
     if(target.type.isEmpty()||incoming.words.isEmpty())
         return false;
-    if(!sameClothesType(incoming.words.back()->text,target.type))
+    if(!sameClothesType(clothesTypeSuffix(incoming),target.type))
         return false;
     const auto [colorpos,colorcount] = is_color(incoming);
     if(colorcount>0&&!target.colors.isEmpty()){
@@ -289,7 +551,7 @@ inline QStringList clothesMergedWords(const ClothesParts& target,const teTag& in
 {
     ClothesParts merged = target;
     if(!incoming.words.isEmpty()){
-        const QString incomingType = incoming.words.back()->text;
+        const QString incomingType = clothesTypeSuffix(incoming);
         if(isGenericClothesType(merged.type)&&!isGenericClothesType(incomingType))
             merged.type = incomingType;
     }
@@ -354,7 +616,12 @@ inline void clothesApplyWords(std::shared_ptr<teTag> tag,const QStringList& word
 /// Words that make a clothes tag a *state* rather than a garment.
 inline const QSet<QString>& clothesStateModifiers(){
     static const QSet<QString> words{
-        qsl("no"),qsl("without"),qsl("unworn"),qsl("open")
+        qsl("no"),qsl("without"),qsl("unworn"),qsl("open"),
+        // How the garment looks worn, rather than which garment it is (§2.15):
+        // "see-through clothes", "torn pantyhose", "naked apron" stay garments
+        // with an adjective, so they may be edited but never merged.
+        qsl("see-through"),qsl("torn"),qsl("wet"),qsl("backless"),
+        qsl("crotchless"),qsl("naked"),qsl("revealing")
     };
     return words;
 }
@@ -428,7 +695,23 @@ struct ClothesList : public teTagListControl {
         // "reaching through panties" and friends are actions, not garments.
         if(looksLikeActionPhrase(*in_tag))
             return false;
-        return allClothesTypes.contains(*in_tag->words.back());
+        return allClothesTypes.contains(clothesTypeSuffix(*in_tag));
+    }
+
+    /**
+     * @brief The add widget produced `data`.
+     *
+     * A multi-word type has to reach the tag list as one word, or the tag read
+     * back from the picture is not the one the button stands for (see
+     * clothesTagFromText). Everything else - including an edit of the selected
+     * tag - stays the base class's business.
+     */
+    void reciveWidgetSignal(QString data,bool ifadd)override{
+        if(ifedit||!taglistwidget){
+            teTagListControl::reciveWidgetSignal(data,ifadd);
+            return;
+        }
+        taglistwidget->tagInsertAbove(false,clothesTagFromText(data),true);
     }
 
     TagHandling read(std::shared_ptr<teTag> tag)override{
@@ -481,7 +764,12 @@ struct ClothesList : public teTagListControl {
                 taglistwidget->retire(tag);
             return;
         }
-        applyWords(tag);
+        // No re-sorting here. An edit is the user's word order - dragging a word
+        // in the ref list has to stick, and the add widget already writes the
+        // canonical order itself. Re-canonicalising on every edit is what made
+        // the list feel order-locked (and what tore a multi-word type apart).
+        // Merges still produce canonical order: clothesMergedWords() sorts, and
+        // that path does not go through here.
     }
 
     /**
@@ -496,7 +784,7 @@ struct ClothesList : public teTagListControl {
             return false;
         if(!autoMerge||!MergeSwitch)
             return false;
-        if(!allClothesTypes.contains(incoming->words.back()->text))
+        if(!allClothesTypes.contains(clothesTypeSuffix(*incoming)))
             return false;
         // A tag that describes a state ("no shoes", "unworn panties") neither
         // absorbs another clothes tag nor is absorbed by one - in either

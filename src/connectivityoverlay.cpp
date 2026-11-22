@@ -306,6 +306,13 @@ void ConnectivityOverlay::collectPageLinks(int pageIndex,TagListModel* model,
             for(const std::shared_ptr<teTag>& tag:control->linked_tags){
                 if(!tag||(onlyTag&&tag.get()!=onlyTag))
                     continue;
+                // A claim can outlive the rule that made it (a control is told
+                // about the edit, but a link that was never cleaned up keeps the
+                // tag). Such a line would end at the control's corner while the
+                // control does not own the tag any more, which is the "line to a
+                // fixed spot" bug. Ask the control again.
+                if(!control->filter(tag))
+                    continue;
                 const int row=model->rowOf(tag.get());
                 if(row<0)
                     continue;

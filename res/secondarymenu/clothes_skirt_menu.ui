@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>clothes_skirt_menu</class>
+ <widget class="QWidget" name="clothes_skirt_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>60</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="chk_skirt">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👗 skirt</string></property>
+     <property name="tags" stdset="0"><string>skirt</string></property>
+     <property name="group" stdset="0"><string>skirt</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_pelvic_curtain">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🧵 pelvic curtain</string></property>
+     <property name="tags" stdset="0"><string>pelvic curtain</string></property>
+     <property name="group" stdset="0"><string>skirt</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_petticoat">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>☁️ petticoat</string></property>
+     <property name="tags" stdset="0"><string>petticoat</string></property>
+     <property name="group" stdset="0"><string>skirt</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_sarong">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🌴 sarong</string></property>
+     <property name="tags" stdset="0"><string>sarong</string></property>
+     <property name="group" stdset="0"><string>skirt</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_chaps">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🐎 chaps</string></property>
+     <property name="tags" stdset="0"><string>chaps</string></property>
+     <property name="group" stdset="0"><string>skirt</string></property>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="QPushButton" name="chk_pleated_skirt">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👗 pleated skirt</string></property>
+     <property name="tags" stdset="0"><string>pleated skirt</string></property>
+     <property name="group" stdset="0"><string>skirt</string></property>
+    </widget>
+   </item>
+   <item row="6" column="0">
+    <widget class="QPushButton" name="chk_miniskirt">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👗 miniskirt</string></property>
+     <property name="tags" stdset="0"><string>miniskirt</string></property>
+     <property name="group" stdset="0"><string>skirt</string></property>
+    </widget>
+   </item>
+   <item row="7" column="0">
+    <widget class="QPushButton" name="chk_plaid_skirt">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🏴 plaid skirt</string></property>
+     <property name="tags" stdset="0"><string>plaid skirt</string></property>
+     <property name="group" stdset="0"><string>skirt</string></property>
+    </widget>
+   </item>
+   <item row="8" column="0">
+    <widget class="QPushButton" name="chk_long_skirt">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👗 long skirt</string></property>
+     <property name="tags" stdset="0"><string>long skirt</string></property>
+     <property name="group" stdset="0"><string>skirt</string></property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QPushButton" name="chk_high_waist_skirt">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👗 high-waist skirt</string></property>
+     <property name="tags" stdset="0"><string>high-waist skirt</string></property>
+     <property name="group" stdset="0"><string>skirt</string></property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="chk_suspender_skirt">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🩱 suspender skirt</string></property>
+     <property name="tags" stdset="0"><string>suspender skirt</string></property>
+     <property name="group" stdset="0"><string>skirt</string></property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QPushButton" name="chk_microskirt">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👗 microskirt</string></property>
+     <property name="tags" stdset="0"><string>microskirt</string></property>
+     <property name="group" stdset="0"><string>skirt</string></property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QPushButton" name="chk_showgirl_skirt">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🎭 showgirl skirt</string></property>
+     <property name="tags" stdset="0"><string>showgirl skirt</string></property>
+     <property name="group" stdset="0"><string>skirt</string></property>
+    </widget>
+   </item>
+   <item row="4" column="1">
+    <widget class="QPushButton" name="chk_bubble_skirt">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🫧 bubble skirt</string></property>
+     <property name="tags" stdset="0"><string>bubble skirt</string></property>
+     <property name="group" stdset="0"><string>skirt</string></property>
+    </widget>
+   </item>
+   <item row="5" column="1">
+    <widget class="QPushButton" name="chk_overskirt">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👗 overskirt</string></property>
+     <property name="tags" stdset="0"><string>overskirt</string></property>
+     <property name="group" stdset="0"><string>skirt</string></property>
+    </widget>
+   </item>
+   <item row="6" column="1">
+    <widget class="QPushButton" name="chk_tutu">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🩰 tutu</string></property>
+     <property name="tags" stdset="0"><string>tutu</string></property>
+     <property name="group" stdset="0"><string>skirt</string></property>
+    </widget>
+   </item>
+   <item row="7" column="1">
+    <widget class="QPushButton" name="chk_overall_skirt">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👖 overall skirt</string></property>
+     <property name="tags" stdset="0"><string>overall skirt</string></property>
+     <property name="group" stdset="0"><string>skirt</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

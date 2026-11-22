@@ -31,4 +31,11 @@ QString list(int wordFontSizePt)
     return QString(sheet(QStringLiteral("list"))).arg(wordFontSizePt);
 }
 
+QString controls()
+{
+    // Secondary rules last: the sheet relies on "later wins" for the :hover /
+    // :pressed overrides of the generic QPushButton rules.
+    return sheet(QStringLiteral("controls")) + sheet(QStringLiteral("secondarybutton"));
+}
+
 } // namespace teStyle

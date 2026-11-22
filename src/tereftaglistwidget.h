@@ -35,6 +35,14 @@ public:
     teRefTagListWidget(TagListView*parentlist,QWidget*parent):teTagListWidgetBase(12,parent),parentTagListWidget(parentlist){};
     ~teRefTagListWidget(){}
     void keyPressEvent(QKeyEvent *event) override;
+    /**
+     * @brief What the "+" button of this list does.
+     *
+     * Ctrl+W is the keyboard form of the same gesture (the user asked for it):
+     * the list that owns an add-widget control overrides this to open it, and a
+     * list without a "+" does nothing.
+     */
+    virtual void addButtonClicked(){}
     virtual int setSelectRange(teTagWidgetBase*in,bool ifclear=true)override;
     void setSelectAll();
     void clear(teTagList *in=nullptr)override;

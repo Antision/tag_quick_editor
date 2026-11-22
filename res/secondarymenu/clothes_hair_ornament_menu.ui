@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>clothes_hair_ornament_menu</class>
+ <widget class="QWidget" name="clothes_hair_ornament_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>60</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="chk_hair_ornament">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🌸 hair ornament</string></property>
+     <property name="tags" stdset="0"><string>hair ornament</string></property>
+     <property name="group" stdset="0"><string>hair_ornament</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_hairclip">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>📎 hairclip</string></property>
+     <property name="tags" stdset="0"><string>hairclip</string></property>
+     <property name="group" stdset="0"><string>hair_ornament</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_hair_flower">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🌺 hair flower</string></property>
+     <property name="tags" stdset="0"><string>hair flower</string></property>
+     <property name="group" stdset="0"><string>hair_ornament</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_hair_tubes">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>📿 hair tubes</string></property>
+     <property name="tags" stdset="0"><string>hair tubes</string></property>
+     <property name="group" stdset="0"><string>hair_ornament</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_hair_bobbles">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🧶 hair bobbles</string></property>
+     <property name="tags" stdset="0"><string>hair bobbles</string></property>
+     <property name="group" stdset="0"><string>hair_ornament</string></property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QPushButton" name="chk_hair_scrunchie">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🧶 hair scrunchie</string></property>
+     <property name="tags" stdset="0"><string>hair scrunchie</string></property>
+     <property name="group" stdset="0"><string>hair_ornament</string></property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="chk_hair_tie">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🧶 hair tie</string></property>
+     <property name="tags" stdset="0"><string>hair tie</string></property>
+     <property name="group" stdset="0"><string>hair_ornament</string></property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QPushButton" name="chk_hair_stick">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🪡 hair stick</string></property>
+     <property name="tags" stdset="0"><string>hair stick</string></property>
+     <property name="group" stdset="0"><string>hair_ornament</string></property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QPushButton" name="chk_kanzashi">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🏵️ kanzashi</string></property>
+     <property name="tags" stdset="0"><string>kanzashi</string></property>
+     <property name="group" stdset="0"><string>hair_ornament</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

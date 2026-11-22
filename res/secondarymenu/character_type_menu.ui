@@ -296,6 +296,7 @@
      <property name="tags" stdset="0"><string>trap</string></property>
      <property name="group" stdset="0"><string>trap</string></property>
      <property name="submenu" stdset="0"><string>:/secondarymenu/trap_menu.ui</string></property>
+     <property name="family" stdset="0"><bool>true</bool></property>
     </widget>
    </item>
    <item row="13" column="3">

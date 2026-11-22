@@ -13,6 +13,8 @@
 
 #include <algorithm>
 
+#include "fonts.h"      // appFontFamily(): the face every emoji falls back from
+
 namespace {
 /// The gap the menu keeps from the screen edges (SC-03).
 constexpr int kScreenMargin = 4;
@@ -78,6 +80,15 @@ bool SecondaryMenu::loadUi(const QString& path)
     m_uiPath = path;
     m_page->setParent(m_scroll);
     m_scroll->setWidget(m_page);
+
+    // Entries show an emoji in front of their word (the clothes menus do). The
+    // embedded app face has no emoji glyphs, so the emoji family is named behind
+    // it here - a .ui file cannot spell out a family list.
+    for (QAbstractButton* button : m_page->findChildren<QAbstractButton*>()) {
+        QFont font = button->font();
+        font.setFamilies({appFontFamily(), QStringLiteral("Segoe UI Emoji")});
+        button->setFont(font);
+    }
 
     m_actions.clear();
     collectActions(m_page, m_actions);

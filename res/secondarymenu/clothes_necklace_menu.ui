@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>clothes_necklace_menu</class>
+ <widget class="QWidget" name="clothes_necklace_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>60</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="chk_necklace">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>📿 necklace</string></property>
+     <property name="tags" stdset="0"><string>necklace</string></property>
+     <property name="group" stdset="0"><string>necklace</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_brooch">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>💎 brooch</string></property>
+     <property name="tags" stdset="0"><string>brooch</string></property>
+     <property name="group" stdset="0"><string>necklace</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_pendant">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🏅 pendant</string></property>
+     <property name="tags" stdset="0"><string>pendant</string></property>
+     <property name="group" stdset="0"><string>necklace</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_badge">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🎖️ badge</string></property>
+     <property name="tags" stdset="0"><string>badge</string></property>
+     <property name="group" stdset="0"><string>necklace</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

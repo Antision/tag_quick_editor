@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>clothes_dress_menu</class>
+ <widget class="QWidget" name="clothes_dress_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>60</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="chk_dress">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>💃 dress</string></property>
+     <property name="tags" stdset="0"><string>dress</string></property>
+     <property name="group" stdset="0"><string>dress</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_sailor_dress">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>⚓ sailor dress</string></property>
+     <property name="tags" stdset="0"><string>sailor dress</string></property>
+     <property name="group" stdset="0"><string>dress</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_pinafore_dress">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👗 pinafore dress</string></property>
+     <property name="tags" stdset="0"><string>pinafore dress</string></property>
+     <property name="group" stdset="0"><string>dress</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_wedding_dress">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👰 wedding dress</string></property>
+     <property name="tags" stdset="0"><string>wedding dress</string></property>
+     <property name="group" stdset="0"><string>dress</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_sundress">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>☀️ sundress</string></property>
+     <property name="tags" stdset="0"><string>sundress</string></property>
+     <property name="group" stdset="0"><string>dress</string></property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QPushButton" name="chk_halter_dress">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👗 halter dress</string></property>
+     <property name="tags" stdset="0"><string>halter dress</string></property>
+     <property name="group" stdset="0"><string>dress</string></property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="chk_sweater_dress">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🧶 sweater dress</string></property>
+     <property name="tags" stdset="0"><string>sweater dress</string></property>
+     <property name="group" stdset="0"><string>dress</string></property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QPushButton" name="chk_nightgown">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🌙 nightgown</string></property>
+     <property name="tags" stdset="0"><string>nightgown</string></property>
+     <property name="group" stdset="0"><string>dress</string></property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QPushButton" name="chk_evening_gown">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🌃 evening gown</string></property>
+     <property name="tags" stdset="0"><string>evening gown</string></property>
+     <property name="group" stdset="0"><string>dress</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

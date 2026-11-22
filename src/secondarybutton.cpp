@@ -1,10 +1,14 @@
 #include "secondarybutton.h"
 
+#include "clothesemoji.h"
 #include "tetag.h"
 #include "tetaglistwidget.h"
 
 #include <QApplication>
+#include <QClipboard>
+#include <QCursor>
 #include <QKeyEvent>
+#include <QMenu>
 #include <QStyle>
 #include <QStyleOptionButton>
 
@@ -18,6 +22,18 @@ SecondaryButton* sPinned = nullptr;
 constexpr int kTextInset = 7;
 constexpr int kVerticalPadding = 3;
 constexpr int kMinHeight = 24;
+
+/// What the caption shows for one captured tag.
+///
+/// The caption is painted by hand from the captured tags, so it needs the emoji
+/// on this path as well - otherwise picking an entry from a menu would make the
+/// emoji disappear from the button (§1.8). The emoji is display text only: the
+/// tag in the list never carries it.
+QString captionText(const QString& tag)
+{
+    const QString symbol = emoji_for_tag(tag);
+    return symbol.isEmpty() ? tag : symbol + QLatin1Char(' ') + tag;
+}
 
 /// Reads one menu file plus the third-level files it declares into `out`.
 void readMenuActions(const QString& path, QVector<SecondaryAction>& out)
@@ -46,6 +62,9 @@ SecondaryButton::SecondaryButton(const QString& menuPath, QString placeholder, Q
     // the menu file after ("quality" -> res/secondarymenu/quality_menu.ui). The
     // sheet addresses the class, not the name, so nothing breaks without it.
     setMinimumHeight(kMinHeight);
+    // Generic launchers take whatever width their row gives them and elide the
+    // caption. The clothes palette overrides this with Minimum: there the name is
+    // the point (see clothesMenuButton).
     setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
     setFocusPolicy(Qt::NoFocus);
     setCursor(Qt::ArrowCursor);
@@ -73,6 +92,7 @@ void SecondaryButton::loadActions()
     // startup and keeps the file the only source of truth.
     readMenuActions(m_menuPath, m_actions);
     readMenuActions(m_rightMenuPath, m_rightActions);
+    m_familyDirty = true;
 
     // filter() answers for both menus: a tag of the second one is just as much
     // this control's business as a tag of the first.
@@ -106,6 +126,14 @@ const QVector<SecondaryButton::Action>& SecondaryButton::activeActions() const
     return m_actions;
 }
 
+bool SecondaryButton::activeMenuHasSubmenu() const
+{
+    for (const Action& action : activeActions())
+        if (!action.submenuPath.isEmpty())
+            return true;
+    return false;
+}
+
 void SecondaryButton::setMaxCaptionLines(int lines)
 {
     const int clamped = qMax(1, lines);
@@ -117,14 +145,213 @@ void SecondaryButton::setMaxCaptionLines(int lines)
     update();
 }
 
+void SecondaryButton::setTagBuilder(std::function<std::shared_ptr<teTag>(const QString&)> builder)
+{
+    m_tagBuilder = std::move(builder);
+    // The capture only ever compares tag *text*, so nothing has to be reloaded:
+    // the builder is used when an entry is written, from then on.
+}
+
+std::shared_ptr<teTag> SecondaryButton::makeTag(const QString& text) const
+{
+    return m_tagBuilder ? m_tagBuilder(text) : std::make_shared<teTag>(text);
+}
+
+void SecondaryButton::setOwnTag(const QString& tag)
+{
+    m_ownTag = tag;
+    m_familyDirty = true;
+    setKind(tag.isEmpty() ? QStringLiteral("pure") : QStringLiteral("activatable"));
+}
+
+void SecondaryButton::showPreviewAt(const QRect& anchor)
+{
+    // A menu anchored at a *tag* edits that tag in the list: the palette is not
+    // what this gesture means, even though the same button paints it.
+    m_compose = false;
+    SecondaryMenu* menu = ensureMenu(false);
+    if (!menu)
+        return;
+    if (m_active && m_active != menu)
+        hideMenu();
+    m_active = menu;
+    menu->setPreview(true);
+    menu->showAt(anchor);
+    m_mode = Mode::Preview;
+    syncMenuSelection();
+}
+
+void SecondaryButton::pinShownMenu()
+{
+    if (m_mode != Mode::Preview)
+        return;
+    pinActive();
+}
+
+void SecondaryButton::setPaletteMode(bool on)
+{
+    m_palette = on;
+    if (on)
+        setCaptured(false);
+    m_compose = m_palette && bool(m_composeSink);
+}
+
+void SecondaryButton::setCaptureFromTag(const QString& tagText)
+{
+    m_contextTag = tagText;
+    // The add widget has to light the button that owns the tag's *type*, not only
+    // the button whose name happens to be in the tag: `red pleated skirt` is the
+    // skirt button, `sailor collar` the collar one. paletteTagFor() answers with
+    // the family spelling, which is also what the menu highlights (so the button
+    // and its menu entry can never disagree).
+    if (m_palette)
+        m_paletteTag = paletteTagFor(tagText);
+    bool on = false;
+    if (!tagText.isEmpty()) {
+        if (m_palette)
+            on = !m_paletteTag.isEmpty();
+        else {
+            // Non-palette callers (older dialogs) keep the exact-tag rule.
+            on = captureList.contains(tagText);
+            if (!on && !m_ownTag.isEmpty())
+                on = tagText == m_ownTag || tagText.endsWith(QLatin1Char(' ') + m_ownTag);
+        }
+    }
+    setCaptured(on);
+    // The label follows the selection: `gloves` shows `elbow gloves` while that
+    // spelling is the one being composed.
+    if (m_palette)
+        rebuildCaption();
+    // The menu follows the same source; a pinned menu used to keep its old
+    // highlight until it was reopened.
+    if (m_active || m_submenu)
+        syncMenuSelection();
+}
+
+const QStringList& SecondaryButton::familyTags() const
+{
+    if (!m_familyDirty)
+        return m_familyTags;
+    m_familyTags.clear();
+    const auto add = [this](const QString& tag) {
+        if (!tag.isEmpty() && !m_familyTags.contains(tag))
+            m_familyTags.push_back(tag);
+    };
+    add(m_ownTag);
+    for (const Action& action : m_actions)
+        for (const QString& tag : action.tags)
+            add(tag);
+    for (const Action& action : m_rightActions)
+        for (const QString& tag : action.tags)
+            add(tag);
+    // Longest first: paletteTagFor() returns the first suffix that matches, and
+    // `pleated skirt` has to win over `skirt`.
+    std::stable_sort(m_familyTags.begin(), m_familyTags.end(),
+                     [](const QString& left, const QString& right) {
+                         return left.size() > right.size();
+                     });
+    m_familyDirty = false;
+    return m_familyTags;
+}
+
+QString SecondaryButton::paletteTagFor(const QString& tagText) const
+{
+    if (tagText.isEmpty())
+        return QString();
+    for (const QString& candidate : familyTags())
+        if (tagText == candidate || tagText.endsWith(QLatin1Char(' ') + candidate))
+            return candidate;
+    return QString();
+}
+
+void SecondaryButton::setComposeSink(std::function<void(const QString& tag, bool toggle)> sink)
+{
+    m_composeSink = std::move(sink);
+    // The popup's buttons compose; a menu opened by a reftag's hover preview has
+    // to keep editing the tag list, and showPreviewAt() turns m_compose back off
+    // for exactly that gesture.
+    m_compose = m_palette && bool(m_composeSink);
+}
+
+bool SecondaryButton::previewVisible() const
+{
+    return m_mode == Mode::Preview;
+}
+
+void SecondaryButton::dismissMenu()
+{
+    if (m_mode == Mode::Hidden)
+        return;
+    hideMenu();
+}
+
+void SecondaryButton::setDisplayName(const QString& name)
+{
+    m_displayName = name;
+    if (!name.isEmpty()) {
+        m_caption = name;
+        QPushButton::setText(name);
+        m_layoutWidth = -1;
+        updateGeometry();
+        update();
+    }
+}
+
+void SecondaryButton::setKind(const QString& kind)
+{
+    if (m_kind == kind)
+        return;
+    m_kind = kind;
+    // Two styles, two behaviours: the sheet draws a solid button when a click
+    // writes a tag and a dashed one when it only opens a menu.
+    setProperty("kind", m_kind);
+    style()->unpolish(this);
+    style()->polish(this);
+    update();
+}
+
+/**
+ * @brief A click on the button itself: write or remove its own tag.
+ *
+ * The clothes dialog has no button group to fall back on - the add widget only
+ * adds tags, and the tag list (not this control) is what captures them. So the
+ * click has to *do* something: "leotard" adds `leotard`, a second click takes it
+ * away, and the entry of the same name in the menu is the same action.
+ */
+void SecondaryButton::toggleOwnTag()
+{
+    if (m_ownTag.isEmpty() || !taglistwidget || !taglistwidget->showing_list)
+        return;
+    const std::set<std::shared_ptr<teTag>> linked = linked_tags;
+    for (const std::shared_ptr<teTag>& tag : linked) {
+        if (static_cast<QString>(*tag) == m_ownTag) {
+            taglistwidget->retire(tag);
+            return;
+        }
+    }
+    taglistwidget->tagInsertAbove(false, makeTag(m_ownTag));
+}
+
 const CaptionLayout& SecondaryButton::captionLayout() const
 {
     if (m_layoutWidth != width() || m_layoutCaption != m_caption) {
         m_layoutWidth = width();
         m_layoutCaption = m_caption;
+        // A named button (every clothes type) and an empty generic launcher show
+        // m_caption. Only an unnamed launcher with captured tags paints those tags
+        // itself, because it has no name to protect and needs the per-tag emoji.
+        // This is what used to make the add widget's `skirt` button read
+        // "microskirt, pleated skirt" from the *tag list*: the caption was right,
+        // but the painter ignored it.
         const QStringList tags = capturedTags();
-        m_layout = layoutCaption(tags.isEmpty() ? QStringList{m_caption} : tags,
-                                 fontMetrics(), width() - 2 * kTextInset, m_maxLines);
+        QStringList shown;
+        if (m_displayName.isEmpty() && !tags.isEmpty()) {
+            for (const QString& tag : tags)
+                shown.push_back(captionText(tag));
+        } else {
+            shown.push_back(m_caption);
+        }
+        m_layout = layoutCaption(shown, fontMetrics(), width() - 2 * kTextInset, m_maxLines);
     }
     return m_layout;
 }
@@ -197,16 +424,21 @@ SecondaryMenu* SecondaryButton::ensureSubmenu(const Action& action)
     }
     connect(menu, &SecondaryMenu::entryRightPressed, this, [this, menu](const QString& id) {
         m_rightClickUsed = true;
-        if (const SecondaryAction* action = menu->action(id))
+        if (const SecondaryAction* action = menu->action(id)) {
             activateAction(*action, true, m_mode == Mode::Pinned);
+            hideMenu();                 // a third-level pick is a complete choice
+        }
     });
     connect(menu, &SecondaryMenu::dismissRequested, this, [this] { hideMenu(); });
     connect(menu, &SecondaryMenu::blankAreaPressed, this, [this] { hideSubmenu(); });
     connect(menu, &SecondaryMenu::actionTriggered, this, [this, menu](const QString& id, bool) {
         // Several aliases may be on together, so this toggles like every other
-        // additive entry. A pinned menu survives the click, a dragged one closes.
-        if (const SecondaryAction* action = menu->action(id))
+        // additive entry. A third-level pick finishes the gesture: the tag is
+        // changed, there is nothing left to do in this menu.
+        if (const SecondaryAction* action = menu->action(id)) {
             activateAction(*action, true, m_mode == Mode::Pinned);
+            hideMenu();
+        }
     });
     m_submenu = menu;
     return menu;
@@ -217,6 +449,9 @@ bool SecondaryButton::openPreview(bool right)
     SecondaryMenu* menu = ensureMenu(right);
     if (!menu)
         return false;
+    // A menu opened by pressing this button belongs to the add widget: choosing
+    // an entry selects it in the composition instead of writing the tag list.
+    m_compose = m_palette && bool(m_composeSink);
     // Switching between the two menus mid-interaction: only one window at a time.
     if (m_active && m_active != menu)
         hideMenu();
@@ -316,9 +551,22 @@ const SecondaryButton::Action* SecondaryButton::findAction(const QString& id) co
     return nullptr;
 }
 
+QStringList SecondaryButton::highlightedTags() const
+{
+    // Palette mode: the add widget is editing one tag, so that tag *is* the
+    // capture. The button and the entries of its menu must agree - reading the tag
+    // list for one and the edited tag for the other is exactly how "the menu entry
+    // is green but the button is not" happened. The family spelling (not the whole
+    // tag) is what an entry can match: `red pleated skirt` lights `pleated skirt`,
+    // never `skirt`.
+    if (m_palette)
+        return m_paletteTag.isEmpty() ? QStringList{} : QStringList{m_paletteTag};
+    return capturedTags();
+}
+
 bool SecondaryButton::entryCaptured(const Action& action) const
 {
-    const QStringList captured = capturedTags();
+    const QStringList captured = highlightedTags();
     QStringList theirs = action.tags;
     theirs.sort();
     return !theirs.isEmpty()
@@ -346,7 +594,7 @@ void SecondaryButton::setFamily(const Action& parent, bool on)
                     break;
                 }
             if (!found)
-                taglistwidget->tagInsertAbove(false, std::make_shared<teTag>(text));
+                taglistwidget->tagInsertAbove(false, makeTag(text));
         }
     } else {
         // The entry stands for the whole family: "off" means every captured member
@@ -404,6 +652,20 @@ void SecondaryButton::activateAction(SecondaryAction action, bool fromSubmenu, b
     if (!fromSubmenu)
         hideSubmenu();
 
+    // The add widget composes one tag. An entry selected there must not insert
+    // anything by itself (`sailor collar` used to land in the tag list the moment
+    // it was clicked, with no colour or modifier chosen): it hands the spelling to
+    // the palette, which writes it only when `+` is pressed.
+    if (m_compose && m_composeSink) {
+        if (!action.tags.isEmpty())
+            m_composeSink(action.tags.join(QLatin1Char(' ')), false);
+        // One garment has one type: the menu has done its job, whether it was a
+        // hover preview, a drag or a pinned menu. Leaving a pinned menu up would
+        // hide the colours and modifiers the user is about to pick.
+        hideMenu();
+        return;
+    }
+
     if (!action.submenuPath.isEmpty()) {
         activateFamilyEntry(action, keepOpen);
         return;
@@ -433,7 +695,7 @@ void SecondaryButton::activate(const QString& id, bool keepOpen)
 
 void SecondaryButton::syncMenuSelection()
 {
-    const QStringList captured = capturedTags();
+    const QStringList captured = highlightedTags();
     const auto capturedAll = [&captured](const Action& action) {
         QStringList theirs = action.tags;
         theirs.sort();
@@ -467,6 +729,10 @@ void SecondaryButton::syncMenuSelection()
     QVector<QPair<QString, QString>> labels;
     QStringList familyIds;
     for (const Action& parent : actions) {
+        // Only an entry that opens a third level represents a family. A plain
+        // entry (`skirt` in the skirt menu) lights up for its own tag and nothing
+        // else: picking `microskirt` lights `microskirt` and the skirt *button*,
+        // not the `skirt` entry - that one would claim a tag nobody wrote.
         if (parent.submenuPath.isEmpty() || parent.group.isEmpty())
             continue;
         const Action* firstLit = nullptr;
@@ -522,7 +788,20 @@ void SecondaryButton::setCaptured(bool captured)
 void SecondaryButton::rebuildCaption()
 {
     const QStringList tags = capturedTags();
-    const QString caption = tags.isEmpty() ? m_placeholder : tags.join(QStringLiteral(", "));
+    // Two different jobs live here.
+    //  · Add widget (palette mode): the button names the spelling that is being
+    //    composed - `gloves` reads "elbow gloves" once that entry was picked, and
+    //    falls back to its own word when nothing is selected. It never joins the
+    //    tag list's other tags; that was the "microskirt, skirt" bug.
+    //  · Everywhere else: a named button keeps its own name (the row of type
+    //    names must stay readable), and a generic launcher (quality, framing,
+    //    faces) joins the tags it claims.
+    const QString caption = m_palette && !m_paletteTag.isEmpty()
+                                ? captionText(m_paletteTag)
+                                : (!m_displayName.isEmpty()
+                                       ? m_displayName
+                                       : (tags.isEmpty() ? m_placeholder
+                                                         : tags.join(QStringLiteral(", "))));
     if (caption != m_caption) {
         m_caption = caption;
         // text() stays truthful (accessibility, tooltips, the regression check);
@@ -532,7 +811,8 @@ void SecondaryButton::rebuildCaption()
         updateGeometry();
         update();
     }
-    setCaptured(!tags.isEmpty());
+    if (!m_palette)
+        setCaptured(!tags.isEmpty());
 }
 
 void SecondaryButton::refreshState()
@@ -554,7 +834,11 @@ void SecondaryButton::clear()
     // SC-02: a menu that belongs to a control whose editor was cleared has
     // nothing left to show.
     hideMenu();
-    m_caption = m_placeholder;
+    m_contextTag.clear();
+    m_paletteTag.clear();
+    // A named button keeps its name even when the list is empty: the add widget
+    // is a palette, not a caption of the tag list.
+    m_caption = m_displayName.isEmpty() ? m_placeholder : m_displayName;
     QPushButton::setText(m_caption);
     setCaptured(false);
     m_layoutWidth = -1;
@@ -593,7 +877,7 @@ void SecondaryButton::applyAction(const QString& id)
             }
         }
         if (!found)
-            taglistwidget->tagInsertAbove(false, std::make_shared<teTag>(text));
+            taglistwidget->tagInsertAbove(false, makeTag(text));
     }
     edited();
     refreshState();
@@ -606,6 +890,22 @@ void SecondaryButton::toggleAction(const QString& id, bool on)
         return;
 
     if (on) {
+        // `group` is "these entries exclude each other": switching one on takes
+        // the rest of its group out of the capture, which is how a `>>T` button
+        // replaces its parent entry with a variant. A menu that opens a third
+        // level is exempt - setFamily() already owns the whole capture there
+        // (trap and its aliases), and retiring the parent would tear the third
+        // level down while it is being used.
+        if (!action->group.isEmpty() && !activeMenuHasSubmenu()) {
+            QStringList siblings;
+            for (const Action& member : activeActions())
+                if (member.group == action->group && member.id != action->id)
+                    siblings += member.tags;
+            const std::set<std::shared_ptr<teTag>> linked = linked_tags;
+            for (const std::shared_ptr<teTag>& tag : linked)
+                if (siblings.contains(static_cast<QString>(*tag)))
+                    taglistwidget->retire(tag);
+        }
         // `implies` is what "mosaic censoring" does with "censored": switched on it
         // brings the implied tag along, but switching it off never takes that tag
         // away - the user may want only the specific one, and drops `censored`
@@ -623,7 +923,7 @@ void SecondaryButton::toggleAction(const QString& id, bool on)
                 }
             }
             if (!found)
-                taglistwidget->tagInsertAbove(false, std::make_shared<teTag>(text));
+                taglistwidget->tagInsertAbove(false, makeTag(text));
         }
     } else {
         const std::set<std::shared_ptr<teTag>> linked = linked_tags;
@@ -711,6 +1011,7 @@ void SecondaryButton::mousePressEvent(QMouseEvent* event)
         return;
     }
     // "Clicking the button again" is one of the ways a pinned menu closes (SC-02).
+    m_rightPressPending = false;
     if (m_mode == Mode::Pinned) {
         hideMenu();
         event->accept();
@@ -753,9 +1054,29 @@ void SecondaryButton::mousePressEvent(QMouseEvent* event)
 
     m_rightClickUsed = false;       // a new interaction starts here
     QPushButton::mousePressEvent(event);    // keeps the :pressed look while dragging
-    // SC-05: a right press opens the second menu when the button declares one;
-    // without one it keeps its older job (the first menu, then its third level).
-    if (openPreview(right && !m_rightMenuPath.isEmpty())) {
+    if (right) {
+        // Undecided: a drag opens a menu (SC-05), a plain click opens the tag
+        // operations of what this button captured. Opening the menu on press made
+        // the second impossible - and a tag that no button offers a menu for can
+        // never be merged by hand.
+        if (linked_tags.empty()) {
+            // A launcher with nothing captured has no operations to offer; it
+            // keeps the old gesture, where the menu opens on the press itself.
+            if (openPreview(!m_rightMenuPath.isEmpty())) {
+                m_dragging = true;
+                if (m_active)
+                    m_active->setPreview(false);
+            }
+            event->accept();
+            return;
+        }
+        m_rightPressPending = true;
+        m_rightPressPos = global;
+        event->accept();
+        return;
+    }
+    // SC-05: a left press opens the menu (the right menu on the way back).
+    if (openPreview(false)) {
         m_dragging = true;
         // A held button is a deliberate act: the menu becomes solid (and no longer
         // click-through) for as long as the button is down.
@@ -792,8 +1113,83 @@ void SecondaryButton::handleMenuPress(const QPoint& global, bool right)
     }
 }
 
+void SecondaryButton::showCapturedTagMenu()
+{
+    if (!taglistwidget || linked_tags.empty())
+        return;
+    // The claims are a set; the menu works on a snapshot because erasing a tag
+    // erases the claim it holds.
+    QVector<std::shared_ptr<teTag>> tags(linked_tags.begin(), linked_tags.end());
+    QMenu menu(this);
+    menu.setStyleSheet(QStringLiteral(R"(QMenu {
+        background-color: transparent;
+        font-size:14px;
+        color:#8dfda7;
+        border-radius:3px;
+    }
+    QMenu::item {
+        background-color: rgb(27,29,37);
+        padding: 3px;
+        border-radius:2px;
+        margin: 0px;
+        border: 1px solid #8b9ac6;
+    }
+    QMenu::item:selected {background-color: #3d258f;}
+)"));
+    menu.setAttribute(Qt::WA_TranslucentBackground);
+    menu.setWindowFlags(menu.windowFlags() | Qt::FramelessWindowHint);
+
+    QAction* editAction = menu.addAction(QIcon(QStringLiteral(":/res/menu_edit.png")),
+                                        QStringLiteral("edit (F2/Ctrl+E)"));
+    QAction* deleteAction = menu.addAction(QIcon(QStringLiteral(":/res/menu_remove.png")),
+                                          QStringLiteral("delete (Ctrl+D/del)"));
+    menu.addSeparator();
+    QAction* insertAction = menu.addAction(QIcon(QStringLiteral(":/res/menu_add.png")),
+                                          QStringLiteral("insert above (Ctrl+W)"));
+    QAction* insertBelowAction = menu.addAction(QIcon(QStringLiteral(":/res/menu_add.png")),
+                                               QStringLiteral("insert below"));
+    menu.addSeparator();
+    QAction* copyAction = menu.addAction(QIcon(QStringLiteral(":/res/menu_copy.png")),
+                                        QStringLiteral("copy (Ctrl+C)"));
+
+    QAction* chosen = menu.exec(QCursor::pos());
+    if (!chosen)
+        return;
+    if (chosen == editAction) {
+        // Editing is one tag at a time - the same rule the lists follow.
+        taglistwidget->tagEditCore(tags.front());
+    } else if (chosen == deleteAction) {
+        const QVector<std::shared_ptr<teTag>> doomed = tags;
+        for (const std::shared_ptr<teTag>& tag : doomed)
+            taglistwidget->tagErase(tag);
+    } else if (chosen == insertAction) {
+        taglistwidget->tagInsertAbove(true, nullptr, 2);
+    } else if (chosen == insertBelowAction) {
+        taglistwidget->tagInsertBelow(true, nullptr, 2);
+    } else if (chosen == copyAction) {
+        QStringList texts;
+        for (const std::shared_ptr<teTag>& tag : tags)
+            texts.append(static_cast<QString>(*tag));
+        QApplication::clipboard()->setText(texts.join(QStringLiteral(", ")));
+    }
+}
+
 void SecondaryButton::mouseMoveEvent(QMouseEvent* event)
 {
+    if (m_rightPressPending && (event->buttons() & Qt::RightButton)) {
+        // The press turned into a drag: that is the "show me the menu" gesture.
+        const QPoint global = event->globalPosition().toPoint();
+        if ((global - m_rightPressPos).manhattanLength() >= QApplication::startDragDistance()) {
+            m_rightPressPending = false;
+            // SC-05: the second menu when the button declares one; without one the
+            // first menu, whose third level is what a right drag is for there.
+            if (openPreview(!m_rightMenuPath.isEmpty())) {
+                m_dragging = true;
+                if (m_active)
+                    m_active->setPreview(false);
+            }
+        }
+    }
     if (m_dragging && m_active && m_mode == Mode::Preview) {
         // The preview menu is mouse-transparent, so the button keeps the implicit
         // grab: the cursor position is mapped into the menu and the entry under it
@@ -809,6 +1205,13 @@ void SecondaryButton::mouseReleaseEvent(QMouseEvent* event)
 {
     const bool left = event->button() == Qt::LeftButton;
     const bool right = event->button() == Qt::RightButton;
+    if (m_rightPressPending && right) {
+        // A right click that did not move: the tags this button captured.
+        m_rightPressPending = false;
+        QPushButton::mouseReleaseEvent(event);
+        showCapturedTagMenu();
+        return;
+    }
     if (m_dragging && (left || right)) {
         m_dragging = false;
         SecondaryMenu* menu = m_active;
@@ -822,6 +1225,19 @@ void SecondaryButton::mouseReleaseEvent(QMouseEvent* event)
         // not "click" whatever happens to be underneath.
         if (onButton) {
             QPushButton::mouseReleaseEvent(event);
+            // An activatable button is clicked, not pinned: the click selects its
+            // own tag. In the add widget that selection is the type of the tag
+            // being composed (a second click takes it away); elsewhere it writes
+            // or removes the tag. Its menu stays one hover (or one right press)
+            // away, and a press that ended on an entry never reaches this branch.
+            if (left && !m_rightClickUsed && !m_ownTag.isEmpty()) {
+                hideMenu();
+                if (m_compose && m_composeSink)
+                    m_composeSink(m_ownTag, true);
+                else
+                    toggleOwnTag();
+                return;
+            }
             pinActive();
             m_rightClickUsed = false;
             return;
@@ -881,6 +1297,7 @@ void SecondaryButton::mouseReleaseEvent(QMouseEvent* event)
 void SecondaryButton::hideEvent(QHideEvent* event)
 {
     // A folded page or a closed window cannot own a popup that stays on screen.
+    m_rightPressPending = false;
     hideMenu();
     QPushButton::hideEvent(event);
 }
@@ -901,6 +1318,33 @@ bool SecondaryButton::eventFilter(QObject* watched, QEvent* event)
         if (!inMenu && !inSubmenu)
             hideMenu();
         break;
+    }
+    case QEvent::MouseButtonRelease: {
+        auto* mouse = static_cast<QMouseEvent*>(event);
+        if (!m_submenu || !m_submenu->isVisible())
+            break;
+        const QPoint global = mouse->globalPosition().toPoint();
+        if (!m_submenu->frameGeometry().contains(global))
+            break;
+        const int index = m_submenu->itemAt(global);
+        if (index < 0)
+            break;
+        // Only a real entry counts - a release on the scroll bar or the frame
+        // must not pick whatever entry happens to be behind it.
+        if (!qobject_cast<QAbstractButton*>(m_submenu->childAt(m_submenu->mapFromGlobal(global))))
+            break;
+        const SecondaryAction* action = m_submenu->action(m_submenu->itemId(index));
+        if (!action)
+            break;
+        // The press that opened this level still owns the mouse (it happened on
+        // the level above), so the release is the only chance to pick the entry
+        // under the cursor. Consume it: the entry's own clicked() must not fire
+        // a second time.
+        m_submenu->setHoverIndex(-1);
+        activateAction(*action, true, true);
+        m_rightClickUsed = false;
+        hideMenu();
+        return true;
     }
     case QEvent::KeyPress:
         if (static_cast<QKeyEvent*>(event)->key() == Qt::Key_Escape) {

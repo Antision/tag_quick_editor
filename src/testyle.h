@@ -28,6 +28,16 @@ namespace teStyle {
 const QString& sheet(const QString& name);
 
 /**
+ * @brief controls.qss + secondarybutton.qss.
+ *
+ * The secondary button's own colours are a separate file because the add widget
+ * (a window with its own legacy palette) hosts the same buttons but never gets
+ * controls.qss. Everything that used to apply controls.qss and can contain a
+ * SecondaryButton asks for this instead.
+ */
+QString controls();
+
+/**
  * @brief The tag list sheet (list.qss), with the word font size filled in.
  *
  * It is a template because the font size follows the tag list's own text size,
