@@ -14,6 +14,7 @@
 #include "logwidget.h"
 #include "windows_frame.h"
 #include "task_runner.h"
+#include "svgicon.h"
 
 #include <QPainterPath>
 #include <QRegion>
@@ -374,6 +375,13 @@ MainWindow::MainWindow(QWidget *parent)
     global_window=this;
     connect(ui->action_undo,&QAction::triggered,ui->taglist,&TagListView::undo,Qt::DirectConnection);
     connect(ui->action_redo,&QAction::triggered,ui->taglist,&TagListView::redo,Qt::DirectConnection);
+    // Lucide 图标(运行时着色):菜单栏动作与排序按钮。旧 PNG 已删除。
+    ui->action_save->setIcon(svgicon::menuIcon(":/icons/save.svg",QSize(14,14)));
+    ui->action_undo->setIcon(svgicon::menuIcon(":/icons/undo-2.svg",QSize(14,14)));
+    ui->action_redo->setIcon(svgicon::menuIcon(":/icons/redo-2.svg",QSize(14,14)));
+    ui->action_filt->setIcon(svgicon::menuIcon(":/icons/funnel.svg",QSize(14,14)));
+    ui->sortByLexButton->setIcon(svgicon::menuIcon(":/icons/arrow-down-a-z.svg",QSize(14,14)));
+    ui->sortByOccurrenceButton->setIcon(svgicon::menuIcon(":/icons/arrow-down-wide-narrow.svg",QSize(14,14)));
 
     QHBoxLayout* menulayout = new QHBoxLayout(ui->menuBar);
     QSpacerItem *menuspacer1 = new QSpacerItem(0,0,QSizePolicy::Expanding,QSizePolicy::Fixed);

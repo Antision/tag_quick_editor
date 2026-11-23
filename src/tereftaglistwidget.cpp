@@ -122,6 +122,12 @@ void teRefTagListWidget::keyPressEvent(QKeyEvent *event) {
     } else if (event->key() == Qt::Key_W && event->modifiers() == Qt::ControlModifier) {
         // The same thing the "+" of this list does: the add widget for a new tag.
         addButtonClicked();
+    } else if ((event->key() == Qt::Key_Tab
+                || (event->key() == Qt::Key_M && event->modifiers() == Qt::ShiftModifier))
+               && manualMergeSupported()) {
+        // 手动合并(H&E / clothes):多选按列表顺序链式合并,单选级联。
+        // 只有实现了合并的列表才吃这两个键,别的列表的 Tab 照常做焦点切换。
+        manualMerge();
     } else {
         QWidget::keyPressEvent(event);
     }
@@ -275,7 +281,12 @@ void teRefTagListWidget::findAndErase(std::shared_ptr<teTag> in_core){
 }
 
 void teRefTagListWidget::Destroy(teRefTagWidget *tag){
-    teTagList* parentlist = tags[tag];
+    if(!tag)
+        return;
+    auto it=tags.find(tag);
+    if(it==tags.end())
+        return;                 // 已经不在:它的 destroy 回调收走过它
+    teTagList* parentlist = it->second;
     if(!parentTagListWidget||parentlist!=parentTagListWidget->showing_list){
         parentlist->erase(tag->core);
         tagErase(tag->core);
@@ -328,8 +339,12 @@ void teRefTagListWidget::tagDestroy(std::shared_ptr<teTag> tag){
     if(tag==nullptr&&select_current==nullptr)
         return;
     else if(tag==nullptr&&select_current!=nullptr&&!select.empty()){
+        // Snapshot: destroying the current one runs the destroy callback, which
+        // forgets widgets (and selection entries) synchronously - walking the
+        // live set while it mutates was undefined behaviour.
+        const std::set<teTagWidgetBase*> chosen=select;
         Destroy((teRefTagWidget*)(select_current));
-        for(auto t:select){
+        for(auto t:chosen){
             Destroy((teRefTagWidget*)(t));
         }
     }else{

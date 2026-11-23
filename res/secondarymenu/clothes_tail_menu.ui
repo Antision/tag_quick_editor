@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>clothes_tail_menu</class>
+ <widget class="QWidget" name="clothes_tail_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>60</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="chk_tail">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🐾 tail</string></property>
+     <property name="tags" stdset="0"><string>tail</string></property>
+     <property name="group" stdset="0"><string>tail</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_cat_tail">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🐈 cat tail</string></property>
+     <property name="tags" stdset="0"><string>cat tail</string></property>
+     <property name="group" stdset="0"><string>tail</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_fox_tail">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🦊 fox tail</string></property>
+     <property name="tags" stdset="0"><string>fox tail</string></property>
+     <property name="group" stdset="0"><string>tail</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_wolf_tail">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🐺 wolf tail</string></property>
+     <property name="tags" stdset="0"><string>wolf tail</string></property>
+     <property name="group" stdset="0"><string>tail</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_dog_tail">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🐕 dog tail</string></property>
+     <property name="tags" stdset="0"><string>dog tail</string></property>
+     <property name="group" stdset="0"><string>tail</string></property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QPushButton" name="chk_horse_tail">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🐴 horse tail</string></property>
+     <property name="tags" stdset="0"><string>horse tail</string></property>
+     <property name="group" stdset="0"><string>tail</string></property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="chk_devil_tail">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>😈 devil tail</string></property>
+     <property name="tags" stdset="0"><string>devil tail</string></property>
+     <property name="group" stdset="0"><string>tail</string></property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QPushButton" name="chk_dragon_tail">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🐉 dragon tail</string></property>
+     <property name="tags" stdset="0"><string>dragon tail</string></property>
+     <property name="group" stdset="0"><string>tail</string></property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QPushButton" name="chk_fish_tail">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🐟 fish tail</string></property>
+     <property name="tags" stdset="0"><string>fish tail</string></property>
+     <property name="group" stdset="0"><string>tail</string></property>
+    </widget>
+   </item>
+   <item row="4" column="1">
+    <widget class="QPushButton" name="chk_bird_tail">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🐦 bird tail</string></property>
+     <property name="tags" stdset="0"><string>bird tail</string></property>
+     <property name="group" stdset="0"><string>tail</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>body_parts_penis_menu</class>
+ <widget class="QWidget" name="body_parts_penis_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>296</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="chk_penis">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>penis</string></property>
+     <property name="tags" stdset="0"><string>penis</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_animal_penis">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>animal penis</string></property>
+     <property name="tags" stdset="0"><string>animal penis</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_dog_penis">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>dog penis</string></property>
+     <property name="tags" stdset="0"><string>dog penis</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_dolphin_penis">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>dolphin penis</string></property>
+     <property name="tags" stdset="0"><string>dolphin penis</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_horse_penis">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>horse penis</string></property>
+     <property name="tags" stdset="0"><string>horse penis</string></property>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="QPushButton" name="chk_knotted_penis">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>knotted penis</string></property>
+     <property name="tags" stdset="0"><string>knotted penis</string></property>
+    </widget>
+   </item>
+   <item row="6" column="0">
+    <widget class="QPushButton" name="chk_pig_penis">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>pig penis</string></property>
+     <property name="tags" stdset="0"><string>pig penis</string></property>
+    </widget>
+   </item>
+   <item row="7" column="0">
+    <widget class="QPushButton" name="chk_snake_penis">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>snake penis</string></property>
+     <property name="tags" stdset="0"><string>snake penis</string></property>
+    </widget>
+   </item>
+   <item row="8" column="0">
+    <widget class="QPushButton" name="chk_spiked_penis">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>spiked penis</string></property>
+     <property name="tags" stdset="0"><string>spiked penis</string></property>
+    </widget>
+   </item>
+   <item row="9" column="0">
+    <widget class="QPushButton" name="chk_bulge">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>bulge</string></property>
+     <property name="tags" stdset="0"><string>bulge</string></property>
+    </widget>
+   </item>
+   <item row="10" column="0">
+    <widget class="QPushButton" name="chk_covered_penis">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>covered penis</string></property>
+     <property name="tags" stdset="0"><string>covered penis</string></property>
+    </widget>
+   </item>
+   <item row="11" column="0">
+    <widget class="QPushButton" name="chk_erection_under_clothes">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>erection under clothes</string></property>
+     <property name="tags" stdset="0"><string>erection under clothes</string></property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QPushButton" name="chk_erection">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>erection</string></property>
+     <property name="tags" stdset="0"><string>erection</string></property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="chk_flaccid">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>flaccid</string></property>
+     <property name="tags" stdset="0"><string>flaccid</string></property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QPushButton" name="chk_foreskin">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>foreskin</string></property>
+     <property name="tags" stdset="0"><string>foreskin</string></property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QPushButton" name="chk_phimosis">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>phimosis</string></property>
+     <property name="tags" stdset="0"><string>phimosis</string></property>
+    </widget>
+   </item>
+   <item row="4" column="1">
+    <widget class="QPushButton" name="chk_gigantic_penis">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>gigantic penis</string></property>
+     <property name="tags" stdset="0"><string>gigantic penis</string></property>
+    </widget>
+   </item>
+   <item row="5" column="1">
+    <widget class="QPushButton" name="chk_huge_penis">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>huge penis</string></property>
+     <property name="tags" stdset="0"><string>huge penis</string></property>
+    </widget>
+   </item>
+   <item row="6" column="1">
+    <widget class="QPushButton" name="chk_large_penis">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>large penis</string></property>
+     <property name="tags" stdset="0"><string>large penis</string></property>
+    </widget>
+   </item>
+   <item row="7" column="1">
+    <widget class="QPushButton" name="chk_small_penis">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>small penis</string></property>
+     <property name="tags" stdset="0"><string>small penis</string></property>
+    </widget>
+   </item>
+   <item row="8" column="1">
+    <widget class="QPushButton" name="chk_veiny_penis">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>veiny penis</string></property>
+     <property name="tags" stdset="0"><string>veiny penis</string></property>
+    </widget>
+   </item>
+   <item row="9" column="1">
+    <widget class="QPushButton" name="chk_disembodied_penis">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>disembodied penis</string></property>
+     <property name="tags" stdset="0"><string>disembodied penis</string></property>
+    </widget>
+   </item>
+   <item row="10" column="1">
+    <widget class="QPushButton" name="chk_extra_penises">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>extra penises</string></property>
+     <property name="tags" stdset="0"><string>extra penises</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

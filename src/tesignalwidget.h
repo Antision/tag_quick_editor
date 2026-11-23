@@ -7,6 +7,10 @@
 
 extern QString destroyButtonStyle, OkButtonStyle, addButtonStyle;
 
+/// 快速添加窗/自定义 tag 窗的三颗操作按钮:Lucide 图标着色 + 外发光
+/// (对勾/加号 绿,x 红)。旧 bin/tick/plus PNG 已删除。
+void applySignalButtonIcons(QPushButton* ok,QPushButton* add,QPushButton* destroy);
+
 /// 给 LiteWidget2 的内容面板套上原来的窗口配色(深色底、白字、滚动条)。
 /// 面板会被窗口裁成圆角,所以不再画 `QWidget#content` 那圈紫色边框。
 void applyLiteWindowStyle(LiteWidget2* window);

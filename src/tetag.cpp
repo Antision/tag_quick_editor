@@ -295,13 +295,23 @@ void teTagWidgetBase::mouseMoveEvent(QMouseEvent *event) {
         }
     }
 }
+void teTagWidgetBase::focusOwningList(){
+    // 找最近的列表祖先(teTagListWidgetBase,ClickFocus)并把焦点给它;
+    // 没有列表祖先(理论上不该发生)就维持原状。
+    for(QWidget* widget=this;widget;widget=widget->parentWidget())
+        if(qobject_cast<teTagListWidgetBase*>(widget)){
+            widget->setFocus();
+            return;
+        }
+}
+
 void teTagWidgetBase::mousePressEvent(QMouseEvent *event) {
     if (event->button() == Qt::LeftButton) {
         start_y = event->pos().y();
         mousePosInWidget = start_y;
         isDragging = false;
         raise();
-        setFocus();
+        focusOwningList();
         emit leftButtonPress(this,event->pos(),event->modifiers());
     }
     else if(event->button() == Qt::RightButton){

@@ -21,20 +21,20 @@ QScrollBar::handle:pressed{background:#c5a9f7;}
 QScrollBar::handle:vertical{min-height:20px;}
 QScrollBar::handle:vertical{min-width:20px;}
 QScrollBar::up-arrow:vertical{
-    border-image: url(":/res/scrollbar_uparrow.png");
+    border-image: url(":/icons/scroll-chevron-up.svg");
     width:10px;height:10px;
 }
 QScrollBar::down-arrow:vertical{
-    border-image: url(":/res/scrollbar_downarrow.png");
+    border-image: url(":/icons/scroll-chevron-down.svg");
     width:10px;height:10px;
 }
 
 QScrollBar::left-arrow:horizontal {
-    border-image: url(":/res/scrollbar_leftarrow.png");
+    border-image: url(":/icons/scroll-chevron-left.svg");
     width:10px;height:10px;
 }
 QScrollBar::right-arrow:horizontal {
-    border-image: url(":/res/scrollbar_rightarrow.png");
+    border-image: url(":/icons/scroll-chevron-right.svg");
     width:10px;height:10px;
 }
 QScrollBar::sub-page,QScrollBar::add-page {

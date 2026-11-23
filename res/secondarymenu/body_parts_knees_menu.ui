@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>body_parts_knees_menu</class>
+ <widget class="QWidget" name="body_parts_knees_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>60</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="chk_knees">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>knees</string></property>
+     <property name="tags" stdset="0"><string>knees</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_kneepits">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>kneepits</string></property>
+     <property name="tags" stdset="0"><string>kneepits</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

@@ -3,7 +3,11 @@
 #include "tetag.h"
 #include "tesignalwidget.h"
 #include "func.h"
+#include "svgicon.h"
 #include <QPointer>
+#include <QShortcut>
+
+#include <algorithm>
 
 #include "tetaglistwidget.h"
 #include "testyle.h"
@@ -16,6 +20,8 @@
 QStringList ClipBoard;
 
 teTagListWidgetBase::teTagListWidgetBase(int wordsize,QWidget *parent): QWidget{parent}{
+    // 列表吃键盘(focusOwningList 把焦点送到这里):ClickFocus,不参与 Tab 链。
+    setFocusPolicy(Qt::ClickFocus);
     lineedit=new SuggestionEdit(suggestionBox,this);
     plaintextedit = new teInputWidget;
     QSizePolicy sp =QSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
@@ -43,13 +49,16 @@ teTagListWidgetBase::teTagListWidgetBase(int wordsize,QWidget *parent): QWidget{
     QSpacerItem* bottomspacer = new QSpacerItem(0,0,QSizePolicy::Fixed,QSizePolicy::Expanding);
     layout->insertSpacerItem(-1,bottomspacer);
     lineedit->hide();
-    editAction = menu->addAction(QIcon(":/res/menu_edit.png"),"edit (F2/Ctrl+E)");
-    deleteAction = menu->addAction(QIcon(":/res/menu_remove.png"),"delete (Ctrl+D/del)");
-    insertAction = menu->addAction(QIcon(":/res/menu_add.png"),"insert above (Ctrl+W)");
-    insertBelowAction = menu->addAction(QIcon(":/res/menu_add.png"),"insert below");
-    cutAction = menu->addAction(QIcon(":/res/menu_cut.png"),"cut (Ctrl+X)");
-    copyAction = menu->addAction(QIcon(":/res/menu_copy.png"),"copy (Ctrl+C)");
-    pasteAction = menu->addAction(QIcon(":/res/menu_paste.png"),"paste (Ctrl+V)");
+    editAction = menu->addAction(svgicon::menuIcon(":/icons/pen-line.svg"),"edit (F2/Ctrl+E)");
+    deleteAction = menu->addAction(svgicon::menuIcon(":/icons/trash.svg"),"delete (Ctrl+D/del)");
+    insertAction = menu->addAction(svgicon::menuIcon(":/icons/chevrons-up.svg"),"insert above (Ctrl+W)");
+    insertBelowAction = menu->addAction(svgicon::menuIcon(":/icons/chevrons-down.svg"),"insert below");
+    cutAction = menu->addAction(svgicon::menuIcon(":/icons/scissors.svg"),"cut (Ctrl+X)");
+    copyAction = menu->addAction(svgicon::menuIcon(":/icons/copy.svg"),"copy (Ctrl+C)");
+    pasteAction = menu->addAction(svgicon::menuIcon(":/icons/clipboard-list.svg"),"paste (Ctrl+V)");
+    // 手动合并(layers-2)的菜单项在 onTagRightButtonClicked() 里按需创建;
+    // 快捷键 Tab / Shift+M 由列表的 keyPressEvent 处理(见 teRefTagListWidget),
+    // 没实现合并的列表不会吞掉 Tab。
     menu->setStyleSheet(
         R"(QMenu {
         background-color: transparent;
@@ -322,6 +331,27 @@ void teTagListWidgetBase::tagEdit(){
     if(select_current!=nullptr)
         tagEdit(select_current);
 }
+
+QVector<std::shared_ptr<teTag>> teTagListWidgetBase::selectedCoresInVisualOrder() const
+{
+    QVector<QPair<int,teTagWidgetBase*>> indexed;
+    auto push=[&](teTagWidgetBase* widget){
+        if(widget&&widget->core)
+            indexed.append({findWidgetIndexInLayout(layout,widget),widget});
+    };
+    push(select_current);
+    for(teTagWidgetBase* widget:select)
+        push(widget);
+    std::sort(indexed.begin(),indexed.end(),
+              [](const QPair<int,teTagWidgetBase*>& a,const QPair<int,teTagWidgetBase*>& b){
+                  return a.first<b.first;
+              });
+    QVector<std::shared_ptr<teTag>> out;
+    out.reserve(indexed.size());
+    for(const auto& entry:indexed)
+        out.append(entry.second->core);
+    return out;
+}
 void teTagListWidgetBase::focusOutEvent(QFocusEvent *e){
     // The context menu is a focus-out, not a "clicked elsewhere": clearing the
     // selection here made a multi-tag right click act on nothing.
@@ -374,6 +404,10 @@ void teTagListWidgetBase::disconnectTag(teTagWidgetBase *tagwidget){
 void teTagListWidgetBase::onTagRightButtonClicked(teTagWidgetBase *tag, QPoint point, int modifiers){
     Q_UNUSED(point);
     Q_UNUSED(modifiers);
+    if(manualMergeSupported()&&!mergeAction){
+        menu->addSeparator();
+        mergeAction = menu->addAction(svgicon::menuIcon(":/icons/layers-2.svg"),"merge (Tab / Shift+M)");
+    }
     if(tag)
         // Keep the multi selection: the menu acts on all selected tags, and a
         // right click is how that set is reached (edit still edits one).
@@ -387,7 +421,9 @@ void teTagListWidgetBase::onTagRightButtonClicked(teTagWidgetBase *tag, QPoint p
     if(action==editAction){
         tagEdit();
     }else if(action == deleteAction){
-        tagErase();
+        // 与 Ctrl+D/del 一致:从所属列表删除(ref list 覆写成 tagDestroy),
+        // 而不是只把 ref widget 收回池子——后者会让 tag 留在 tag list 里。
+        deleteSelection();
     }else if(action==insertAction){
         tagInsertAbove(true,nullptr);
     }else if(action==insertBelowAction){
@@ -398,6 +434,8 @@ void teTagListWidgetBase::onTagRightButtonClicked(teTagWidgetBase *tag, QPoint p
         copy();
     }else if(action==pasteAction){
         paste();
+    }else if(mergeAction&&action==mergeAction){
+        manualMerge();
     }
 
 }

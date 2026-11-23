@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>object_insertion_menu</class>
+ <widget class="QWidget" name="object_insertion_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>176</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="chk_vaginal_object_insertion">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>vaginal object insertion</string></property>
+     <property name="tags" stdset="0"><string>vaginal object insertion</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_anal_object_insertion">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>anal object insertion</string></property>
+     <property name="tags" stdset="0"><string>anal object insertion</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_nipple_object_insertion">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>nipple object insertion</string></property>
+     <property name="tags" stdset="0"><string>nipple object insertion</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_urethral_insertion">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>urethral insertion</string></property>
+     <property name="tags" stdset="0"><string>urethral insertion</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_shared_object_insertion">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>shared object insertion</string></property>
+     <property name="tags" stdset="0"><string>shared object insertion</string></property>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="QPushButton" name="chk_implied_object_insertion">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>implied object insertion</string></property>
+     <property name="tags" stdset="0"><string>implied object insertion</string></property>
+    </widget>
+   </item>
+   <item row="6" column="0">
+    <widget class="QPushButton" name="chk_sounding">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>sounding</string></property>
+     <property name="tags" stdset="0"><string>sounding</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

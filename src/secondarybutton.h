@@ -190,14 +190,25 @@ public:
      * ends on the entry. The Action is passed by value because using an entry of the
      * third level may delete that window.
      */
-    void activateAction(SecondaryAction action, bool fromSubmenu, bool keepOpen);
+    void activateAction(SecondaryAction action, bool fromSubmenu, bool keepOpen,
+                        SecondaryMenu* owner = nullptr);
     /// Same, by id - for code that has no menu at hand (tests, programmatic use).
     void activate(const QString& id, bool keepOpen = false);
 
     /// The menu that is on screen, if any.
     SecondaryMenu* menu() const { return m_active; }
-    /// The third-level menu that is on screen, if any.
-    SecondaryMenu* submenu() const { return m_submenu; }
+    /**
+     * @brief The third-level menu that is on screen, if any.
+     *
+     * A menu file may name another one in an entry's `submenu` property, so the
+     * chain does not have to stop at three levels: `m_children` holds them in
+     * order, and this is the first. `deepestMenu()` is the one the pointer is
+     * most likely over.
+     */
+    SecondaryMenu* submenu() const { return m_children.value(0); }
+    SecondaryMenu* deepestMenu() const { return m_children.value(m_children.size() - 1); }
+    /// How many menus hang below the second one (0 when none is open).
+    int childMenuCount() const { return m_children.size(); }
 
 protected:
     QSize sizeHint() const override;
@@ -217,16 +228,29 @@ private:
     enum class Mode { Hidden, Preview, Pinned };
 
     SecondaryMenu* ensureMenu(bool right);
-    SecondaryMenu* ensureSubmenu(const Action& action);
     /// Shows the menu as a click-through preview under the button. `right` picks
     /// the second menu (SC-05), which is what a right press opens.
     bool openPreview(bool right = false);
-    /// Opens the third-level menu of `action`, anchored at its entry.
-    bool openSubmenu(const Action& action);
+    /**
+     * @brief The child menu an entry opens, hung off `parent`.
+     *
+     * `parent` is the menu the entry lives in - the second level when this is the
+     * third, a child menu when it is one deeper. Opening a child drops everything
+     * that hung below it: the chain is always a single path, never a tree of
+     * abandoned windows.
+     */
+    SecondaryMenu* ensureSubmenu(const Action& action, SecondaryMenu* parent);
+    /// Shows that child; `parent` defaults to the second level.
+    bool openSubmenu(const Action& action, SecondaryMenu* parent = nullptr);
+    /// The menu below `parent`, nullptr when the entry was the deepest one.
+    SecondaryMenu* childOf(const SecondaryMenu* parent) const;
+    /// Drops every menu below `parent` (level n+1 and deeper).
+    void dropChildrenOf(SecondaryMenu* parent);
     /// Turns the preview that is on screen into the pinned one.
     void pinActive();
     void pin();
     void hideMenu();
+    /// Drops every child menu (third level and deeper).
     void hideSubmenu();
     void syncMenuSelection();
     QStringList capturedTags() const;
@@ -247,7 +271,8 @@ private:
     void setFamily(const Action& parent, bool on);
     /// A left click on a family entry: toggle the whole family, and show the third
     /// level when it just came on.
-    void activateFamilyEntry(const Action& parent, bool keepOpen);
+    void activateFamilyEntry(const Action& parent, bool keepOpen,
+                             SecondaryMenu* owner);
     /// A press that lands inside one of the menus (the preview is click-through, so
     /// those arrive at the button).
     void handleMenuPress(const QPoint& global, bool right);
@@ -261,7 +286,7 @@ private:
      */
     void showCapturedTagMenu();
     /// Right click on a family entry: show its third level, or put it away again.
-    void toggleSubmenuFor(const Action& parent);
+    void toggleSubmenuFor(const Action& parent, SecondaryMenu* owner);
     void setCaptured(bool captured);
     void loadActions();
     /// One tag from an entry's text, through m_tagBuilder when one was given.
@@ -306,8 +331,14 @@ private:
     SecondaryMenu* m_rightMenu = nullptr;
     /// The menu that is on screen.
     SecondaryMenu* m_active = nullptr;
-    /// The third-level menu that is on screen, when an entry was opened.
-    SecondaryMenu* m_submenu = nullptr;
+    /**
+     * @brief The menus that hang off the second one, outermost first.
+     *
+     * `m_children[0]` is the third level, `[1]` the fourth, and so on. They form
+     * one chain: a menu is anchored at the entry of the menu before it, and only
+     * the last one is interactive (the ones behind stay visible).
+     */
+    QVector<SecondaryMenu*> m_children;
 
     mutable CaptionLayout m_layout;
     mutable int m_layoutWidth = -1;

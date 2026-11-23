@@ -3,6 +3,9 @@
 #include"tetag.h"
 #include"tereftaglistwidget.h"
 #include"tesignalwidget.h"
+
+#include <QRegularExpression>
+
 class TagListView;
 struct teEditor;
 struct anytype{
@@ -11,6 +14,47 @@ struct anytype{
     template<typename T>
     operator T&&(){}
 };
+
+/**
+ * @brief 数一数 tag list 里某种"人数"tag 的合计。
+ *
+ * 纯函数,每次询问现算。识别三种写法:"1girl"/"2girls"(计数)、
+ * "6+girls"/"10+others"(数字就取 "+" 前的整数)、"multiple girls"
+ * (用户明确写下多人,按 2 计)。breasts 组用它判断 girls>1;
+ * mouth/hair length 组用 isMultiPeople()。
+ */
+inline int countNounTags(teTagList* list,const QString& noun)
+{
+    if(!list)
+        return 0;
+    const QRegularExpression counted(QStringLiteral(R"(^(\d+)\+?%1s?$)").arg(noun));
+    const QRegularExpression multiple(QStringLiteral(R"(^multiple\s?%1s?$)").arg(noun));
+    int total=0;
+    for(const std::shared_ptr<teTag>& tag:list->getTags()){
+        if(!tag||tag->retired)
+            continue;
+        const QString text=static_cast<QString>(*tag);
+        const auto count=counted.match(text);
+        if(count.hasMatch())
+            total+=qMax(0,count.captured(1).toInt());
+        else if(multiple.match(text).hasMatch())
+            total+=2;
+    }
+    return total;
+}
+
+/**
+ * @brief 这张图是不是"多人"图(girl+boy+other 合计 > 1)。
+ *
+ * mouth 与 hair length 的多人放宽条件。"multiple girls" 等 tag 已经把 2
+ * 计入对应名词,所以不需要单独判断"multiple peoples"框。
+ */
+inline bool isMultiPeople(teTagList* list)
+{
+    return countNounTags(list,QStringLiteral("girl"))
+          +countNounTags(list,QStringLiteral("boy"))
+          +countNounTags(list,QStringLiteral("other"))>1;
+}
 
 /**
  * @brief What every editor control has in common: tags it claimed, and nothing
@@ -194,6 +238,26 @@ public:
  * A group fills `rules` in its constructor and needs no reform() at all; the two
  * groups whose rules are order dependent (ponytail, hair length) keep their own
  * pure functions and are pinned by the regression harness.
+ *
+ * -- 互斥按钮的通用规则(2026-11-23 定案,所有 teTagButtonGroup 遵守) ----------
+ *
+ * 1. **tag list 违反互斥时,顺从 tag list。** 列表里同时存在本组的两条以上
+ *    tag(多人图、自动合并被撤销/禁止造成)时,控件不再把它们重写成一个词串:
+ *    每条 tag 点亮自己的按钮,用户点灭其中一个只删除它自己的 tag,对其它按钮
+ *    的激活态没有任何影响;用户点亮一个灭掉的按钮时,互斥语义恢复——其它按钮
+ *    (及其 tag)一起灭掉。
+ * 2. **依赖控件的多人放宽。** 一个组可以声明依赖其它控件/人数状态
+ *    (multiTagMode()):条件满足时互斥暂时失效,每个点亮的按钮各自维护一个
+ *    tag,互不删除;组内仍然有效的自动合并(如 breasts 通称)照常进行。
+ *      - breasts:girls > 1(只数 girl,不含 boy/other)时 large/medium/small
+ *        互不排斥;"breasts" 是全组通称,点灭它删除整个家族的 tag。
+ *      - open/closed mouth:girl+boy+other > 1,或 multiple peoples 激活。
+ *      - very long/short/medium hair:同 mouth 条件;multiTagMode() 下 very 与
+ *        long 解绑——very 只写 "very long hair",long 只写 "long hair"。
+ *        非多人时保持原逻辑:互斥、very 隐含 long、自动合并 very long hair
+ *        和 long hair,禁止 "long short hair"。
+ * 3. 人数以 countNounTags() 计("1girl"/"2girls"/"6+girls"/"multiple girls"),
+ *    每次点击时重新计算,不缓存——人数变化后下一次点击就生效。
  */
 struct ButtonRuleSet {
     /// At most one member of each group may be on. The one that was clicked wins.
@@ -319,6 +383,28 @@ public:
     virtual void reform(int id){ applyRules(id); }
     std::unordered_set<QString> defaultFiltStrings;
     virtual void getDefaultFiltStrings();
+
+    /**
+     * @brief 多人放宽:该组此刻是否"每个按钮各写一个 tag"。
+     *
+     * 见 ButtonRuleSet 上方的通用规则。默认关闭;依赖人数的组(breasts、
+     * mouth、hair length)按 countNounTags()/isMultiPeople() 现算,不缓存。
+     */
+    virtual bool multiTagMode() const;
+    /**
+     * @brief multiTagMode() 下一个按钮对应的 tag 文本。
+     *
+     * 默认按"只点亮这一个按钮"组合(onClicked() 的同一套词序,共享的 label
+     * 词照旧附在后面,得到 "open mouth" / "cat ears");组合规则特殊的组
+     * (hair length 的 "very long hair")覆写它。
+     */
+    virtual QString tagTextForButton(int buttonId) const;
+    /// multiTagMode() 的点击:点亮 = 写入该按钮的 tag,点灭 = 只删它。
+    void onClickedMulti(int buttonId);
+    /// 写入 `tagTextForButton(buttonId)`(已存在同文 tag 时不写)。
+    void insertTagForButton(int buttonId);
+    /// 删除该按钮负责的 tag(与 tagTextForButton(buttonId) 同文的 linked tag)。
+    void eraseTagsForButton(int buttonId);
 };
 class teTagCheckBox : public QPushButton, public EditorControl{
     Q_OBJECT

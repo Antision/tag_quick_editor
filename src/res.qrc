@@ -3,34 +3,52 @@
         <file>../res/fonts/Ubuntu-Light.ttf</file>
         <file>../res/fonts/Ubuntu-Regular.ttf</file>
         <file>../res/fonts/Ubuntu-Bold.ttf</file>
-        <file>../res/bin.png</file>
-        <file>../res/bin_sleep.png</file>
-        <file>../res/close.png</file>
-        <file>../res/close_mainwindow_sleep.png</file>
-        <file>../res/close_sleep.png</file>
         <file>../res/icon.ico</file>
         <file>../res/icon.png</file>
-        <file>../res/maximize.png</file>
-        <file>../res/maximize_mainwindow_sleep.png</file>
-        <file>../res/maximize_sleep.png</file>
-        <file>../res/menu_add.png</file>
-        <file>../res/menu_copy.png</file>
-        <file>../res/menu_cut.png</file>
-        <file>../res/menu_edit.png</file>
-        <file>../res/menu_paste.png</file>
-        <file>../res/menu_pin.png</file>
-        <file>../res/menu_remove.png</file>
-        <file>../res/minimize.png</file>
-        <file>../res/minimize_mainwindow_sleep.png</file>
-        <file>../res/minimize_sleep.png</file>
-        <file>../res/plus.png</file>
-        <file>../res/plus_sleep.png</file>
-        <file>../res/scrollbar_downarrow.png</file>
-        <file>../res/scrollbar_leftarrow.png</file>
-        <file>../res/scrollbar_rightarrow.png</file>
-        <file>../res/scrollbar_uparrow.png</file>
-        <file>../res/tick.png</file>
-        <file>../res/tick_sleep.png</file>
+    </qresource>
+    <!-- 图标:Lucide(ISC 许可,见 LICENSES/lucide-ISC.txt)。线条 SVG,
+         stroke=currentColor,运行时由 common/ui/svgicon.h 着色渲染。
+         旧的 PNG 图标(菜单/加号/垃圾桶/关闭最大化最小化/滚动条箭头)已全部
+         删除:菜单与排序按钮用这里的 SVG,窗口三颗按钮由 WindowGlyphButton
+         直接绘制,滚动条箭头换成 chevron-*.svg(见 list.qss)。 -->
+    <qresource prefix="/icons">
+        <file alias="arrow-down-a-z.svg">../res/icons/arrow-down-a-z.svg</file>
+        <file alias="arrow-down-wide-narrow.svg">../res/icons/arrow-down-wide-narrow.svg</file>
+        <file alias="check.svg">../res/icons/check.svg</file>
+        <file alias="chevron-down.svg">../res/icons/chevron-down.svg</file>
+        <file alias="chevron-left.svg">../res/icons/chevron-left.svg</file>
+        <file alias="chevron-right.svg">../res/icons/chevron-right.svg</file>
+        <file alias="chevron-up.svg">../res/icons/chevron-up.svg</file>
+        <file alias="scroll-chevron-up.svg">../res/icons/scroll-chevron-up.svg</file>
+        <file alias="scroll-chevron-down.svg">../res/icons/scroll-chevron-down.svg</file>
+        <file alias="scroll-chevron-left.svg">../res/icons/scroll-chevron-left.svg</file>
+        <file alias="scroll-chevron-right.svg">../res/icons/scroll-chevron-right.svg</file>
+        <file alias="chevrons-down-up.svg">../res/icons/chevrons-down-up.svg</file>
+        <file alias="chevrons-down.svg">../res/icons/chevrons-down.svg</file>
+        <file alias="chevrons-up.svg">../res/icons/chevrons-up.svg</file>
+        <file alias="clipboard-list.svg">../res/icons/clipboard-list.svg</file>
+        <file alias="copy.svg">../res/icons/copy.svg</file>
+        <file alias="download.svg">../res/icons/download.svg</file>
+        <file alias="ellipsis-vertical.svg">../res/icons/ellipsis-vertical.svg</file>
+        <file alias="funnel.svg">../res/icons/funnel.svg</file>
+        <file alias="info.svg">../res/icons/info.svg</file>
+        <file alias="layers-2.svg">../res/icons/layers-2.svg</file>
+        <file alias="list-plus.svg">../res/icons/list-plus.svg</file>
+        <file alias="panel-bottom-close.svg">../res/icons/panel-bottom-close.svg</file>
+        <file alias="panel-bottom-open.svg">../res/icons/panel-bottom-open.svg</file>
+        <file alias="pen-line.svg">../res/icons/pen-line.svg</file>
+        <file alias="pin.svg">../res/icons/pin.svg</file>
+        <file alias="plus.svg">../res/icons/plus.svg</file>
+        <file alias="redo-2.svg">../res/icons/redo-2.svg</file>
+        <file alias="save.svg">../res/icons/save.svg</file>
+        <file alias="scissors.svg">../res/icons/scissors.svg</file>
+        <file alias="search.svg">../res/icons/search.svg</file>
+        <file alias="square-pen.svg">../res/icons/square-pen.svg</file>
+        <file alias="squares-unite.svg">../res/icons/squares-unite.svg</file>
+        <file alias="trash.svg">../res/icons/trash.svg</file>
+        <file alias="undo-2.svg">../res/icons/undo-2.svg</file>
+        <file alias="x.svg">../res/icons/x.svg</file>
+
     </qresource>
     <!-- 样式表:用 teStyle::sheet("list") 取,见 src/testyle.h。
          alias 是必须的:资源名是 prefix + 相对 .qrc 的路径,直接写
@@ -47,23 +65,28 @@
          在 Designer 里可以直接打开这些文件改布局,代码那边只认按钮的 objectName
          (btn_<id> / chk_<id>),所以挪位置、改文字都不用动代码。 -->
     <qresource prefix="/secondarymenu">
-        <file alias="quality_menu.ui">../res/secondarymenu/quality_menu.ui</file>
-        <file alias="framing_menu.ui">../res/secondarymenu/framing_menu.ui</file>
-        <file alias="facing_menu.ui">../res/secondarymenu/facing_menu.ui</file>
-        <file alias="posture_menu.ui">../res/secondarymenu/posture_menu.ui</file>
         <file alias="angle_menu.ui">../res/secondarymenu/angle_menu.ui</file>
-        <file alias="lighting_menu.ui">../res/secondarymenu/lighting_menu.ui</file>
-        <file alias="scene_menu.ui">../res/secondarymenu/scene_menu.ui</file>
-        <file alias="format_menu.ui">../res/secondarymenu/format_menu.ui</file>
-        <file alias="expression_menu.ui">../res/secondarymenu/expression_menu.ui</file>
-        <file alias="eye_menu.ui">../res/secondarymenu/eye_menu.ui</file>
-        <file alias="eye_shape_menu.ui">../res/secondarymenu/eye_shape_menu.ui</file>
+        <file alias="bestiality_menu.ui">../res/secondarymenu/bestiality_menu.ui</file>
+        <file alias="body_parts_appendages_menu.ui">../res/secondarymenu/body_parts_appendages_menu.ui</file>
+        <file alias="body_parts_arms_menu.ui">../res/secondarymenu/body_parts_arms_menu.ui</file>
+        <file alias="body_parts_back_menu.ui">../res/secondarymenu/body_parts_back_menu.ui</file>
+        <file alias="body_parts_feet_menu.ui">../res/secondarymenu/body_parts_feet_menu.ui</file>
+        <file alias="body_parts_knees_menu.ui">../res/secondarymenu/body_parts_knees_menu.ui</file>
+        <file alias="body_parts_legs_menu.ui">../res/secondarymenu/body_parts_legs_menu.ui</file>
+        <file alias="body_parts_lower_torso_menu.ui">../res/secondarymenu/body_parts_lower_torso_menu.ui</file>
+        <file alias="body_parts_menu.ui">../res/secondarymenu/body_parts_menu.ui</file>
+        <file alias="body_parts_nipples_menu.ui">../res/secondarymenu/body_parts_nipples_menu.ui</file>
+        <file alias="body_parts_penis_menu.ui">../res/secondarymenu/body_parts_penis_menu.ui</file>
+        <file alias="body_parts_pussy_menu.ui">../res/secondarymenu/body_parts_pussy_menu.ui</file>
+        <file alias="body_parts_stomach_menu.ui">../res/secondarymenu/body_parts_stomach_menu.ui</file>
+        <file alias="body_parts_testicles_menu.ui">../res/secondarymenu/body_parts_testicles_menu.ui</file>
+        <file alias="body_parts_thighs_menu.ui">../res/secondarymenu/body_parts_thighs_menu.ui</file>
+        <file alias="body_parts_upper_torso_menu.ui">../res/secondarymenu/body_parts_upper_torso_menu.ui</file>
+        <file alias="body_parts_uterus_menu.ui">../res/secondarymenu/body_parts_uterus_menu.ui</file>
         <file alias="censor_menu.ui">../res/secondarymenu/censor_menu.ui</file>
-        <file alias="trap_menu.ui">../res/secondarymenu/trap_menu.ui</file>
         <file alias="character_type_menu.ui">../res/secondarymenu/character_type_menu.ui</file>
-        <file alias="faces_menu.ui">../res/secondarymenu/faces_menu.ui</file>
-        <file alias="sexual_positions_menu.ui">../res/secondarymenu/sexual_positions_menu.ui</file>
         <file alias="clothes_armor_menu.ui">../res/secondarymenu/clothes_armor_menu.ui</file>
+        <file alias="clothes_bag_menu.ui">../res/secondarymenu/clothes_bag_menu.ui</file>
         <file alias="clothes_bikini_menu.ui">../res/secondarymenu/clothes_bikini_menu.ui</file>
         <file alias="clothes_bodysuit_menu.ui">../res/secondarymenu/clothes_bodysuit_menu.ui</file>
         <file alias="clothes_boots_menu.ui">../res/secondarymenu/clothes_boots_menu.ui</file>
@@ -79,10 +102,12 @@
         <file alias="clothes_detached_sleeves_menu.ui">../res/secondarymenu/clothes_detached_sleeves_menu.ui</file>
         <file alias="clothes_dress_menu.ui">../res/secondarymenu/clothes_dress_menu.ui</file>
         <file alias="clothes_earrings_menu.ui">../res/secondarymenu/clothes_earrings_menu.ui</file>
+        <file alias="clothes_ears_menu.ui">../res/secondarymenu/clothes_ears_menu.ui</file>
         <file alias="clothes_garter_straps_menu.ui">../res/secondarymenu/clothes_garter_straps_menu.ui</file>
         <file alias="clothes_glasses_menu.ui">../res/secondarymenu/clothes_glasses_menu.ui</file>
         <file alias="clothes_gloves_menu.ui">../res/secondarymenu/clothes_gloves_menu.ui</file>
         <file alias="clothes_hair_ornament_menu.ui">../res/secondarymenu/clothes_hair_ornament_menu.ui</file>
+        <file alias="clothes_halo_menu.ui">../res/secondarymenu/clothes_halo_menu.ui</file>
         <file alias="clothes_hat_menu.ui">../res/secondarymenu/clothes_hat_menu.ui</file>
         <file alias="clothes_headband_menu.ui">../res/secondarymenu/clothes_headband_menu.ui</file>
         <file alias="clothes_headphones_menu.ui">../res/secondarymenu/clothes_headphones_menu.ui</file>
@@ -112,9 +137,28 @@
         <file alias="clothes_suit_menu.ui">../res/secondarymenu/clothes_suit_menu.ui</file>
         <file alias="clothes_sweater_menu.ui">../res/secondarymenu/clothes_sweater_menu.ui</file>
         <file alias="clothes_swimsuit_menu.ui">../res/secondarymenu/clothes_swimsuit_menu.ui</file>
+        <file alias="clothes_tail_menu.ui">../res/secondarymenu/clothes_tail_menu.ui</file>
         <file alias="clothes_thigh_strap_menu.ui">../res/secondarymenu/clothes_thigh_strap_menu.ui</file>
         <file alias="clothes_top_menu.ui">../res/secondarymenu/clothes_top_menu.ui</file>
         <file alias="clothes_veil_menu.ui">../res/secondarymenu/clothes_veil_menu.ui</file>
         <file alias="clothes_vest_menu.ui">../res/secondarymenu/clothes_vest_menu.ui</file>
+        <file alias="expression_menu.ui">../res/secondarymenu/expression_menu.ui</file>
+        <file alias="eye_menu.ui">../res/secondarymenu/eye_menu.ui</file>
+        <file alias="eye_shape_menu.ui">../res/secondarymenu/eye_shape_menu.ui</file>
+        <file alias="faces_menu.ui">../res/secondarymenu/faces_menu.ui</file>
+        <file alias="facing_menu.ui">../res/secondarymenu/facing_menu.ui</file>
+        <file alias="format_menu.ui">../res/secondarymenu/format_menu.ui</file>
+        <file alias="framing_menu.ui">../res/secondarymenu/framing_menu.ui</file>
+        <file alias="lighting_menu.ui">../res/secondarymenu/lighting_menu.ui</file>
+        <file alias="object_insertion_menu.ui">../res/secondarymenu/object_insertion_menu.ui</file>
+        <file alias="objects_dildo_menu.ui">../res/secondarymenu/objects_dildo_menu.ui</file>
+        <file alias="objects_food_insertion_menu.ui">../res/secondarymenu/objects_food_insertion_menu.ui</file>
+        <file alias="objects_menu.ui">../res/secondarymenu/objects_menu.ui</file>
+        <file alias="objects_vibrator_menu.ui">../res/secondarymenu/objects_vibrator_menu.ui</file>
+        <file alias="posture_menu.ui">../res/secondarymenu/posture_menu.ui</file>
+        <file alias="quality_menu.ui">../res/secondarymenu/quality_menu.ui</file>
+        <file alias="scene_menu.ui">../res/secondarymenu/scene_menu.ui</file>
+        <file alias="sexual_positions_menu.ui">../res/secondarymenu/sexual_positions_menu.ui</file>
+        <file alias="trap_menu.ui">../res/secondarymenu/trap_menu.ui</file>
     </qresource>
 </RCC>

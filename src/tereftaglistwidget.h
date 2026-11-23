@@ -66,6 +66,20 @@ public:
     void tagInsertAbove(bool edit,std::shared_ptr<teTag>newtag,teTagList*list,int removeDuplicate=1);
     void tagEdit(std::shared_ptr<teTag>tag, QString text,int removeDuplicate=1,bool ifemit=true)override;
     virtual void paste() override;
+    /**
+     * @brief 剪切 = 复制 + 从所属列表删除。
+     *
+     * 基类的 cut() 走 tagErase()——那只是把 ref widget 收回池子,tag 本体
+     * 还留在 tag list 里(本次修的 bug)。tagDestroy() 走 Destroy():从
+     * taglistwidget->showing_list 删 core,destroy 回调再把 widget 丢掉,
+     * 单选与多选都成立。
+     */
+    void cut()override{
+        QApplication::clipboard()->setText(getSelectText());
+        tagDestroy();
+    }
+    /// 右键菜单的 delete:同 Ctrl+D,从所属列表删除(不是只丢 widget)。
+    void deleteSelection()override{ tagDestroy(); }
     virtual teTagWidgetBase* taginsert(int index,std::shared_ptr<teTag>in_tag,int removeDuplicate=-1,bool select=false)override;
     virtual teTagWidgetBase* taginsert(int index,std::shared_ptr<teTag>in_tag,teTagList*in_list,int removeDuplicate=-1,bool select=false);
 };

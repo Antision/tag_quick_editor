@@ -348,6 +348,15 @@ public:
     }
     virtual void load()=0;
     void mousePressEvent(QMouseEvent *event) override;
+    /**
+     * @brief 把焦点交给承载这个 tag 的列表(teTagListWidgetBase)。
+     *
+     * 列表是 ClickFocus,tag 控件本身是 NoFocus:键盘快捷键(Ctrl+W / Ctrl+X /
+     * Enter / F2 ...)要落在列表的 keyPressEvent 上,必须先让列表拿到焦点。
+     * 旧代码对 tag 控件调 setFocus()——打在 NoFocus 上什么都不发生,列表的
+     * 快捷键从此按了没反应。
+     */
+    void focusOwningList();
     void mouseMoveEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
     void keyPressEvent(QKeyEvent *event)override {

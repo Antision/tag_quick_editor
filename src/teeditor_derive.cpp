@@ -3,7 +3,7 @@
 // The controls live in these headers now; they used to be declared inside the
 // editor constructors below, which made this file a 2400 line wall.
 #include "secondarybutton.h"     // the drop-down buttons (SC-01..SC-11)
-#include "clothesbuttons.h"      // the 73 clothes buttons, generated from the spec
+#include "clothesbuttons.h"      // the 77 clothes buttons, generated from the spec
 #include "clothesemoji.h"        // display-only emoji (never part of a tag)
 #include "teclothescontrol.h"
 #include "tefacecontrols.h"
@@ -439,7 +439,7 @@ QPushButton* clothesPlainButton(const QString& tag,QWidget* parent,QButtonGroup*
 
 /// How one body area is laid out: which column of the dialog it sits in and how
 /// many buttons wide it is. Two areas share a column, which is what keeps the
-/// 74 buttons on one screen instead of in a strip.
+/// 77 buttons on one screen instead of in a strip.
 struct clothesAreaLayout {
     int row;        // 0 = upper row of the category grid, 1 = lower row
     int column;     // macro column (0..3); the colour column is outside this grid
@@ -880,12 +880,103 @@ teEditor_clothes::teEditor_clothes(TagListView*in_taglistwidget,QString &&name, 
     addRow({{},{},{new teTagCheckBox({ "frills" }),
                     new teTagCheckBox({ "striped clothes" })}});
 
-    addControl(new Ears_Buttongroup);
+    // Animal ears are an accessory type now (`ears` + its menu, in the add
+    // widget): the old Ears_Buttongroup captured "X ears" a second time, and
+    // two controls claiming the same tag drew two links for one tag.
 }
 
 
+namespace {
+
+/**
+ * @brief The generic `object insertion`: captured, never offered.
+ *
+ * `object insertion` is a danbooru tag the software does not recommend, but old
+ * pictures still contain it. The button therefore claims it (so it can be seen
+ * and switched off through the button) while its menu only offers the specific
+ * spellings. Any of those - or an insertion site the editor does recommend
+ * (`vaginal`, `anal`, `large insertion`) - retires the generic tag, whichever of
+ * the two is read first.
+ */
+struct ObjectInsertionButton : public SecondaryButton
+{
+    ObjectInsertionButton()
+        : SecondaryButton(QStringLiteral(":/secondarymenu/object_insertion_menu.ui"),
+                          QStringLiteral("(object insertion)"))
+    {
+        setObjectName(qsl("object_insertion"));
+        setMaxCaptionLines(2);
+        captureList.insert(qsl("object insertion"));
+    }
+
+    TagHandling read(std::shared_ptr<teTag> tag) override
+    {
+        if (!tag)
+            return TagHandling::NotMine;
+        if (!tag->retired) {
+            const QString text = static_cast<QString>(*tag);
+            if (text == qsl("object insertion")) {
+                // Read before the specific tags: ask the whole list, not only
+                // what has been claimed so far (the scan is top to bottom).
+                if (showingListHasTrigger()) {
+                    if (taglistwidget)
+                        taglistwidget->retire(tag);
+                    return TagHandling::Consumed;
+                }
+            } else if (triggers().contains(text)) {
+                retireGeneric();
+            }
+        }
+        return EditorControl::read(tag);
+    }
+
+private:
+    static const QSet<QString>& triggers()
+    {
+        static const QSet<QString> set{
+            qsl("vaginal object insertion"), qsl("anal object insertion"),
+            qsl("nipple object insertion"), qsl("urethral insertion"),
+            qsl("vaginal"), qsl("anal"), qsl("large insertion")};
+        return set;
+    }
+
+    bool showingListHasTrigger() const
+    {
+        if (!taglistwidget || !taglistwidget->showing_list)
+            return false;
+        for (const std::shared_ptr<teTag>& tag : taglistwidget->showing_list->getTags())
+            if (tag && !tag->retired && triggers().contains(static_cast<QString>(*tag)))
+                return true;
+        return false;
+    }
+
+    void retireGeneric()
+    {
+        if (!taglistwidget)
+            return;
+        // The claim is a set; retiring a tag erases the claim it holds, so work
+        // on a copy.
+        const std::set<std::shared_ptr<teTag>> linked = linked_tags;
+        for (const std::shared_ptr<teTag>& tag : linked)
+            if (tag && !tag->retired && static_cast<QString>(*tag) == qsl("object insertion")) {
+                taglistwidget->retire(tag);
+                return;
+            }
+    }
+};
+
+} // namespace
+
 teEditor_nsfw::teEditor_nsfw(TagListView*in_taglistwidget,QString &&name, QWidget *parent):teEditor_standard(in_taglistwidget,name, QStringLiteral("nsfw"), parent){
     addControl(new Object_list(new colorsWidget({{QStringList{object1.begin(),object1.end()},true},{QStringList{preposwords.begin(),preposwords.end()},true},{QStringList{bodyparts.begin(),bodyparts.end()},true}},nullptr,-1),taglistwidget));
+
+    // Body parts: one button, three regions, and every part with variants opens
+    // one more level (region -> part -> variant, four in all).
+    auto* bodyParts = new SecondaryButton(
+        QStringLiteral(":/secondarymenu/body_parts_menu.ui"), qsl("(body part)"));
+    bodyParts->setObjectName(qsl("body_parts"));
+    bodyParts->setMaxCaptionLines(2);
+    addControl(bodyParts);
 
     addRow({{qsl("type")},{},{new teTagCheckBox({ "sex" }),
                                 new teTagCheckBox({ "nude" }),
@@ -934,9 +1025,6 @@ teEditor_nsfw::teEditor_nsfw(TagListView*in_taglistwidget,QString &&name, QWidge
                                              new teTagCheckBox({  "(male)","male pubic hair" }),
                                              new teTagCheckBox({ "pubic hair" })}});
 
-    addRow({{},{},{new teTagCheckBox({ "large penis"  }),
-                    new teTagCheckBox({ "large insertion"  })}});
-
     addRow({{},{},{new teTagCheckBox({ "smalldom" }),
                     new teTagCheckBox({ "size diff","size difference" }),
                     new teTagCheckBox({ "mounting" })}});
@@ -947,29 +1035,34 @@ teEditor_nsfw::teEditor_nsfw(TagListView*in_taglistwidget,QString &&name, QWidge
     addRow({{qsl("object")},{},{new teTagCheckBox({"ride","riding machine" }),
                                   new teTagCheckBox({"machine","sex machine" }),
                                   new teTagCheckBox({"toy", "sex toy"  }),
-                                  new teTagCheckBox({"dildo"}),
                                   new teTagCheckBox({ "gap","gaping"  })}});
 
-    addRow({{},{},{new teTagCheckBox({"vaginal","vaginal object insertion" }),
-                    new teTagCheckBox({"anal", "anal object insertion"  }),
-                    new teTagCheckBox({ "object insertion", "object insertion"  })}});
+    // The two insertion buttons share a row: the generic one (capture only) on
+    // the left, the objects that can actually be added on the right.
+    addRow({{},{},{new ObjectInsertionButton,
+                    [] {
+                        auto* objects = new SecondaryButton(
+                            QStringLiteral(":/secondarymenu/objects_menu.ui"),
+                            qsl("(objects)"));
+                        objects->setObjectName(qsl("objects"));
+                        objects->setMaxCaptionLines(2);
+                        return objects;
+                    }()}});
 
     addRow({{},{},{new teTagCheckBox({ "giving birth" }),
                     new teTagCheckBox({ "unbirth" }),
                     new teTagCheckBox({ "prolapse" })}});
 
-    addRow({{},{},{new teTagCheckBox({ "bestiality" }),
-                    new teTagCheckBox({ "🐶","dog" }),
-                    new teTagCheckBox({ "🐴","horse" }),
-                    new teTagCheckBox({ "🐷","pig" }),
-                    new teTagCheckBox({ "🐸","frog" })}});
-    addRow({{},{},{new teTagCheckBox({ "🐍","snake" }),
-                    new teTagCheckBox({ "🦍","orangutan" }),
-                    new teTagCheckBox({ "🐵","monkey" }),
-                    new teTagCheckBox({ "🦋","insect" }),
-                    new teTagCheckBox({ "🐛","worm" }),
-                    new teTagCheckBox({ "💧","slime" }),
-                    new teTagCheckBox({ "👺","goblin" })}});
+    // Bestiality is one button whose menu holds the animals (and zoophilia):
+    // a click writes `bestiality` itself, a menu pick adds the animal word.
+    {
+        auto* bestiality = new SecondaryButton(
+            QStringLiteral(":/secondarymenu/bestiality_menu.ui"), qsl("bestiality"));
+        bestiality->setObjectName(qsl("bestiality"));
+        bestiality->setMaxCaptionLines(2);
+        bestiality->setOwnTag(qsl("bestiality"));
+        addControl(bestiality);
+    }
 
     addRow({{},{},{new teTagCheckBox({"living clothes"}),
                     new teTagCheckBox({"bondage"}),

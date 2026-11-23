@@ -20,9 +20,10 @@
 #include <set>
 
 namespace {
-/// 0.8 over an editor column, 0.2 while only the tag list is under the pointer.
-constexpr int kColumnAlpha=204;
-constexpr int kTagRowAlpha=51;
+/// 0.8 everywhere a link is drawn. The old 0.2 for the tag list half made the
+/// lines hard to read exactly where they matter (the pointer is on the row the
+/// user is looking at), so both hover states draw at the same strength now.
+constexpr int kLinkAlpha=204;
 constexpr int kDotRadius=2;
 constexpr int kMinIntervalMs=16;
 
@@ -79,6 +80,10 @@ ConnectivityOverlay::ConnectivityOverlay(MainWindow* window,TagListView* tagView
             m_tagView->viewport()->installEventFilter(this);
         if(auto* bar=m_tagView->verticalScrollBar())
             connect(bar,&QScrollBar::valueChanged,this,&ConnectivityOverlay::schedule);
+        // Selected rows draw their own links while the pointer is on the list;
+        // a selection change alone (no mouse movement) still has to repaint.
+        if(auto* selection=m_tagView->selectionModel())
+            connect(selection,&QItemSelectionModel::selectionChanged,this,&ConnectivityOverlay::schedule);
         attachModel(m_tagView->tagModel());
     }
     attachPages();
@@ -183,17 +188,21 @@ void ConnectivityOverlay::updateHoverAt(const QPoint& globalPos)
         &&m_tagView->viewport()->rect().contains(m_tagView->viewport()->mapFromGlobal(globalPos))){
         const QModelIndex index=m_tagView->indexAt(m_tagView->viewport()->mapFromGlobal(globalPos));
         TagListModel* model=m_tagView->tagModel();
-        // Only a row carries a tag; the empty area below the last row draws
-        // nothing (the pointer is "on the list" but there is no set to show).
-        if(index.isValid()&&model&&m_tagView->showing_list){
-            if(teTag* raw=model->tagAt(index.row())){
-                for(const std::shared_ptr<teTag>& tag:m_tagView->showing_list->getTags())
-                    if(tag.get()==raw){
-                        next=Hover::TagRow;
-                        nextTag=tag;
-                        break;
-                    }
-            }
+        // A row under the pointer carries that tag; the empty area below the
+        // last row carries none - but the *selected* rows draw their links in
+        // either case, so the pointer being "on the list" is enough to draw.
+        if(model&&m_tagView->showing_list){
+            if(index.isValid()){
+                if(teTag* raw=model->tagAt(index.row())){
+                    for(const std::shared_ptr<teTag>& tag:m_tagView->showing_list->getTags())
+                        if(tag.get()==raw){
+                            next=Hover::TagRow;
+                            nextTag=tag;
+                            break;
+                        }
+                }
+            }else
+                next=Hover::TagRow;
         }
     }
 
@@ -210,6 +219,21 @@ void ConnectivityOverlay::updateHoverAt(const QPoint& globalPos)
         update();       // the sheet moved: the old frame is not where the lines are
     else
         repaintArea(previous);
+}
+
+QSet<const teTag*> ConnectivityOverlay::hoverTargets() const
+{
+    QSet<const teTag*> targets;
+    if(const std::shared_ptr<teTag> tag=m_hoverTag.lock())
+        targets.insert(tag.get());
+    if(m_tagView&&m_tagView->selectionModel()&&m_tagView->tagModel()){
+        const QModelIndexList selected=m_tagView->selectionModel()->selectedIndexes();
+        for(const QModelIndex& index:selected){
+            if(teTag* raw=m_tagView->tagModel()->tagAt(index.row()))
+                targets.insert(raw);
+        }
+    }
+    return targets;
 }
 
 void ConnectivityOverlay::refreshSegments()
@@ -278,7 +302,7 @@ bool ConnectivityOverlay::eventFilter(QObject* watched,QEvent* event)
 
 void ConnectivityOverlay::collectPageLinks(int pageIndex,TagListModel* model,
                                            const QPoint& origin,QVector<LinkSegment>& out,
-                                           const teTag* onlyTag) const
+                                           const QSet<const teTag*>& onlyTags) const
 {
     if(pageIndex<0||pageIndex>=pageCount())
         return;
@@ -304,7 +328,9 @@ void ConnectivityOverlay::collectPageLinks(int pageIndex,TagListModel* model,
             if(controlRect.isEmpty())
                 continue;
             for(const std::shared_ptr<teTag>& tag:control->linked_tags){
-                if(!tag||(onlyTag&&tag.get()!=onlyTag))
+                // An empty set draws every claim (hover over a column); a set
+                // of tags restricts the lines to exactly those tags.
+                if(!tag||(!onlyTags.isEmpty()&&!onlyTags.contains(tag.get())))
                     continue;
                 // A claim can outlive the rule that made it (a control is told
                 // about the edit, but a link that was never cleaned up keeps the
@@ -356,15 +382,17 @@ void ConnectivityOverlay::collectSegments(QVector<LinkSegment>& out) const
     const QPoint origin=mapToGlobal(QPoint(0,0));
 
     if(m_hover==Hover::Column){
-        collectPageLinks(m_hoverPage,model,origin,out,nullptr);
+        collectPageLinks(m_hoverPage,model,origin,out,{});
     }else{
-        // Over the tag list: the set of controls that capture exactly this tag
-        // ("the same-name set"), across every column.
-        const std::shared_ptr<teTag> tag=m_hoverTag.lock();
-        if(!tag)
+        // Over the tag list: the hovered tag plus every *selected* one - the
+        // set of controls that capture exactly these tags ("the same-name
+        // set"), across every column. A selected tag whose row is not under
+        // the pointer draws the same lines as if it were hovered.
+        const QSet<const teTag*> targets=hoverTargets();
+        if(targets.isEmpty())
             return;
         for(int i=0;i<pageCount();++i)
-            collectPageLinks(i,model,origin,out,tag.get());
+            collectPageLinks(i,model,origin,out,targets);
     }
 
     // Two controls can end on the same chip (a colour button row and the ref list
@@ -385,7 +413,7 @@ void ConnectivityOverlay::paintEvent(QPaintEvent*)
     if(m_segments.isEmpty())
         return;
 
-    const int alpha=m_hover==Hover::Column?kColumnAlpha:kTagRowAlpha;
+    const int alpha=kLinkAlpha;
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing,true);
     painter.setBrush(Qt::NoBrush);
@@ -403,8 +431,8 @@ void ConnectivityOverlay::paintEvent(QPaintEvent*)
         painter.drawLine(m_segments[i].from,m_segments[i].to);
     }
 
-    // The dots are white and sit inside the border (LINK-03). They fade with the
-    // line, otherwise the 20% state would show bright dots on faint lines.
+    // The dots are white and sit inside the border (LINK-03). They use the same
+    // alpha as the lines, so a faint line never carries a bright dot.
     painter.setPen(Qt::NoPen);
     painter.setBrush(QColor(255,255,255,alpha));
     for(const LinkSegment& segment:m_segments){

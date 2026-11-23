@@ -28,6 +28,10 @@ public:
      */
     teTagListWidgetBase(int wordsize,QWidget *parent);
     ~teTagListWidgetBase();
+    /**
+     * @brief ClickFocus:点击任何 tag(focusOwningList)都会把焦点交给列表,
+     *        keyPressEvent 的快捷键(Ctrl+W / Ctrl+X / Enter / F2 ...)才工作。
+     */
     QVBoxLayout* wlayout=nullptr;///< Main layout of the widget
     QVBoxLayout* layout=nullptr;///< Layout for scroll area
     QScrollArea* sc=nullptr;///< Container for displaying teTags
@@ -57,6 +61,35 @@ public:
     teTagWidgetBase::teTagStyle select_style_enum = teTagWidgetBase::teTagStyle::select;///< Selected state style
     teTagWidgetBase::teTagStyle select_current_style_enum = teTagWidgetBase::teTagStyle::select_current;///< Current selection state style
     QAction *editAction,*deleteAction,*insertAction,*insertBelowAction,*cutAction,*copyAction,*pasteAction;
+    /// The manual merge entry (layers-2 icon, Tab / Shift+M). Only created for
+    /// lists whose manualMergeSupported() is true (H&E colours, clothes).
+    QAction* mergeAction=nullptr;
+
+    /**
+     * @brief 右键菜单的 "delete":把选中的 tag 从它所属的列表里删掉。
+     *
+     * 基类只会丢 widget(tagErase);编辑器侧的 ref list 覆写成 tagDestroy(),
+     * 从 taglistwidget->showing_list 删 core —— 与 Ctrl+D/del 一致。
+     * (只丢 widget 会让 tag 继续留在 tag list 里。)
+     */
+    virtual void deleteSelection(){ tagErase(); }
+    /**
+     * @brief 该列表是否提供手动合并(右键菜单的 merge)。
+     *
+     * 自动合并被多人规则收紧后,手动合并是唯一的补充入口;目前只有 H&E 的
+     * 颜色列表和 clothes 列表实现了它。快捷键 Tab / Shift+M 在构造时挂好
+     * (WidgetWithChildrenShortcut,焦点在列表内才生效),触发时再问这一句。
+     */
+    virtual bool manualMergeSupported() const { return false; }
+    /**
+     * @brief 执行手动合并。多选 = 按列表顺序链式合并;单选 = 级联
+     *        (先向上、后向下,直到没有可合并的邻居)。见 ClothesList /
+     *        hair_and_eyes_color_list 的实现。
+     */
+    virtual void manualMerge() {}
+
+    /// 选中的 tag,按布局顺序(从上到下)排列——手动合并的处理顺序。
+    QVector<std::shared_ptr<teTag>> selectedCoresInVisualOrder() const;
 
     /**
      * @brief Drops `widget` from the selection bookkeeping.

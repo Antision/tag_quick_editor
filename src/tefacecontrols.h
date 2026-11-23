@@ -13,107 +13,12 @@ struct mouth_buttongroup : public teTagButtonGroup {
         // "open" and "closed" exclude each other; the label is not a button.
         rules.exclusive = {{0,1}};
     }
-};
-
-struct Ears_Buttongroup : public teTagButtonGroup {
-    Ears_Buttongroup(QWidget* parent = nullptr, QString* styleSheet_button = nullptr, QString* styleSheet_label = nullptr)
-        :teTagButtonGroup(
-            {{qsl("🐱"),qsl("cat"),true,true,false},
-            {qsl("🐰"),qsl("rabbit"),true,true,false},
-            {qsl("🦊"),qsl("fox"),true,true,false},
-            {qsl("🐶"),qsl("dog"),true,true,false},
-             {qsl("🐺"),qsl("wolf"),true,true,false},
-             {qsl("🐴"),qsl("horse"),true,true,false},
-             {qsl("pointy"),qsl("pointy"),true,true,false},
-             {qsl("ears"),qsl("ears"),false,true,false},
-        })
-        {
-            // The seven ear buttons are mutually exclusive.
-            rules.exclusive = {{0,1,2,3,4,5,6}};
-        }
-        std::shared_ptr<teTag>animal_ears_ptr;
-        bool explicit_ear=false;
-/// "X ears" - pure: the "animal ears" fallback is absorb()'s business.
-bool filter(std::shared_ptr<teTag> in) const override{
-    if(!in||in->words.size()!=2)return false;
-    return in->words.back()->text==qsl("ears");
-}
-
-/**
- * @brief "animal ears" gives way to an explicit kind ("cat ears").
- *
- * The generic tag is dropped when a specific one already exists, and adding a
- * specific one removes the generic tag - which is what filter() used to do while
- * it was answering a question that is supposed to have no side effects.
- */
-bool absorb(std::shared_ptr<teTag> in){
-    if(in->words.size()!=2)
-        return false;
-    if(in->words.front()->text==qsl("animal")){
-        if(explicit_ear){
-            // "animal ears" gives way to the kind already there - unless the two
-            // were merged once and undo brought them both back.
-            std::shared_ptr<teTag> specific = linked_tags.empty()?nullptr:*linked_tags.begin();
-            if(specific&&!mergeAllowed(*specific,*in)){
-                animal_ears_ptr=in;
-                return false;
-            }
-            if(specific)
-                markMerged(*specific,*in);
-            in->retired=true;
-            animal_ears_ptr=nullptr;
-            return true;
-        }
-        animal_ears_ptr=in;
-        return false;
+    /**
+     * @brief 多人放宽:girl+boy+other > 1(或 multiple peoples 激活)时,
+     *        open 和 closed 互不排斥,各自写一条 "open mouth" /
+     *        "closed mouth"。单人时保持互斥(rules.exclusive)。
+     */
+    bool multiTagMode() const override {
+        return isMultiPeople(taglistwidget?taglistwidget->showing_list:nullptr);
     }
-    if(animal_ears_ptr){
-        std::shared_ptr<teTag> generic = animal_ears_ptr;
-        animal_ears_ptr=nullptr;
-        if(generic!=in&&mergeAllowed(*in,*generic)){
-            markMerged(*in,*generic);
-            if(taglistwidget)
-                taglistwidget->retire(generic);
-        }else if(generic!=in){
-            animal_ears_ptr=generic;            // both stay: see above
-        }
-    }
-    explicit_ear=true;
-    return false;
-}
-
-TagHandling read(std::shared_ptr<teTag> tag)override{
-    if(!tag)
-        return TagHandling::NotMine;
-    if(tag->retired){
-        if(taglistwidget)
-            taglistwidget->retire(tag);
-        return TagHandling::Consumed;
-    }
-    if(!filter(tag))
-        return TagHandling::NotMine;
-    if(absorb(tag)){
-        if(taglistwidget)
-            taglistwidget->retire(tag);
-        return TagHandling::Consumed;
-    }
-    if(taglistwidget)
-        taglistwidget->ensureWidgetFor(tag);
-    link(tag);
-    if(tag->retired){
-        if(taglistwidget)
-            taglistwidget->retire(tag);
-        return TagHandling::Consumed;
-    }
-    return TagHandling::Linked;
-}
-void resetPolicy()override{
-    animal_ears_ptr=nullptr;
-    explicit_ear=false;
-}
-void unlink(std::shared_ptr<teTag>tag)override{
-    if(tag==animal_ears_ptr)animal_ears_ptr=nullptr;
-    teTagButtonGroup::unlink(tag);
-}
-void getDefaultFiltStrings()override{}
 };

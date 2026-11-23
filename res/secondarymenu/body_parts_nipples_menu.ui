@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>body_parts_nipples_menu</class>
+ <widget class="QWidget" name="body_parts_nipples_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>80</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="chk_nipples">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>nipples</string></property>
+     <property name="tags" stdset="0"><string>nipples</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_covered_nipples">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>covered nipples</string></property>
+     <property name="tags" stdset="0"><string>covered nipples</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_inverted_nipples">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>inverted nipples</string></property>
+     <property name="tags" stdset="0"><string>inverted nipples</string></property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QPushButton" name="chk_no_nipples">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>no nipples</string></property>
+     <property name="tags" stdset="0"><string>no nipples</string></property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="chk_puffy_nipples">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>puffy nipples</string></property>
+     <property name="tags" stdset="0"><string>puffy nipples</string></property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QPushButton" name="chk_small_nipples">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>small nipples</string></property>
+     <property name="tags" stdset="0"><string>small nipples</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

@@ -196,6 +196,34 @@ void teTagButtonGroup::reset(){
 void teTagButtonGroup::onClicked(int id){
 
     if(!taglistwidget->showing_list)return;
+    // -- 多人放宽:每个按钮各自成 tag(见 ButtonRuleSet 上方的通用规则)。
+    if(multiTagMode()){
+        ifrefreshState=false;
+        onClickedMulti(id);
+        ifrefreshState=true;
+        refreshState();
+        edited();
+        return;
+    }
+    // -- 顺从 tag list:列表里已有两条以上本组 tag 时,不再整组重写成一个
+    //    词串。点灭的按钮只删自己的 tag;点亮的按钮恢复互斥——其余按钮
+    //    (及其 tag)一起灭掉,然后走正常的单 tag 组合路径。
+    if(linked_tags.size()>1&&id>=0&&id<buttons.size()){
+        const bool turnedOn=buttons[id]->isChecked();
+        ifrefreshState=false;
+        if(!turnedOn){
+            eraseTagsForButton(id);
+            ifrefreshState=true;
+            refreshState();
+            edited();
+            return;
+        }
+        while(!linked_tags.empty())
+            taglistwidget->tagErase(*linked_tags.begin());
+        for(int other=0;other<buttons.size();++other)
+            if(other!=id&&buttons[other]->isChecked())
+                buttons[other]->setChecked(false);
+    }
     reform(id);
     bool atLeastOneButtonTriggered=false;
     ifrefreshState=false;
@@ -235,6 +263,11 @@ void teTagButtonGroup::onClicked(int id){
     }else{
         while(!linked_tags.empty())
             taglistwidget->tagErase(*linked_tags.begin());
+        // 恢复这个开关再返回:漏掉它会让控件从此不再 refreshState
+        // (按钮停在旧状态,后续 unlink 也不再刷新)。
+        ifrefreshState=true;
+        refreshState();
+        edited();
         return;
     }
     ifrefreshState=true;
@@ -303,6 +336,67 @@ bool teTagButtonGroup::filter(std::shared_ptr<teTag>tag) const{
     if(defaultFiltStrings.find(*tag)!=defaultFiltStrings.end()){
         return true;
     }else return false;
+}
+
+bool teTagButtonGroup::multiTagMode() const
+{
+    return false;
+}
+
+QString teTagButtonGroup::tagTextForButton(int buttonId) const
+{
+    // onClicked() 的同一套组合规则,只是"只点亮这一个按钮":ifbutton==false
+    // 的项是共享词,照旧附在后面("open mouth" / "cat ears" / "mature male")。
+    QString text;
+    for(int i=0;i<int(allwidgets.size());++i){
+        const item& entry=allwidgets[i];
+        if(entry.ifbutton&&i!=buttonId)
+            continue;
+        text.append(entry.data);
+        if(entry.ifspace)
+            text.append(QLatin1Char(' '));
+    }
+    while(text.endsWith(QLatin1Char(' ')))
+        text.chop(1);
+    return text;
+}
+
+void teTagButtonGroup::insertTagForButton(int buttonId)
+{
+    const QString text=tagTextForButton(buttonId);
+    if(text.isEmpty()||!taglistwidget||!taglistwidget->showing_list)
+        return;
+    // 同文 tag 已经在列表里:不再插入(link 一个被列表拒收的 tag 会让
+    // 按钮亮在一条看不见的 tag 上)。
+    for(const std::shared_ptr<teTag>& tag:taglistwidget->showing_list->getTags())
+        if(tag&&!tag->retired&&static_cast<QString>(*tag)==text)
+            return;
+    std::shared_ptr<teTag> newtag=std::make_shared<teTag>(text);
+    link(newtag);
+    taglistwidget->tagInsertAbove(false,newtag);
+}
+
+void teTagButtonGroup::eraseTagsForButton(int buttonId)
+{
+    const QString text=tagTextForButton(buttonId);
+    if(text.isEmpty()||!taglistwidget)
+        return;
+    // A copy: erasing a tag destroys it, and the destroy callback unlinks it -
+    // looping on the live set would mutate what it walks.
+    const std::set<std::shared_ptr<teTag>> claimed=linked_tags;
+    for(const std::shared_ptr<teTag>& tag:claimed)
+        if(tag&&static_cast<QString>(*tag)==text)
+            taglistwidget->tagErase(tag);
+}
+
+void teTagButtonGroup::onClickedMulti(int buttonId)
+{
+    if(buttonId<0||buttonId>=buttons.size())
+        return;
+    if(buttons[buttonId]->isChecked())
+        insertTagForButton(buttonId);
+    else
+        eraseTagsForButton(buttonId);
 }
 
 void teTagButtonGroup::refreshState(){

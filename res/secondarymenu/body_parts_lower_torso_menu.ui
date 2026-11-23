@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>body_parts_lower_torso_menu</class>
+ <widget class="QWidget" name="body_parts_lower_torso_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>152</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="chk_anus">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>anus</string></property>
+     <property name="tags" stdset="0"><string>anus</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_ass">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>ass</string></property>
+     <property name="tags" stdset="0"><string>ass</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_perineum">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>perineum</string></property>
+     <property name="tags" stdset="0"><string>perineum</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_groin">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>groin</string></property>
+     <property name="tags" stdset="0"><string>groin</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_prostate">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>prostate</string></property>
+     <property name="tags" stdset="0"><string>prostate</string></property>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="QPushButton" name="chk_narrow_waist">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>narrow waist</string></property>
+     <property name="tags" stdset="0"><string>narrow waist</string></property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QPushButton" name="chk_linea_alba">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>linea alba</string></property>
+     <property name="tags" stdset="0"><string>linea alba</string></property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="chk_pussy">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>pussy</string></property>
+     <property name="tags" stdset="0"><string>pussy</string></property>
+     <property name="submenu" stdset="0"><string>:/secondarymenu/body_parts_pussy_menu.ui</string></property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QPushButton" name="chk_penis">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>penis</string></property>
+     <property name="tags" stdset="0"><string>penis</string></property>
+     <property name="submenu" stdset="0"><string>:/secondarymenu/body_parts_penis_menu.ui</string></property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QPushButton" name="chk_stomach">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>stomach</string></property>
+     <property name="tags" stdset="0"><string>stomach</string></property>
+     <property name="submenu" stdset="0"><string>:/secondarymenu/body_parts_stomach_menu.ui</string></property>
+    </widget>
+   </item>
+   <item row="4" column="1">
+    <widget class="QPushButton" name="chk_testicles">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>testicles</string></property>
+     <property name="tags" stdset="0"><string>testicles</string></property>
+     <property name="submenu" stdset="0"><string>:/secondarymenu/body_parts_testicles_menu.ui</string></property>
+    </widget>
+   </item>
+   <item row="5" column="1">
+    <widget class="QPushButton" name="chk_uterus">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>uterus</string></property>
+     <property name="tags" stdset="0"><string>uterus</string></property>
+     <property name="submenu" stdset="0"><string>:/secondarymenu/body_parts_uterus_menu.ui</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

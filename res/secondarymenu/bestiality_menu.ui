@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>bestiality_menu</class>
+ <widget class="QWidget" name="bestiality_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>176</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="chk_bestiality">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>bestiality</string></property>
+     <property name="tags" stdset="0"><string>bestiality</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_dog">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🐶 dog</string></property>
+     <property name="tags" stdset="0"><string>dog</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_horse">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🐴 horse</string></property>
+     <property name="tags" stdset="0"><string>horse</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_pig">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🐷 pig</string></property>
+     <property name="tags" stdset="0"><string>pig</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_frog">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🐸 frog</string></property>
+     <property name="tags" stdset="0"><string>frog</string></property>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="QPushButton" name="chk_snake">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🐍 snake</string></property>
+     <property name="tags" stdset="0"><string>snake</string></property>
+    </widget>
+   </item>
+   <item row="6" column="0">
+    <widget class="QPushButton" name="chk_orangutan">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🦍 orangutan</string></property>
+     <property name="tags" stdset="0"><string>orangutan</string></property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QPushButton" name="chk_monkey">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🐵 monkey</string></property>
+     <property name="tags" stdset="0"><string>monkey</string></property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="chk_insect">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🦋 insect</string></property>
+     <property name="tags" stdset="0"><string>insect</string></property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QPushButton" name="chk_worm">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>🐛 worm</string></property>
+     <property name="tags" stdset="0"><string>worm</string></property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QPushButton" name="chk_slime">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>💧 slime</string></property>
+     <property name="tags" stdset="0"><string>slime</string></property>
+    </widget>
+   </item>
+   <item row="4" column="1">
+    <widget class="QPushButton" name="chk_goblin">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>👺 goblin</string></property>
+     <property name="tags" stdset="0"><string>goblin</string></property>
+    </widget>
+   </item>
+   <item row="5" column="1">
+    <widget class="QPushButton" name="chk_zoophilia">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>zoophilia</string></property>
+     <property name="tags" stdset="0"><string>zoophilia</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

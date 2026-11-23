@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>body_parts_upper_torso_menu</class>
+ <widget class="QWidget" name="body_parts_upper_torso_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>104</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="chk_areolae">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>areolae</string></property>
+     <property name="tags" stdset="0"><string>areolae</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_armpits">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>armpits</string></property>
+     <property name="tags" stdset="0"><string>armpits</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_back">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>back</string></property>
+     <property name="tags" stdset="0"><string>back</string></property>
+     <property name="submenu" stdset="0"><string>:/secondarymenu/body_parts_back_menu.ui</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_nipples">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>nipples</string></property>
+     <property name="tags" stdset="0"><string>nipples</string></property>
+     <property name="submenu" stdset="0"><string>:/secondarymenu/body_parts_nipples_menu.ui</string></property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QPushButton" name="chk_collarbone">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>collarbone</string></property>
+     <property name="tags" stdset="0"><string>collarbone</string></property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="chk_ribs">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>ribs</string></property>
+     <property name="tags" stdset="0"><string>ribs</string></property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QPushButton" name="chk_pectorals">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>pectorals</string></property>
+     <property name="tags" stdset="0"><string>pectorals</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

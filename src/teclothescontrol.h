@@ -190,8 +190,20 @@ inline QStringList accessoryClothesTypes{
     // genericClothesTypes still absorbs it into panties - old tags keep working
     // and stay editable (§2.14). Capture only, no button.
     qsl("underwear"),
-    // non-garment types older pictures still rely on (§2.16.1)
-    qsl("bag"),qsl("wings"),qsl("horns"),qsl("animal ears"),
+    // non-garment types older pictures still rely on (§2.16.1); `bag` and
+    // `animal ears` moved to the accessory list below when they became buttons
+    qsl("wings"),qsl("horns"),
+    // bags, halos, tails and animal ears (§2.16.2). They are worn, so they are
+    // accessories with their own menu - and every menu entry is a type of its
+    // own, which is what makes "red cat tail" keep `cat tail` in one piece.
+    qsl("bag"),qsl("randoseru"),qsl("school bag"),qsl("school briefcase"),
+    qsl("halo"),
+    qsl("tail"),qsl("cat tail"),qsl("fox tail"),qsl("wolf tail"),qsl("dog tail"),
+    qsl("horse tail"),qsl("devil tail"),qsl("dragon tail"),qsl("fish tail"),
+    qsl("bird tail"),
+    qsl("ears"),qsl("animal ears"),qsl("cat ears"),qsl("rabbit ears"),
+    qsl("fox ears"),qsl("dog ears"),qsl("wolf ears"),qsl("horse ears"),
+    qsl("pointy ears"),
     // a cut-out is a state of a garment, but it is captured like a type (§2.15)
     qsl("clothing cutout")
 };
@@ -635,11 +647,40 @@ inline const QSet<QString>& clothesStateModifiers(){
  * of the control. Unlike those, these tags *are* clothes tags and stay editable;
  * they are only excluded from merging.
  */
+/**
+ * @brief 以衣物类型结尾、但根本不归衣物控件管的 tag。
+ *
+ * `anal tail` 是 Objects 菜单里的东西(尾巴形状的玩具),可它的末尾正好是
+ * 配饰类型 `tail`,只按后缀判定会被衣物控件认领,Objects 按钮就永远点不亮。
+ * 这类"撞名"逐个列出来,比让 `tail` 猜词性安全。
+ */
+inline bool clothesIsFalseFriend(const teTag& tag)
+{
+    static const QSet<QString> set{qsl("anal tail")};
+    return set.contains(static_cast<QString>(tag));
+}
+
 inline bool clothesHasStateModifier(const teTag& tag){
     for(const teWord* word : tag.words)
         if(word&&clothesStateModifiers().contains(word->text))
             return true;
     return false;
+}
+
+/**
+ * @brief 裸基 tag:除了衣物类型词没有任何其它成分("dress")。
+ *
+ * "red dress" 不是(有颜色),"elaborate frilled dress" 也不是(有修饰词)。
+ * 多人图只允许与裸基 tag 自动合并——两条都带描述的衣物可能属于不同的人。
+ * Pure。
+ */
+inline bool isBareClothesTag(const teTag& tag)
+{
+    if(tag.words.isEmpty())
+        return false;
+    const ClothesParts parts=clothesParse(tag);
+    return parts.colors.isEmpty()&&parts.front.isEmpty()
+          &&parts.adjectives.isEmpty()&&parts.back.isEmpty();
 }
 
 /**
@@ -679,6 +720,9 @@ struct ClothesList : public teTagListControl {
         sc->setMinimumHeight(110);
     }
 
+    /// 本列表提供右键 merge(Tab / Shift+M)。
+    bool manualMergeSupported() const override { return true; }
+
     /**
      * @brief Is this tag a garment? Pure.
      *
@@ -694,6 +738,8 @@ struct ClothesList : public teTagListControl {
             return true;                        // our own rewrite, still ours
         // "reaching through panties" and friends are actions, not garments.
         if(looksLikeActionPhrase(*in_tag))
+            return false;
+        if(clothesIsFalseFriend(*in_tag))
             return false;
         return allClothesTypes.contains(clothesTypeSuffix(*in_tag));
     }
@@ -791,30 +837,146 @@ struct ClothesList : public teTagListControl {
         // direction.
         if(clothesHasStateModifier(*incoming))
             return false;
+        // 多人图(girl+boy+other > 1)只在一边是裸基 tag 时自动合并:
+        // "red dress" + "dress" 还是同一条裙子,而 "elaborate frilled dress"
+        // 和 "white dress" 可能属于两个人,不再自动合并。手动合并走列表
+        // 右键的 merge(Tab / Shift+M)。
+        const bool multiPeople = isMultiPeople(taglistwidget?taglistwidget->showing_list:nullptr);
         for(const std::shared_ptr<teTag>& target : clothes_order){
             if(!target||target==incoming||target->retired)
                 continue;
             if(!linked_tags.count(target))
                 continue;
-            if(clothesHasStateModifier(*target))
+            if(multiPeople&&!isBareClothesTag(*target)&&!isBareClothesTag(*incoming))
                 continue;
-            const ClothesParts parts = clothesParse(*target);
-            if(parts.type.isEmpty())
-                continue;
-            if(!clothesMergeable(parts,*incoming))
-                continue;
-            // Two tags that were merged once already are not merged again by
-            // themselves: that is what makes undoing the merge stick. Editing
-            // either of them clears the mark and allows it again.
-            if(!mergeAllowed(*target,*incoming))
-                continue;
-            const QStringList words = clothesMergedWords(parts,*incoming);
-            markMerged(*target,*incoming);
-            incoming->retired = true;
-            writeWords(target,words);
-            return true;
+            if(mergeInto(target,incoming))
+                return true;
         }
         return false;
+    }
+
+    /**
+     * @brief 把 `incoming` 合并进指定的 `target`。
+     *
+     * absorb() 的实际合并步骤。`manual` = 用户显式要求(列表右键的 merge /
+     * Tab / Shift+M):不再问 autoMerge / MergeSwitch 与 mergeSuppressed——
+     * 这是用户亲手点的;markMerged 照常执行,撤销照样能整步还原。
+     */
+    bool mergeInto(std::shared_ptr<teTag> target,std::shared_ptr<teTag> incoming,bool manual=false){
+        if(!target||!incoming||target==incoming||target->retired||incoming->retired)
+            return false;
+        if(!linked_tags.count(target))
+            return false;
+        if(clothesHasStateModifier(*target)||clothesHasStateModifier(*incoming))
+            return false;
+        const ClothesParts parts=clothesParse(*target);
+        if(parts.type.isEmpty())
+            return false;
+        if(!clothesMergeable(parts,*incoming))
+            return false;
+        if(!manual&&!mergeAllowed(*target,*incoming))
+            return false;
+        const QStringList words=clothesMergedWords(parts,*incoming);
+        markMerged(*target,*incoming);
+        incoming->retired=true;
+        writeWords(target,words);
+        return true;
+    }
+
+    /**
+     * @brief `anchor` 在列表里最近的、与它可合并的邻居(向上或向下找)。
+     *
+     * 没有时返回 nullptr。纯查找,不改任何东西——手动合并的级联用它逐跳
+     * 推进;谁幸存由级联处决定(向上优先上面的幸存)。
+     */
+    std::shared_ptr<teTag> findManualMergeNeighbour(
+        const std::shared_ptr<teTag>& anchor,bool up)
+    {
+        if(!layout||!anchor)
+            return {};
+        const int anchorIndex=findindex(anchor);
+        const int count=layout->count();
+        if(anchorIndex<0)
+            return {};
+        for(int step=1;step<count;++step){
+            const int index=up?anchorIndex-step:anchorIndex+step;
+            if(index<0||index>=count)
+                break;                          // 走出了这一端
+            auto* widget=dynamic_cast<teRefTagWidget*>(layout->itemAt(index)->widget());
+            if(!widget||!widget->core||widget->core->retired)
+                continue;
+            const std::shared_ptr<teTag> candidate=widget->core;
+            if(candidate==anchor)
+                continue;
+            // 同一衣物、颜色相容即算可合并(clothesMergeable 对称)。
+            const ClothesParts candidateParts=clothesParse(*candidate);
+            const ClothesParts anchorParts=clothesParse(*anchor);
+            if(candidateParts.type.isEmpty()||anchorParts.type.isEmpty())
+                continue;
+            if(clothesMergeable(candidateParts,*anchor)||clothesMergeable(anchorParts,*candidate))
+                return candidate;
+        }
+        return {};
+    }
+
+    /**
+     * @brief 手动合并(列表右键 merge / Tab / Shift+M)。
+     *
+     * 多选:从上到下链式合并——第一个 tag 是幸存者,后面的逐条尝试并进
+     * 它,合不进去的保持独立(成为新的幸存者)。单选:级联——从该 tag 出发,
+     * 先向上找最近的可合并邻居并进去(上面的幸存),再向下找,循环到两头
+     * 都找不到为止(用户给的例子:red gradient hair 先并进上方的 white hair,
+     * 得到的 white to red gradient hair 再并进下方的 blue gradient hair)。
+     */
+    void manualMerge()override{
+        if(!taglistwidget||!taglistwidget->showing_list)
+            return;
+        const QVector<std::shared_ptr<teTag>> chosen=selectedCoresInVisualOrder();
+        if(chosen.isEmpty())
+            return;
+        if(chosen.size()>=2){
+            QVector<std::shared_ptr<teTag>> survivors;
+            for(const std::shared_ptr<teTag>& tag:chosen){
+                if(!tag||tag->retired)
+                    continue;
+                bool absorbed=false;
+                for(const std::shared_ptr<teTag>& survivor:survivors){
+                    if(mergeInto(survivor,tag,true)){
+                        taglistwidget->retire(tag);
+                        absorbed=true;
+                        break;
+                    }
+                }
+                if(!absorbed)
+                    survivors.append(tag);
+            }
+            return;
+        }
+        // 单选:级联,先向上后向下。anchor 始终是"活着的这条 tag"。
+        std::shared_ptr<teTag> anchor=chosen.first();
+        for(int round=0;round<64&&anchor&&!anchor->retired;++round){
+            std::shared_ptr<teTag> neighbour=findManualMergeNeighbour(anchor,true);
+            if(neighbour&&mergeInto(neighbour,anchor,true)){
+                taglistwidget->retire(anchor);
+                anchor=neighbour;
+                continue;
+            }
+            if(neighbour&&mergeInto(anchor,neighbour,true)){
+                taglistwidget->retire(neighbour);
+                continue;
+            }
+            neighbour=findManualMergeNeighbour(anchor,false);
+            if(neighbour&&mergeInto(anchor,neighbour,true)){
+                taglistwidget->retire(neighbour);
+                continue;
+            }
+            if(neighbour&&mergeInto(neighbour,anchor,true)){
+                taglistwidget->retire(anchor);
+                anchor=neighbour;
+                continue;
+            }
+            break;                                  // 两头都没有可合并的邻居
+        }
     }
 
     /// Puts one tag's words into canonical order (no merge, no widget churn when

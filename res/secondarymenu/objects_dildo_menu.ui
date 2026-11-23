@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>objects_dildo_menu</class>
+ <widget class="QWidget" name="objects_dildo_menu">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>240</width><height>80</height></rect>
+  </property>
+  <layout class="QGridLayout" name="grid">
+   <property name="leftMargin"><number>4</number></property>
+   <property name="topMargin"><number>4</number></property>
+   <property name="rightMargin"><number>4</number></property>
+   <property name="bottomMargin"><number>4</number></property>
+   <property name="horizontalSpacing"><number>2</number></property>
+   <property name="verticalSpacing"><number>2</number></property>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="chk_dildo">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>dildo</string></property>
+     <property name="tags" stdset="0"><string>dildo</string></property>
+     <property name="group" stdset="0"><string>obj_dildo</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="chk_dildo_riding">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>dildo riding</string></property>
+     <property name="tags" stdset="0"><string>dildo riding</string></property>
+     <property name="group" stdset="0"><string>obj_dildo</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_dildo_under_clothes">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>dildo under clothes</string></property>
+     <property name="tags" stdset="0"><string>dildo under clothes</string></property>
+     <property name="group" stdset="0"><string>obj_dildo</string></property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

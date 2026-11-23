@@ -13,6 +13,7 @@
 #include "linkgeometry.h"
 
 #include <QRect>
+#include <QSet>
 #include <QVector>
 #include <QWidget>
 
@@ -66,6 +67,15 @@ private:
     void attachModel(TagListModel* model);
     /// Recomputes m_segments for the current hover state.
     void refreshSegments();
+    /**
+     * @brief The tags the current tag-list hover draws lines for.
+     *
+     * The row under the pointer plus every *selected* row (LINK-01 revision:
+     * a selection is the set the user is working on, so it draws its links
+     * whenever the pointer is over the list, hovered row or not). Addresses
+     * the tags by core, exactly like the controls' claims.
+     */
+    QSet<const teTag*> hoverTargets() const;
     /// Bounding rect of the current segments (null when there are none).
     QRect segmentsBounds() const;
     /**
@@ -79,9 +89,16 @@ private:
     void repaintArea(const QRect& previous);
     /// Collects the segments for the current hover state, in this widget's coords.
     void collectSegments(QVector<LinkSegment>& out) const;
+    /**
+     * @brief One page column's links, restricted to `onlyTags` when it is not empty.
+     *
+     * An empty set means "every claim in the column" (the pointer is over a
+     * column); a set means "only these tags" (the pointer is over the list, and
+     * the set is the hovered row plus the selected rows).
+     */
     void collectPageLinks(int pageIndex,TagListModel* model,
                           const QPoint& origin,QVector<LinkSegment>& out,
-                          const teTag* onlyTag) const;
+                          const QSet<const teTag*>& onlyTags) const;
     int pageCount() const;
 
     MainWindow* m_window=nullptr;

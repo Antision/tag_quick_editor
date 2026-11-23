@@ -3,6 +3,7 @@
 #include "clothesemoji.h"
 #include "tetag.h"
 #include "tetaglistwidget.h"
+#include "svgicon.h"
 
 #include <QApplication>
 #include <QClipboard>
@@ -36,19 +37,20 @@ QString captionText(const QString& tag)
 }
 
 /// Reads one menu file plus the third-level files it declares into `out`.
-void readMenuActions(const QString& path, QVector<SecondaryAction>& out)
+void readMenuActions(const QString& path, QVector<SecondaryAction>& out, int depth = 0)
 {
-    if (path.isEmpty())
+    // Every level is read, not just the third: a menu may point at another one in
+    // its entries' `submenu` property, and the button has to know those tags
+    // before anything is shown (filter(), the capture list, the family labels).
+    // `depth` is a cycle guard - a file that names itself would otherwise recurse
+    // until the stack runs out.
+    if (path.isEmpty() || depth > 5)
         return;
-    out = SecondaryMenu::readActions(path);
-    QVector<SecondaryAction> nested;
-    for (const SecondaryAction& action : out) {
-        if (action.submenuPath.isEmpty())
-            continue;
-        for (const SecondaryAction& child : SecondaryMenu::readActions(action.submenuPath))
-            nested.push_back(child);
-    }
-    out += nested;
+    const QVector<SecondaryAction> own = SecondaryMenu::readActions(path);
+    out += own;
+    for (const SecondaryAction& action : own)
+        if (!action.submenuPath.isEmpty())
+            readMenuActions(action.submenuPath, out, depth + 1);
 }
 } // namespace
 
@@ -78,7 +80,8 @@ SecondaryButton::~SecondaryButton()
     hideMenu();
     if (sPinned == this)
         sPinned = nullptr;
-    delete m_submenu;
+    qDeleteAll(m_children);
+    m_children.clear();
     delete m_rightMenu;
     delete m_menu;
 }
@@ -224,7 +227,7 @@ void SecondaryButton::setCaptureFromTag(const QString& tagText)
         rebuildCaption();
     // The menu follows the same source; a pinned menu used to keep its old
     // highlight until it was reopened.
-    if (m_active || m_submenu)
+    if (m_active || !m_children.isEmpty())
         syncMenuSelection();
 }
 
@@ -386,14 +389,14 @@ SecondaryMenu* SecondaryButton::ensureMenu(bool right)
         // an unpinned one (only reachable through the drag) closes with the entry.
         activate(id, m_mode == Mode::Pinned);
     });
-    connect(menu, &SecondaryMenu::entryRightPressed, this, [this](const QString& id) {
-        // Right-clicking an entry: a family parent shows its third level, an
+    connect(menu, &SecondaryMenu::entryRightPressed, this, [this, menu](const QString& id) {
+        // Right-clicking an entry: a family parent shows the level below it, an
         // additive entry toggles like a left click would (the pin stays up).
         const Action* action = findAction(id);
         if (!action)
             return;
         if (!action->submenuPath.isEmpty())
-            openSubmenu(*action);
+            openSubmenu(*action, menu);
         else
             activate(id, true);
     });
@@ -403,44 +406,84 @@ SecondaryMenu* SecondaryButton::ensureMenu(bool right)
     return menu;
 }
 
-SecondaryMenu* SecondaryButton::ensureSubmenu(const Action& action)
+SecondaryMenu* SecondaryButton::childOf(const SecondaryMenu* parent) const
 {
-    if (action.submenuPath.isEmpty())
+    if (!parent)
         return nullptr;
-    if (m_submenu && m_submenu->uiPath() == action.submenuPath)
-        return m_submenu;
+    // The second level is not in m_children, but it is the parent of the first.
+    if (parent == m_active)
+        return m_children.value(0);
+    for (int i = 0; i + 1 < m_children.size(); ++i)
+        if (m_children[i] == parent)
+            return m_children[i + 1];
+    return nullptr;
+}
 
-    // A different third level than the one that was open: drop the old window
-    // instead of leaving an unparented top-level widget behind.
-    if (m_submenu) {
-        m_submenu->dismiss();
-        delete m_submenu;
-        m_submenu = nullptr;
+void SecondaryButton::dropChildrenOf(SecondaryMenu* parent)
+{
+    if (!parent)
+        return;
+    int index = m_children.indexOf(parent);
+    if (index < 0 && parent == m_active)
+        index = -1;                       // the second level owns all of them
+    else if (index < 0)
+        return;
+    // Everything below this menu belongs to an entry that is no longer the one
+    // being used. deleteLater: this can run from a child's own click handler.
+    while (m_children.size() > index + 1) {
+        SecondaryMenu* doomed = m_children.takeLast();
+        doomed->dismiss();
+        doomed->deleteLater();
+    }
+}
+
+SecondaryMenu* SecondaryButton::ensureSubmenu(const Action& action, SecondaryMenu* parent)
+{
+    if (action.submenuPath.isEmpty() || !parent)
+        return nullptr;
+    // Already showing exactly this child: keep it (and whatever hangs below it).
+    if (SecondaryMenu* existing = childOf(parent)) {
+        if (existing->uiPath() == action.submenuPath)
+            return existing;
+        dropChildrenOf(parent);
     }
     auto* menu = new SecondaryMenu(nullptr);
     if (!menu->loadUi(action.submenuPath)) {
         delete menu;
         return nullptr;
     }
+    // The handlers are the same at every depth: an entry of a child menu either
+    // opens the level below it or finishes the choice. `menu` is captured so a
+    // deeper entry knows which level it belongs to.
     connect(menu, &SecondaryMenu::entryRightPressed, this, [this, menu](const QString& id) {
         m_rightClickUsed = true;
         if (const SecondaryAction* action = menu->action(id)) {
-            activateAction(*action, true, m_mode == Mode::Pinned);
-            hideMenu();                 // a third-level pick is a complete choice
+            if (!action->submenuPath.isEmpty())
+                openSubmenu(*action, menu);
+            else {
+                activateAction(*action, true, m_mode == Mode::Pinned);
+                hideMenu();
+            }
         }
     });
     connect(menu, &SecondaryMenu::dismissRequested, this, [this] { hideMenu(); });
     connect(menu, &SecondaryMenu::blankAreaPressed, this, [this] { hideSubmenu(); });
     connect(menu, &SecondaryMenu::actionTriggered, this, [this, menu](const QString& id, bool) {
         // Several aliases may be on together, so this toggles like every other
-        // additive entry. A third-level pick finishes the gesture: the tag is
-        // changed, there is nothing left to do in this menu.
+        // additive entry. A pick at any depth finishes the gesture.
         if (const SecondaryAction* action = menu->action(id)) {
-            activateAction(*action, true, m_mode == Mode::Pinned);
-            hideMenu();
+            if (!action->submenuPath.isEmpty())
+                openSubmenu(*action, menu);
+            else {
+                activateAction(*action, true, m_mode == Mode::Pinned);
+                hideMenu();
+            }
         }
     });
-    m_submenu = menu;
+    // Keep the chain contiguous: a child of a child sits right after its parent,
+    // and anything that used to hang below that parent is gone already.
+    const int parentIndex = m_children.indexOf(parent);
+    m_children.insert(parentIndex + 1, menu);
     return menu;
 }
 
@@ -464,21 +507,23 @@ bool SecondaryButton::openPreview(bool right)
     return true;
 }
 
-bool SecondaryButton::openSubmenu(const Action& action)
+bool SecondaryButton::openSubmenu(const Action& action, SecondaryMenu* parent)
 {
     if (action.submenuPath.isEmpty())
         return false;
-    SecondaryMenu* menu = ensureSubmenu(action);
+    if (!parent)
+        parent = m_active;
+    SecondaryMenu* menu = ensureSubmenu(action, parent);
     if (!menu)
         return false;
 
-    QRect anchor = m_active ? m_active->itemRect(action.id) : QRect();
+    QRect anchor = parent ? parent->itemRect(action.id) : QRect();
     if (anchor.isNull())
         anchor = visualRect();
     menu->setPreview(m_mode == Mode::Preview);
     menu->showAt(anchor);
 
-    // Every entry stays listed, including the ones that are captured: the third
+    // Every entry stays listed, including the ones that are captured: a child
     // level is also how a captured alias is turned off again.
     syncMenuSelection();
     return true;
@@ -491,8 +536,10 @@ void SecondaryButton::pinActive()
     pin();                  // closes the menu pinned by another button, if any
     m_active->setPreview(false);
     m_active->setHoverIndex(-1);
-    if (m_submenu)
-        m_submenu->setPreview(false);       // a pinned menu is usable, both levels
+    // A pinned menu is usable at every depth: a child that stayed a preview
+    // would be click-through while the user is working in it.
+    for (SecondaryMenu* child : m_children)
+        child->setPreview(false);
     m_mode = Mode::Pinned;
     // SC-02's "click anywhere else closes it": while pinned, every press in the
     // application passes through here first.
@@ -512,13 +559,13 @@ void SecondaryButton::pin()
 
 void SecondaryButton::hideSubmenu()
 {
-    if (!m_submenu)
-        return;
-    m_submenu->dismiss();
-    // deleteLater, not delete: this runs from the third level's own click handler
-    // when an entry is used, and the window is the sender.
-    m_submenu->deleteLater();
-    m_submenu = nullptr;
+    while (!m_children.isEmpty()) {
+        SecondaryMenu* child = m_children.takeLast();
+        child->dismiss();
+        // deleteLater, not delete: this runs from a child's own click handler
+        // when an entry is used, and the window is the sender.
+        child->deleteLater();
+    }
 }
 
 void SecondaryButton::hideMenu()
@@ -612,45 +659,54 @@ void SecondaryButton::setFamily(const Action& parent, bool on)
     refreshState();
 }
 
-void SecondaryButton::activateFamilyEntry(const Action& parent, bool keepOpen)
+void SecondaryButton::activateFamilyEntry(const Action& parent, bool keepOpen,
+                                          SecondaryMenu* owner)
 {
-    // The family entry is its on/off switch *and* the way into the third level:
+    // The family entry is its on/off switch *and* the way into the level below:
     // switching it on captures the parent tag and offers the other spellings,
     // switching it off releases the family and puts those away again.
     const bool wasOn = familyCaptured(parent);
     setFamily(parent, !wasOn);
     if (!wasOn) {
-        if (m_active)
-            openSubmenu(parent);
+        if (owner)
+            openSubmenu(parent, owner);
         syncMenuSelection();
-        return;                     // the second level stays up to hold the third
+        return;                 // the level above stays up to hold the child menu
     }
-    hideSubmenu();
+    dropChildrenOf(owner ? owner : m_active);
     if (keepOpen)
         syncMenuSelection();
     else
         hideMenu();
 }
 
-void SecondaryButton::toggleSubmenuFor(const Action& parent)
+void SecondaryButton::toggleSubmenuFor(const Action& parent, SecondaryMenu* owner)
 {
     if (parent.submenuPath.isEmpty())
         return;
+    SecondaryMenu* menu = owner ? owner : m_active;
     // Right click = "show me the other spellings", and a second right click puts
     // them away again.
-    if (m_submenu && m_submenu->uiPath() == parent.submenuPath) {
-        hideSubmenu();
+    SecondaryMenu* child = childOf(menu);
+    if (child && child->uiPath() == parent.submenuPath) {
+        dropChildrenOf(menu);
         return;
     }
-    openSubmenu(parent);
+    openSubmenu(parent, menu);
 }
 
-void SecondaryButton::activateAction(SecondaryAction action, bool fromSubmenu, bool keepOpen)
+void SecondaryButton::activateAction(SecondaryAction action, bool fromSubmenu, bool keepOpen,
+                                     SecondaryMenu* owner)
 {
+    // A caller that has no menu at hand (activate(id), the add widget's drag)
+    // means the second level, which is the only one it can be talking about.
+    if (!owner)
+        owner = m_active;
     // Pointing at another entry of the *second* level means the user is done with
-    // the third one: it never survives a click somewhere else in its menu.
+    // whatever hung below it: a child menu never survives a click somewhere else
+    // in its parent.
     if (!fromSubmenu)
-        hideSubmenu();
+        dropChildrenOf(owner);
 
     // The add widget composes one tag. An entry selected there must not insert
     // anything by itself (`sailor collar` used to land in the tag list the moment
@@ -667,7 +723,7 @@ void SecondaryButton::activateAction(SecondaryAction action, bool fromSubmenu, b
     }
 
     if (!action.submenuPath.isEmpty()) {
-        activateFamilyEntry(action, keepOpen);
+        activateFamilyEntry(action, keepOpen, owner);
         return;
     }
     if (!action.checkable) {
@@ -708,19 +764,24 @@ void SecondaryButton::syncMenuSelection()
 
     // Which entry stands for the capture: an additive (checkable) entry when all of
     // its tags are in it, a plain entry when its tag list is exactly the capture.
-    QStringList ids;
-    for (const Action& action : actions) {
-        if (action.tags.isEmpty())
-            continue;
-        const bool stands = action.checkable ? capturedAll(action)
-                                             : [&] {
-                                                   QStringList theirs = action.tags;
-                                                   theirs.sort();
-                                                   return theirs == captured;
-                                               }();
-        if (stands)
-            ids.push_back(action.id);
-    }
+    // Per menu file, because every level has its own ids.
+    const auto standingIds = [&](const QVector<Action>& entries) {
+        QStringList lit;
+        for (const Action& action : entries) {
+            if (action.tags.isEmpty())
+                continue;
+            const bool stands = action.checkable ? capturedAll(action)
+                                                 : [&] {
+                                                       QStringList theirs = action.tags;
+                                                       theirs.sort();
+                                                       return theirs == captured;
+                                                   }();
+            if (stands)
+                lit.push_back(action.id);
+        }
+        return lit;
+    };
+    const QStringList ids = standingIds(actions);
 
     // The entry that opens a third level represents its whole family: it lights up
     // when any member is captured, and borrows that member's label. `trap` itself
@@ -768,8 +829,10 @@ void SecondaryButton::syncMenuSelection()
         // the *tag* is captured, not whether the family is.
         m_active->syncFromCaptured(ids + familyIds);
     }
-    if (m_submenu)
-        m_submenu->syncFromCaptured(ids);
+    // Every level lights its own entries: a child menu is a different file with
+    // different ids, and pushing the parent's ids at it would light nothing.
+    for (SecondaryMenu* child : m_children)
+        child->syncFromCaptured(standingIds(child->actions()));
 }
 
 void SecondaryButton::setCaptured(bool captured)
@@ -820,7 +883,7 @@ void SecondaryButton::refreshState()
     rebuildCaption();
     // A menu that is on screen follows the capture: the pinned menu of a tag that
     // was just edited elsewhere has to show the same thing the button shows.
-    if (m_active || m_submenu)
+    if (m_active || !m_children.isEmpty())
         syncMenuSelection();
 }
 
@@ -1088,15 +1151,22 @@ void SecondaryButton::mousePressEvent(QMouseEvent* event)
 
 void SecondaryButton::handleMenuPress(const QPoint& global, bool right)
 {
-    // The third level is on top, so it is always tested first.
-    if (m_submenu) {
-        const int index = m_submenu->itemAt(global);
-        if (index >= 0) {
-            m_rightClickUsed = m_rightClickUsed || right;
-            if (const SecondaryAction* action = m_submenu->action(m_submenu->itemId(index)))
-                activateAction(*action, true, true);
+    // The deepest menu is on top, so the chain is tested from its end backwards:
+    // a child window covers its parent, and the parent must not steal the press.
+    for (int i = m_children.size() - 1; i >= 0; --i) {
+        SecondaryMenu* child = m_children[i];
+        const int index = child->itemAt(global);
+        if (index < 0)
+            continue;
+        const SecondaryAction* action = child->action(child->itemId(index));
+        if (!action)
             return;
-        }
+        m_rightClickUsed = m_rightClickUsed || right;
+        if (!action->submenuPath.isEmpty())
+            toggleSubmenuFor(*action, child);
+        else
+            activateAction(*action, true, true, child);
+        return;
     }
     if (m_active) {
         const int index = m_active->itemAt(global);
@@ -1106,9 +1176,9 @@ void SecondaryButton::handleMenuPress(const QPoint& global, bool right)
                 return;
             m_rightClickUsed = m_rightClickUsed || right;
             if (!action->submenuPath.isEmpty())
-                toggleSubmenuFor(*action);      // right click opens/closes the level
+                toggleSubmenuFor(*action, m_active);   // click opens/closes the level
             else
-                activateAction(*action, false, true);
+                activateAction(*action, false, true, m_active);
         }
     }
 }
@@ -1139,17 +1209,17 @@ void SecondaryButton::showCapturedTagMenu()
     menu.setAttribute(Qt::WA_TranslucentBackground);
     menu.setWindowFlags(menu.windowFlags() | Qt::FramelessWindowHint);
 
-    QAction* editAction = menu.addAction(QIcon(QStringLiteral(":/res/menu_edit.png")),
+    QAction* editAction = menu.addAction(svgicon::menuIcon(QStringLiteral(":/icons/pen-line.svg")),
                                         QStringLiteral("edit (F2/Ctrl+E)"));
-    QAction* deleteAction = menu.addAction(QIcon(QStringLiteral(":/res/menu_remove.png")),
+    QAction* deleteAction = menu.addAction(svgicon::menuIcon(QStringLiteral(":/icons/trash.svg")),
                                           QStringLiteral("delete (Ctrl+D/del)"));
     menu.addSeparator();
-    QAction* insertAction = menu.addAction(QIcon(QStringLiteral(":/res/menu_add.png")),
+    QAction* insertAction = menu.addAction(svgicon::menuIcon(QStringLiteral(":/icons/chevrons-up.svg")),
                                           QStringLiteral("insert above (Ctrl+W)"));
-    QAction* insertBelowAction = menu.addAction(QIcon(QStringLiteral(":/res/menu_add.png")),
+    QAction* insertBelowAction = menu.addAction(svgicon::menuIcon(QStringLiteral(":/icons/chevrons-down.svg")),
                                                QStringLiteral("insert below"));
     menu.addSeparator();
-    QAction* copyAction = menu.addAction(QIcon(QStringLiteral(":/res/menu_copy.png")),
+    QAction* copyAction = menu.addAction(svgicon::menuIcon(QStringLiteral(":/icons/copy.svg")),
                                         QStringLiteral("copy (Ctrl+C)"));
 
     QAction* chosen = menu.exec(QCursor::pos());
@@ -1215,7 +1285,6 @@ void SecondaryButton::mouseReleaseEvent(QMouseEvent* event)
     if (m_dragging && (left || right)) {
         m_dragging = false;
         SecondaryMenu* menu = m_active;
-        SecondaryMenu* submenu = m_submenu;
         const QPoint global = event->globalPosition().toPoint();
         const bool onButton = rect().contains(event->position().toPoint());
 
@@ -1243,17 +1312,19 @@ void SecondaryButton::mouseReleaseEvent(QMouseEvent* event)
             return;
         }
 
-        // A release over the third level wins: the aliases sit on top of the menu.
-        if (submenu) {
-            const int index = submenu->itemAt(global);
-            if (index >= 0) {
-                submenu->setHoverIndex(-1);
-                QPushButton::mouseReleaseEvent(event);
-                if (const SecondaryAction* action = submenu->action(submenu->itemId(index)))
-                    activateAction(*action, true, false);
-                m_rightClickUsed = false;
-                return;
-            }
+        // A release over one of the child menus wins: they sit on top of the
+        // second level, and the deepest one is the one the cursor was aimed at.
+        for (int i = m_children.size() - 1; i >= 0; --i) {
+            SecondaryMenu* child = m_children[i];
+            const int index = child->itemAt(global);
+            if (index < 0)
+                continue;
+            child->setHoverIndex(-1);
+            QPushButton::mouseReleaseEvent(event);
+            if (const SecondaryAction* action = child->action(child->itemId(index)))
+                activateAction(*action, true, false, child);
+            m_rightClickUsed = false;
+            return;
         }
         if (menu) {
             const int index = menu->itemAt(global);
@@ -1262,9 +1333,7 @@ void SecondaryButton::mouseReleaseEvent(QMouseEvent* event)
                 // not switch a second entry - but it must not close the menus
                 // either, the user is still working in the third level.
                 QPushButton::mouseReleaseEvent(event);
-                pinActive();
-                if (m_submenu)
-                    m_submenu->setPreview(false);
+                pinActive();                    // also makes every child usable
                 m_rightClickUsed = false;
                 return;
             }
@@ -1275,14 +1344,14 @@ void SecondaryButton::mouseReleaseEvent(QMouseEvent* event)
                 const bool wasFamilyOn = action && !action->submenuPath.isEmpty()
                                          && familyCaptured(*action);
                 if (action)
-                    activateAction(*action, false, false);
+                    activateAction(*action, false, false, menu);
                 // A released drag that switched a family on leaves its third level
                 // up: pin both windows so the aliases can be picked (an unpinned
                 // popup would belong to nothing once the drag is over).
                 if (action && !action->submenuPath.isEmpty() && !wasFamilyOn && m_active) {
                     pinActive();
-                    if (m_submenu)
-                        m_submenu->setPreview(false);
+                    for (SecondaryMenu* child : m_children)
+                        child->setPreview(false);
                 }
                 m_rightClickUsed = false;
                 return;
@@ -1313,43 +1382,49 @@ bool SecondaryButton::eventFilter(QObject* watched, QEvent* event)
         const QPoint global = mouse->globalPosition().toPoint();
         // A click on the button is handled by mousePressEvent() (it closes the
         // menu); a click inside a menu belongs to that menu.
-        const bool inMenu = m_active && m_active->frameGeometry().contains(global);
-        const bool inSubmenu = m_submenu && m_submenu->frameGeometry().contains(global);
-        if (!inMenu && !inSubmenu)
+        bool inMenu = m_active && m_active->frameGeometry().contains(global);
+        for (SecondaryMenu* child : m_children)
+            inMenu = inMenu || child->frameGeometry().contains(global);
+        if (!inMenu)
             hideMenu();
         break;
     }
     case QEvent::MouseButtonRelease: {
         auto* mouse = static_cast<QMouseEvent*>(event);
-        if (!m_submenu || !m_submenu->isVisible())
+        SecondaryMenu* top = deepestMenu();
+        if (!top || !top->isVisible())
             break;
         const QPoint global = mouse->globalPosition().toPoint();
-        if (!m_submenu->frameGeometry().contains(global))
+        if (!top->frameGeometry().contains(global))
             break;
-        const int index = m_submenu->itemAt(global);
+        const int index = top->itemAt(global);
         if (index < 0)
             break;
         // Only a real entry counts - a release on the scroll bar or the frame
         // must not pick whatever entry happens to be behind it.
-        if (!qobject_cast<QAbstractButton*>(m_submenu->childAt(m_submenu->mapFromGlobal(global))))
+        if (!qobject_cast<QAbstractButton*>(top->childAt(top->mapFromGlobal(global))))
             break;
-        const SecondaryAction* action = m_submenu->action(m_submenu->itemId(index));
+        const SecondaryAction* action = top->action(top->itemId(index));
         if (!action)
             break;
         // The press that opened this level still owns the mouse (it happened on
         // the level above), so the release is the only chance to pick the entry
         // under the cursor. Consume it: the entry's own clicked() must not fire
         // a second time.
-        m_submenu->setHoverIndex(-1);
-        activateAction(*action, true, true);
+        top->setHoverIndex(-1);
+        activateAction(*action, true, true, top);
         m_rightClickUsed = false;
         hideMenu();
         return true;
     }
     case QEvent::KeyPress:
         if (static_cast<QKeyEvent*>(event)->key() == Qt::Key_Escape) {
-            if (m_submenu) {
-                hideSubmenu();
+            // Escape walks back one level at a time: the deepest menu closes
+            // first, and only then the one that has nothing below it.
+            if (!m_children.isEmpty()) {
+                SecondaryMenu* deep = m_children.takeLast();
+                deep->dismiss();
+                deep->deleteLater();
                 return true;
             }
             hideMenu();

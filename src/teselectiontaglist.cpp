@@ -1,6 +1,7 @@
 #include "teselectiontaglist.h"
 #include "testyle.h"
 #include "func.h"
+#include "svgicon.h"
 
 namespace {
 
@@ -665,14 +666,15 @@ teSelectionTagListView::teSelectionTagListView(QWidget *parent) : QListView(pare
 }
 
 void teSelectionTagListView::initializeMenu(){
-    editAction = menu->addAction(QIcon(":/res/menu_edit.png"),"edit (F2/Ctrl+E)");
-    deleteAction = menu->addAction(QIcon(":/res/menu_remove.png"),"delete (Ctrl+D/del)");
-    insertAction = menu->addAction(QIcon(":/res/menu_add.png"),"insert above (Ctrl+W)");
-    insertBelowAction = menu->addAction(QIcon(":/res/menu_add.png"),"insert below");
-    cutAction = menu->addAction(QIcon(":/res/menu_cut.png"),"cut (Ctrl+X)");
-    copyAction = menu->addAction(QIcon(":/res/menu_copy.png"),"copy (Ctrl+C)");
-    pasteAction = menu->addAction(QIcon(":/res/menu_paste.png"),"paste (Ctrl+V)");
-    setposAction = menu->addAction(QIcon(":/res/menu_pin.png"),"setpos");
+    // Lucide 图标(svgicon.h 运行时着色);旧的 menu_*.png 已删除。
+    editAction = menu->addAction(svgicon::menuIcon(":/icons/pen-line.svg"),"edit (F2/Ctrl+E)");
+    deleteAction = menu->addAction(svgicon::menuIcon(":/icons/trash.svg"),"delete (Ctrl+D/del)");
+    insertAction = menu->addAction(svgicon::menuIcon(":/icons/chevrons-up.svg"),"insert above (Ctrl+W)");
+    insertBelowAction = menu->addAction(svgicon::menuIcon(":/icons/chevrons-down.svg"),"insert below");
+    cutAction = menu->addAction(svgicon::menuIcon(":/icons/scissors.svg"),"cut (Ctrl+X)");
+    copyAction = menu->addAction(svgicon::menuIcon(":/icons/copy.svg"),"copy (Ctrl+C)");
+    pasteAction = menu->addAction(svgicon::menuIcon(":/icons/clipboard-list.svg"),"paste (Ctrl+V)");
+    setposAction = menu->addAction(svgicon::menuIcon(":/icons/pin.svg"),"setpos");
     menu->setStyleSheet(qsl(
         R"(QMenu {
         background-color: transparent;

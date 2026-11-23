@@ -3,6 +3,7 @@
 #include "secondarybutton.h"   // the menu buttons of a dialog (kind / capture)
 #include "mainwindow.h"     // editTagDecorations(): the one decorations entry point
 #include "testyle.h"        // the SecondaryButton colours, shared with the editor columns
+#include "svgicon.h"        // the tinted Lucide icons of the three signal buttons
 
 #include <QFileInfo>
 #include <QIcon>
@@ -414,6 +415,8 @@ colorsWidget::colorsWidget(QVector<QPair<QStringList, bool> > &&objects, QWidget
     signal_button_layout->addWidget(destroy_btn);
     signal_button_layout->addWidget(Ok_btn);
     signal_button_layout->addWidget(add_btn);
+    // 对勾/加号绿、x 红,带外发光(旧 bin/tick/plus PNG 已删除)。
+    applySignalButtonIcons(Ok_btn,add_btn,destroy_btn);
 
     layout->addLayout(content_layout);
     if(extra_layout)
@@ -1017,12 +1020,10 @@ QAbstractItemView::item:hover{
 
 QString destroyButtonStyle = QStringLiteral(R"(
 QPushButton{
-image:url(:/res/bin_sleep.png);
 background-color:rgba(255,0,0,30);
 border-color:rgb(150,0,0);
 }
 QPushButton:hover{
-image:url(:/res/bin.png);
 background-color:rgba(255,0,0,120);
 border-color:rgb(255,0,0);
 }
@@ -1034,12 +1035,10 @@ background-color:rgba(255,0,0,150);
 
 QString OkButtonStyle = qsl(R"(
 QPushButton{
-image:url(:/res/tick_sleep.png);
 background-color:rgba(25,235,130,30);
 border-color:#50bc86;
 }
 QPushButton:hover{
-image:url(:/res/tick.png);
 background-color:rgba(25,235,130,120);
 border-color:#54eda1;
 }
@@ -1049,12 +1048,10 @@ background-color:rgba(25,235,130,150);
 )");
 QString addButtonStyle = qsl(R"(
 QPushButton{
-image:url(:/res/plus_sleep.png);
 background-color:rgba(25,235,130,30);
 border-color:#50bc86;
 }
 QPushButton:hover{
-image:url(:/res/plus.png);
 background-color:rgba(25,235,130,120);
 border-color:#54eda1;
 }
@@ -1062,6 +1059,24 @@ QPushButton:hover:pressed{
 background-color:rgba(25,235,130,150);
 }
 )");
+
+void applySignalButtonIcons(QPushButton* ok,QPushButton* add,QPushButton* destroy){
+    // 图标 20px,光晕外扩 3*2px → 画布 32px;iconSize 跟着画布走,别让 Qt 缩。
+    const QSize iconSize(20,20);
+    const QSize slotSize(32,32);
+    if(ok){
+        ok->setIcon(svgicon::icon(":/icons/check.svg",QColor(25,235,130),iconSize,2.0));
+        ok->setIconSize(slotSize);
+    }
+    if(add){
+        add->setIcon(svgicon::icon(":/icons/plus.svg",QColor(25,235,130),iconSize,2.0));
+        add->setIconSize(slotSize);
+    }
+    if(destroy){
+        destroy->setIcon(svgicon::icon(":/icons/x.svg",QColor(255,64,64),iconSize,2.0));
+        destroy->setIconSize(slotSize);
+    }
+}
 QString tagItemStyle = QStringLiteral(R"(
 QPushButton{
     border-radius: 3px;
@@ -1501,6 +1516,7 @@ void customControlWidget::initializeUI() {
     OK_Btn->setStyleSheet(OkButtonStyle);
     Bin_Btn = new QPushButton(this);
     Bin_Btn->setStyleSheet(destroyButtonStyle);
+    applySignalButtonIcons(OK_Btn,nullptr,Bin_Btn);
     buttonLayout->addWidget(OK_Btn);
     buttonLayout->addWidget(Bin_Btn);
     mainLayout->addLayout(buttonLayout);

@@ -96,7 +96,11 @@ inline bool hairTagsCanMerge(HairKind target,HairKind source)
         {false,false,false, true,false},    // "x hair with y streaks"
         {false,false,false,false, true},    // "gradient from x to y"
         { true, true,false,false,false},    // raw streak ("y streaked hair")
-        {false,false, true,false, true},    // raw gradient ("gradient hair")
+        // A raw gradient absorbs a plain base hair as well: "red gradient hair"
+        // next to "white hair" is one gradient (white to red), the same way a raw
+        // streak absorbs a base ("yellow hair with blue streaks"). The user's
+        // manual-merge example needs exactly this pair.
+        { true,false, true,false, true},    // raw gradient ("gradient hair")
     };
     // HairKind::None (0) has no row: the table covers the five real kinds, whose
     // enumerators start at BaseHair = 1.
@@ -497,6 +501,11 @@ struct hair_and_eyes_color_list : public teTagListControl{
         bool absorb(std::shared_ptr<teTag> in_tag){
             if(!autoMerge||!MergeSwitch)
                 return false;
+            // 多人图(girl+boy+other > 1)不再自动合并渐变/挑染:两条渐变、
+            // 两条挑染可能属于不同的人。需要合并时用列表右键的 merge
+            // (Tab / Shift+M)手动合并。
+            if(isMultiPeople(taglistwidget?taglistwidget->showing_list:nullptr))
+                return false;
             // A merge edits the surviving tag, which re-enters this control
             // through its edit signals. Without this guard the nested call can
             // start a second merge on the tag that is being merged right now.
@@ -524,6 +533,113 @@ struct hair_and_eyes_color_list : public teTagListControl{
             perform_merge(target_tag,in_tag,new_type);
             foldRawSiblings(target_tag);
             return true;
+        }
+
+        /**
+         * @brief 手动合并(列表右键 merge / Tab / Shift+M)。
+         *
+         * 规则与 clothes 列表一致:多选从上到下链式合并;单选级联(先向上、
+         * 后向下)。手动合并不看 autoMerge / mergeSuppressed——多人模式把
+         * 自动合并收紧后,这里是用户显式的补充入口;markMerged 照常,撤销
+         * 仍然整步还原。
+         */
+        bool manualMergeSupported() const override { return true; }
+        void manualMerge()override{
+            if(!taglistwidget||!taglistwidget->showing_list)
+                return;
+            const QVector<std::shared_ptr<teTag>> chosen=selectedCoresInVisualOrder();
+            if(chosen.isEmpty())
+                return;
+            if(chosen.size()>=2){
+                for(int i=1;i<int(chosen.size());++i){
+                    const std::shared_ptr<teTag>& tag=chosen[i];
+                    // 幸存者始终是最上面那条;方向由合并矩阵决定颜色次序。
+                    if(!tag||tag->retired||chosen[i-1]->retired)
+                        continue;
+                    if(manualMergePair(chosen[i-1],tag))
+                        taglistwidget->retire(tag);
+                }
+                return;
+            }
+            // 单选:级联。anchor 是当前活着的 tag;并入上方邻居后它变成邻居。
+            // 每个方向先试"邻居幸存"(上面的幸存,符合从上到下),再试
+            // "anchor 幸存"(矩阵只允许这个方向时)。
+            std::shared_ptr<teTag> anchor=chosen.first();
+            for(int round=0;round<64&&anchor&&!anchor->retired;++round){
+                std::shared_ptr<teTag> neighbour=findManualMergeNeighbour(anchor,true);
+                if(neighbour&&manualMergePair(neighbour,anchor)){
+                    taglistwidget->retire(anchor);
+                    anchor=neighbour;
+                    continue;
+                }
+                if(neighbour&&manualMergePair(anchor,neighbour)){
+                    taglistwidget->retire(neighbour);
+                    continue;
+                }
+                neighbour=findManualMergeNeighbour(anchor,false);
+                if(neighbour&&manualMergePair(anchor,neighbour)){
+                    taglistwidget->retire(neighbour);
+                    continue;
+                }
+                if(neighbour&&manualMergePair(neighbour,anchor)){
+                    taglistwidget->retire(anchor);
+                    anchor=neighbour;
+                    continue;
+                }
+                break;
+            }
+        }
+        /// 把 `source` 并进 `target`(方向由类型矩阵决定),成功返回 true。
+        bool manualMergePair(std::shared_ptr<teTag> target,std::shared_ptr<teTag> source){
+            if(!target||!source||target==source||target->retired||source->retired)
+                return false;
+            if(!sameHairCategory(*target,*source))
+                return false;
+            const HairKind sourceType=classify_tag(source);
+            const HairKind targetType=classify_tag(target);
+            if(sourceType==HairKind::None||targetType==HairKind::None)
+                return false;
+            if(!can_merge(target,targetType,source,sourceType))
+                return false;
+            MergeGuard guard(m_merging);
+            markMerged(*target,*source);
+            source->retired=true;
+            perform_merge(target,source,sourceType);
+            return true;
+        }
+        /// `anchor` 最近的、与它可合并的邻居(向上或向下),没有则 nullptr。
+        /// 纯查找,不改任何东西;合并方向由级联处的矩阵判定。
+        std::shared_ptr<teTag> findManualMergeNeighbour(
+            const std::shared_ptr<teTag>& anchor,bool up)
+        {
+            if(!layout||!anchor)
+                return {};
+            const int anchorIndex=findindex(anchor);
+            const int count=layout->count();
+            if(anchorIndex<0)
+                return {};
+            for(int step=1;step<count;++step){
+                const int index=up?anchorIndex-step:anchorIndex+step;
+                if(index<0||index>=count)
+                    break;
+                auto* widget=dynamic_cast<teRefTagWidget*>(layout->itemAt(index)->widget());
+                if(!widget||!widget->core||widget->core->retired)
+                    continue;
+                const std::shared_ptr<teTag> candidate=widget->core;
+                if(candidate==anchor)
+                    continue;
+                if(!sameHairCategory(*candidate,*anchor))
+                    continue;
+                const HairKind candidateType=classify_tag(candidate);
+                const HairKind anchorType=classify_tag(anchor);
+                if(candidateType==HairKind::None||anchorType==HairKind::None)
+                    continue;
+                // 任一方向能合并即算可合并;谁幸存由级联处按矩阵决定。
+                if(can_merge(candidate,candidateType,anchor,anchorType)
+                    ||can_merge(anchor,anchorType,candidate,candidateType))
+                    return candidate;
+            }
+            return {};
         }
 
         void unlink(std::shared_ptr<teTag>in_tag)override{
@@ -921,6 +1037,34 @@ struct HairLength_Buttongroup : public teTagButtonGroup {
         {
         layout->setSpacing(1);
         }
+    /**
+     * @brief 多人放宽:girl+boy+other > 1(或 multiple peoples 激活)时,
+     *        四个长度互不排斥、不再控制同一条 tag,而且 very 与 long 解绑——
+     *        very 只写 "very long hair",long 只写 "long hair",组内不再自动
+     *        合并两者(absorbLongHair 跳过)。单人时保持原逻辑:互斥、very
+     *        隐含 long、自动合并 very long hair 和 long hair,禁止
+     *        "long short hair"。
+     */
+    bool multiTagMode() const override {
+        return isMultiPeople(taglistwidget?taglistwidget->showing_list:nullptr);
+    }
+    /// 一个长度按钮负责的整条 tag("very long hair",不是 "very hair")。
+    QString tagTextForButton(int buttonId) const override {
+        switch(buttonId){
+        case HairVeryLong: return qsl("very long hair");
+        case HairLong:     return qsl("long hair");
+        case HairShort:    return qsl("short hair");
+        case HairMedium:   return qsl("medium hair");
+        }
+        return QString();
+    }
+    /// 本组是否已链接 `text` 这条 tag。Pure。
+    bool linkedTextIs(const QString& text) const {
+        for(const std::shared_ptr<teTag>& tag:linked_tags)
+            if(tag&&static_cast<QString>(*tag)==text)
+                return true;
+        return false;
+    }
     virtual void reform(int id)override {
         // The rules live in hairLengthAfterClick() (pure, testable), including the
         // long/short/medium exclusivity arithmetic.
@@ -931,6 +1075,16 @@ struct HairLength_Buttongroup : public teTagButtonGroup {
         for(int i=0;i<buttons.size();++i)
             if(buttons[i]->isChecked()!=after[i])
                 buttons[i]->setChecked(after[i]);
+    }
+    void refreshState()override{
+        if(multiTagMode()){
+            // 多人时按钮按整条 tag 对号入座:"very long hair" 只点亮 very,
+            // 不再点亮 long(解绑)。
+            for(int i=0;i<4;++i)
+                buttons[i]->setChecked(linkedTextIs(tagTextForButton(i)));
+            return;
+        }
+        teTagButtonGroup::refreshState();
     }
 
     std::shared_ptr<teTag>long_hair_ptr=nullptr;
@@ -996,7 +1150,8 @@ struct HairLength_Buttongroup : public teTagButtonGroup {
         }
         if(!filter(tag))
             return TagHandling::NotMine;
-        if(autoMerge&&MergeSwitch)
+        // 多人时不自动合并 very long hair / long hair(解绑,见 multiTagMode())。
+        if(autoMerge&&MergeSwitch&&!multiTagMode())
             absorbLongHair(tag);
         if(tag->retired){
             if(taglistwidget)
