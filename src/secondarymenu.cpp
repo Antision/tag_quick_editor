@@ -8,6 +8,7 @@
 #include <QMouseEvent>
 #include <QScrollArea>
 #include <QScreen>
+#include <QStyle>
 #include <QUiLoader>
 #include <QVBoxLayout>
 
@@ -96,6 +97,22 @@ bool SecondaryMenu::loadUi(const QString& path)
         QAbstractButton* button = buttonFor(action.id);
         if (!button)
             continue;
+        // Entries that open a level below wear the add widget's secondary-button
+        // language, so "this opens something" is visible before hovering it:
+        //   · owns a tag  -> activatable (solid border, no fill: the entry itself
+        //     writes the group's base tag);
+        //   · no tag      -> pure (dotted border, faint green: a pure launcher).
+        // A plain entry keeps the list's purple border: it writes a tag.
+        if (!action.submenuPath.isEmpty()) {
+            button->setProperty("entry", action.tags.isEmpty()
+                                             ? QStringLiteral("pure")
+                                             : QStringLiteral("activatable"));
+            // The page was parented before this property existed, so the button is
+            // already polished: without a repolish the sheet keeps the purple
+            // border it resolved at creation (trap looked like a plain entry).
+            button->style()->unpolish(button);
+            button->style()->polish(button);
+        }
         if (button->isCheckable()) {
             connect(button, &QAbstractButton::clicked, this, [this, button] {
                 emit actionTriggered(idOf(button), button->isChecked());

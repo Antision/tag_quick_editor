@@ -74,6 +74,12 @@ teTagListWidgetBase::teTagListWidgetBase(int wordsize,QWidget *parent): QWidget{
         border: 1px solid #8b9ac6;
     }
     QMenu::item:selected {background-color: #3d258f;}
+    /* 分隔线:不写这条时平台样式给它一整行的默认高度,merge 前面就空出一大块 */
+    QMenu::separator {
+        height: 1px;
+        background: #8b9ac6;
+        margin: 4px 8px;
+    }
 )");
     menu->setAttribute(Qt::WA_TranslucentBackground);
     menu->setWindowFlags(menu->windowFlags() | Qt::FramelessWindowHint);

@@ -681,7 +681,16 @@ void teTagListControl::unlink(std::shared_ptr<teTag> in_tag){
 
 void teTagListControl::onAddButtonClicked(){
     ifedit=false;
+    m_insertBelow=false;
     // A new tag is not related to anything: no button may be lit.
+    onEdit_widget->startNewTag();
+    onEdit_widget->showNearCursor();
+}
+
+void teTagListControl::insertRequested(bool below){
+    // 右键 insert above / below:和 "+" 同一个窗口,只是记住插到哪一侧。
+    ifedit=false;
+    m_insertBelow=below;
     onEdit_widget->startNewTag();
     onEdit_widget->showNearCursor();
 }
@@ -693,7 +702,13 @@ void teTagListControl::reciveWidgetSignal(QString data, bool ifadd){
             taglistwidget->tagEdit(select_current->core,data);
         }
     }else{
-        taglistwidget->tagInsertAbove(false,std::make_shared<teTag>(data),true);
+        auto tag=std::make_shared<teTag>(data);
+        const bool below=m_insertBelow;
+        m_insertBelow=false;
+        if(below)
+            taglistwidget->tagInsertBelow(false,tag,true);
+        else
+            taglistwidget->tagInsertAbove(false,tag,true);
     }
 }
 
@@ -708,6 +723,7 @@ void teTagListControl::reciveDestroySignal(){
 
 void teTagListControl::tagEdit(teTagWidgetBase *tag, teWordWidgetBase *word){
     ifedit=true;
+    m_insertBelow=false;
     onEdit_widget->input_and_show(tag->core);
 }
 

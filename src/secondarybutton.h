@@ -277,6 +277,27 @@ private:
     /// those arrive at the button).
     void handleMenuPress(const QPoint& global, bool right);
     /**
+     * @brief A right press on an entry of any menu level.
+     *
+     * Two meanings, and neither of them closes the menu:
+     *   · the entry opens a level below -> expand / collapse it (show the aliases
+     *     without writing anything);
+     *   · a plain entry -> it *is* the click (write the tag); the menu stays up so
+     *     several entries can be switched in a row.
+     */
+    void handleMenuRightPress(SecondaryMenu* menu, const QString& id);
+    /**
+     * @brief A press on the empty part of a menu.
+     *
+     * With something open below it, that is "put that away" - one level, not the
+     * whole stack. Otherwise it closes this level (the second level takes the whole
+     * menu with it).
+     */
+    void handleMenuBlankPress(SecondaryMenu* menu, bool right);
+    /// The level above `menu` (the second level for its first child), nullptr for
+    /// the second level itself.
+    SecondaryMenu* parentOf(const SecondaryMenu* menu) const;
+    /**
      * @brief The tag operations of the tags this button captured.
      *
      * A right click (without dragging) opens it. The button is the only handle a
@@ -355,6 +376,18 @@ private:
     /// release that follows must then not switch a second one (the pointer is often
     /// still resting on a menu entry when the third level appears).
     bool m_rightClickUsed = false;
+    /// The entry a right press just acted on. The release under the same cursor
+    /// position must not toggle it a second time (right press + release on one
+    /// entry is one click, not two).
+    QString m_rightPressedId;
+    /// True while the open menus belong to a held *left* button. A right click is
+    /// then part of that gesture; a right-drag (no left button) is opened and
+    /// finished by the right button alone, and its release still pins.
+    bool m_dragLeftHeld = false;
+    /// The menu a right click happened in while the left button was held. The
+    /// release that ends the drag must not also "click" *that* menu - but a
+    /// release over another level is still a normal pick.
+    SecondaryMenu* m_rightUsedMenu = nullptr;
 };
 
 #endif // SECONDARYBUTTON_H

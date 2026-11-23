@@ -28,7 +28,15 @@ const QString& sheet(const QString& name)
 
 QString list(int wordFontSizePt)
 {
-    return QString(sheet(QStringLiteral("list"))).arg(wordFontSizePt);
+    // The scrollbar block used to live inside list.qss; it is a separate file now
+    // so the main window can take just that part (see scrollbar()).
+    return QString(sheet(QStringLiteral("scrollbar")) + sheet(QStringLiteral("list")))
+        .arg(wordFontSizePt);
+}
+
+QString scrollbar()
+{
+    return sheet(QStringLiteral("scrollbar"));
 }
 
 QString controls()

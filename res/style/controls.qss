@@ -101,15 +101,41 @@ QAbstractItemView::item:hover{
     background-color: #4c4a5d;
 }
 
-/* 菜单里"带下一层"的条目(tomgirl / trap 这类基按钮):实线黄框 + 透明底,
- * 和 add widget 里可激活的二级按钮同一套语言 —— 它是这一族的入口,不是普通选项。 */
-SecondaryMenu QPushButton[family="true"]{
+/* 菜单里"带下一层"的条目,和 add widget 的二级按钮同一套语言
+ * (res/style/secondarybutton.qss 的 kind=activatable / kind=pure):
+ *   · entry="activatable":这一族有基 tag,点它本身就会写/删基 tag,菜单是补充;
+ *   · entry="pure":纯启动器,自己没有 tag,点它只打开下一层。
+ * 普通条目继续用上面的紫边 —— 它写 tag,不打开任何东西。 */
+SecondaryMenu QPushButton[entry="activatable"]{
     border: 1px solid #d8b13a;
+    border-radius: 6px;
     background-color: transparent;
 }
-SecondaryMenu QPushButton[family="true"]:hover{
+SecondaryMenu QPushButton[entry="activatable"]:hover{
     border: 1px solid #f0c94a;
-    background-color: rgba(216,177,58,26);
+    background-color: rgba(216,177,58,22);
+}
+SecondaryMenu QPushButton[entry="pure"]{
+    border: 1px dotted #d8b13a;
+    border-radius: 6px;
+    background-color: rgba(0,190,120,10);
+}
+SecondaryMenu QPushButton[entry="pure"]:hover{
+    border: 1px dotted #f0c94a;
+    background-color: rgba(0,190,120,22);
+}
+/* 选中态要压过上面两条:它们比 QPushButton:checked 多一个属性选择器,否则
+ * 点亮一个带下层的条目只剩那层淡底,看不出选了没有。 */
+SecondaryMenu QPushButton[entry="activatable"]:checked,
+SecondaryMenu QPushButton[entry="pure"]:checked{
+    border: 1px solid #12b594;
+    border-radius: 6px;
+    background-color: #00592c;
+}
+SecondaryMenu QPushButton[entry="activatable"]:checked:hover,
+SecondaryMenu QPushButton[entry="pure"]:checked:hover{
+    border: 1px solid #12f3e0;
+    background-color: #00a452;
 }
 
 /* ---- 二级按钮菜单里的项(SC-06/SC-11) ----

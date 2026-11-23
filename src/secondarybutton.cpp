@@ -72,6 +72,11 @@ SecondaryButton::SecondaryButton(const QString& menuPath, QString placeholder, Q
     setCursor(Qt::ArrowCursor);
     QPushButton::setText(m_caption);
     setProperty("captured", false);
+    // A launcher that has not been told about an own tag writes nothing when
+    // clicked: that is the "pure" kind, and saying it here means every button in
+    // an editor column gets the faint style without each caller repeating it.
+    // setOwnTag() flips this to "activatable".
+    setKind(QStringLiteral("pure"));
     loadActions();
 }
 
@@ -389,19 +394,12 @@ SecondaryMenu* SecondaryButton::ensureMenu(bool right)
         // an unpinned one (only reachable through the drag) closes with the entry.
         activate(id, m_mode == Mode::Pinned);
     });
-    connect(menu, &SecondaryMenu::entryRightPressed, this, [this, menu](const QString& id) {
-        // Right-clicking an entry: a family parent shows the level below it, an
-        // additive entry toggles like a left click would (the pin stays up).
-        const Action* action = findAction(id);
-        if (!action)
-            return;
-        if (!action->submenuPath.isEmpty())
-            openSubmenu(*action, menu);
-        else
-            activate(id, true);
-    });
-    connect(menu, &SecondaryMenu::dismissRequested, this, [this] { hideMenu(); });
-    connect(menu, &SecondaryMenu::blankAreaPressed, this, [this] { hideSubmenu(); });
+    connect(menu, &SecondaryMenu::entryRightPressed, this,
+            [this, menu](const QString& id) { handleMenuRightPress(menu, id); });
+    connect(menu, &SecondaryMenu::dismissRequested, this,
+            [this, menu] { handleMenuBlankPress(menu, true); });
+    connect(menu, &SecondaryMenu::blankAreaPressed, this,
+            [this, menu] { handleMenuBlankPress(menu, false); });
     slot = menu;
     return menu;
 }
@@ -455,29 +453,21 @@ SecondaryMenu* SecondaryButton::ensureSubmenu(const Action& action, SecondaryMen
     // The handlers are the same at every depth: an entry of a child menu either
     // opens the level below it or finishes the choice. `menu` is captured so a
     // deeper entry knows which level it belongs to.
-    connect(menu, &SecondaryMenu::entryRightPressed, this, [this, menu](const QString& id) {
-        m_rightClickUsed = true;
-        if (const SecondaryAction* action = menu->action(id)) {
-            if (!action->submenuPath.isEmpty())
-                openSubmenu(*action, menu);
-            else {
-                activateAction(*action, true, m_mode == Mode::Pinned);
-                hideMenu();
-            }
-        }
-    });
-    connect(menu, &SecondaryMenu::dismissRequested, this, [this] { hideMenu(); });
-    connect(menu, &SecondaryMenu::blankAreaPressed, this, [this] { hideSubmenu(); });
+    connect(menu, &SecondaryMenu::entryRightPressed, this,
+            [this, menu](const QString& id) { handleMenuRightPress(menu, id); });
+    connect(menu, &SecondaryMenu::dismissRequested, this,
+            [this, menu] { handleMenuBlankPress(menu, true); });
+    connect(menu, &SecondaryMenu::blankAreaPressed, this,
+            [this, menu] { handleMenuBlankPress(menu, false); });
     connect(menu, &SecondaryMenu::actionTriggered, this, [this, menu](const QString& id, bool) {
         // Several aliases may be on together, so this toggles like every other
-        // additive entry. A pick at any depth finishes the gesture.
+        // additive entry. A pinned menu stays up at every depth: adding a second
+        // member of the same submenu is a normal thing to want.
         if (const SecondaryAction* action = menu->action(id)) {
             if (!action->submenuPath.isEmpty())
                 openSubmenu(*action, menu);
-            else {
-                activateAction(*action, true, m_mode == Mode::Pinned);
-                hideMenu();
-            }
+            else
+                activateAction(*action, true, m_mode == Mode::Pinned, menu);
         }
     });
     // Keep the chain contiguous: a child of a child sits right after its parent,
@@ -520,7 +510,11 @@ bool SecondaryButton::openSubmenu(const Action& action, SecondaryMenu* parent)
     QRect anchor = parent ? parent->itemRect(action.id) : QRect();
     if (anchor.isNull())
         anchor = visualRect();
-    menu->setPreview(m_mode == Mode::Preview);
+    // A child opened by a right press while the left button is held is where the
+    // next click goes: it must not stay a click-through hover preview, or its
+    // entries can never be pressed (the press fell through to the menu behind it
+    // and was read as "empty area", closing the level again).
+    menu->setPreview(m_mode == Mode::Preview && !m_dragging);
     menu->showAt(anchor);
 
     // Every entry stays listed, including the ones that are captured: a child
@@ -622,6 +616,12 @@ bool SecondaryButton::entryCaptured(const Action& action) const
 
 bool SecondaryButton::familyCaptured(const Action& parent) const
 {
+    // No group means "this entry stands for itself". Comparing empty strings
+    // would put every ungrouped entry into one family: capturing one body part
+    // then made every other part look captured too (a click on an unlit part
+    // "switched the family off" and deleted them all).
+    if (parent.group.isEmpty())
+        return entryCaptured(parent);
     for (const Action& member : m_actions)
         if (member.group == parent.group && member.tags != parent.tags && entryCaptured(member))
             return true;
@@ -645,11 +645,13 @@ void SecondaryButton::setFamily(const Action& parent, bool on)
         }
     } else {
         // The entry stands for the whole family: "off" means every captured member
-        // goes, not just the one whose name the entry happens to show.
-        QStringList members;
-        for (const Action& member : m_actions)
-            if (member.group == parent.group)
-                members += member.tags;
+        // goes, not just the one whose name the entry happens to show. An entry
+        // without a group is only itself (see familyCaptured()).
+        QStringList members = parent.tags;
+        if (!parent.group.isEmpty())
+            for (const Action& member : m_actions)
+                if (member.group == parent.group)
+                    members += member.tags;
         const std::set<std::shared_ptr<teTag>> linked = linked_tags;
         for (const std::shared_ptr<teTag>& tag : linked)
             if (members.contains(static_cast<QString>(*tag)))
@@ -668,10 +670,18 @@ void SecondaryButton::activateFamilyEntry(const Action& parent, bool keepOpen,
     const bool wasOn = familyCaptured(parent);
     setFamily(parent, !wasOn);
     if (!wasOn) {
-        if (owner)
+        // Only a menu that stays up after the click can hold a level below it.
+        // A release that ends a drag is a plain "switch this on": opening the
+        // aliases there left the menu on screen after the gesture was over, so
+        // closing it needed a second click or Escape.
+        if (keepOpen && owner)
             openSubmenu(parent, owner);
-        syncMenuSelection();
-        return;                 // the level above stays up to hold the child menu
+        if (keepOpen) {
+            syncMenuSelection();
+            return;
+        }
+        hideMenu();
+        return;
     }
     dropChildrenOf(owner ? owner : m_active);
     if (keepOpen)
@@ -1076,7 +1086,10 @@ void SecondaryButton::mousePressEvent(QMouseEvent* event)
     // "Clicking the button again" is one of the ways a pinned menu closes (SC-02).
     m_rightPressPending = false;
     if (m_mode == Mode::Pinned) {
-        hideMenu();
+        // A left click on the anchor closes the pinned menu; a right click must
+        // not (right button never closes a menu - it is for the entries).
+        if (left)
+            hideMenu();
         event->accept();
         return;
     }
@@ -1094,13 +1107,18 @@ void SecondaryButton::mousePressEvent(QMouseEvent* event)
             QPushButton::mousePressEvent(event);
             if (openPreview(true)) {
                 m_dragging = true;
+                m_dragLeftHeld = false;
+                m_rightUsedMenu = nullptr;         // opened by the right button alone
                 m_active->setPreview(false);
             }
             event->accept();
             return;
         }
         m_dragging = true;
+        m_dragLeftHeld = !right;
+        m_rightUsedMenu = nullptr;
         m_rightClickUsed = false;
+        m_rightPressedId.clear();
         if (right)
             handleMenuPress(global, true);
         event->accept();
@@ -1110,12 +1128,18 @@ void SecondaryButton::mousePressEvent(QMouseEvent* event)
         // Already dragging: every press is an action inside the menus, never a new
         // preview. The third level is on top, so it is tested first - that is what
         // lets a right click walk the aliases while the left button stays down.
+        m_rightPressedId.clear();
+        if (!right)
+            m_rightClickUsed = false;       // a new left press is a new pick
+        else if (m_dragLeftHeld)
+            m_rightUsedMenu = m_active;       // even on empty space
         handleMenuPress(global, right);
         event->accept();
         return;
     }
 
     m_rightClickUsed = false;       // a new interaction starts here
+    m_rightPressedId.clear();
     QPushButton::mousePressEvent(event);    // keeps the :pressed look while dragging
     if (right) {
         // Undecided: a drag opens a menu (SC-05), a plain click opens the tag
@@ -1127,6 +1151,8 @@ void SecondaryButton::mousePressEvent(QMouseEvent* event)
             // keeps the old gesture, where the menu opens on the press itself.
             if (openPreview(!m_rightMenuPath.isEmpty())) {
                 m_dragging = true;
+                m_dragLeftHeld = false;
+                m_rightUsedMenu = nullptr;
                 if (m_active)
                     m_active->setPreview(false);
             }
@@ -1141,6 +1167,8 @@ void SecondaryButton::mousePressEvent(QMouseEvent* event)
     // SC-05: a left press opens the menu (the right menu on the way back).
     if (openPreview(false)) {
         m_dragging = true;
+        m_dragLeftHeld = left;
+        m_rightUsedMenu = nullptr;
         // A held button is a deliberate act: the menu becomes solid (and no longer
         // click-through) for as long as the button is down.
         if (m_active)
@@ -1151,36 +1179,113 @@ void SecondaryButton::mousePressEvent(QMouseEvent* event)
 
 void SecondaryButton::handleMenuPress(const QPoint& global, bool right)
 {
-    // The deepest menu is on top, so the chain is tested from its end backwards:
-    // a child window covers its parent, and the parent must not steal the press.
+    // A menu owns its whole rectangle, gaps included: a press between two entries
+    // belongs to that menu. Testing only the entries let the press fall through to
+    // the level below - a right click in the seam between two third-level buttons
+    // activated the second-level entry drawn underneath.
     for (int i = m_children.size() - 1; i >= 0; --i) {
         SecondaryMenu* child = m_children[i];
-        const int index = child->itemAt(global);
-        if (index < 0)
+        if (!child || !child->frameGeometry().contains(global))
             continue;
-        const SecondaryAction* action = child->action(child->itemId(index));
-        if (!action)
+        const int index = child->itemAt(global);
+        if (index < 0) {
+            if (right)
+                handleMenuBlankPress(child, true);
             return;
-        m_rightClickUsed = m_rightClickUsed || right;
-        if (!action->submenuPath.isEmpty())
-            toggleSubmenuFor(*action, child);
+        }
+        if (right)
+            handleMenuRightPress(child, child->itemId(index));
         else
-            activateAction(*action, true, true, child);
+            // A left press only marks the row. Acting here and again on the
+            // release is how a click on a child entry switched itself off again;
+            // the release (mouseReleaseEvent) is the one that picks.
+            child->setHoverIndex(index);
         return;
     }
-    if (m_active) {
+    if (m_active && m_active->frameGeometry().contains(global)) {
         const int index = m_active->itemAt(global);
-        if (index >= 0) {
-            const SecondaryAction* action = m_active->action(m_active->itemId(index));
-            if (!action)
-                return;
-            m_rightClickUsed = m_rightClickUsed || right;
-            if (!action->submenuPath.isEmpty())
-                toggleSubmenuFor(*action, m_active);   // click opens/closes the level
-            else
-                activateAction(*action, false, true, m_active);
+        if (index < 0) {
+            if (right)
+                handleMenuBlankPress(m_active, true);
+            return;
         }
+        if (right)
+            handleMenuRightPress(m_active, m_active->itemId(index));
+        else
+            m_active->setHoverIndex(index);
+        return;
     }
+    // Outside every menu. During a drag this is the button's grab doing the
+    // delivery: a right click still means "put the level below away".
+    if (right)
+        handleMenuBlankPress(m_active, true);
+}
+
+/**
+ * Right press on an entry: expand the level below it, or click a plain entry.
+ *
+ * The release under the cursor is part of the same click, so it is remembered in
+ * m_rightPressedId and skipped there - a right press and its release are one
+ * action, not a toggle followed by an undo.
+ */
+void SecondaryButton::handleMenuRightPress(SecondaryMenu* menu, const QString& id)
+{
+    if (!menu)
+        return;
+    const SecondaryAction* action = menu->action(id);
+    if (!action)
+        return;
+    m_rightClickUsed = true;
+    m_rightPressedId = id;
+    if (m_dragging && m_dragLeftHeld)
+        m_rightUsedMenu = menu;
+    if (!action->submenuPath.isEmpty()) {
+        // The entry is the family's entry: a right press only asks to see the other
+        // spellings. Writing its own tag here would be a different gesture (the
+        // left click on a pinned menu).
+        toggleSubmenuFor(*action, menu);
+        return;
+    }
+    // A plain entry *is* the click. The menu stays up: switching several entries in
+    // a row is the whole point of a pinned menu, and of the drag gesture.
+    activateAction(*action, true, true, menu);
+    syncMenuSelection();
+}
+
+void SecondaryButton::handleMenuBlankPress(SecondaryMenu* menu, bool right)
+{
+    if (!menu)
+        return;
+    if (right && m_dragging && m_dragLeftHeld)
+        m_rightUsedMenu = menu;
+    // With a level open below it, the empty part means "put that away": the level
+    // above stays (the user is aiming at it, not abandoning the stack). This is
+    // the same for both buttons.
+    if (childOf(menu)) {
+        dropChildrenOf(menu);
+        return;
+    }
+    // A right click never closes a menu. The second level is closed by releasing
+    // the drag, by Escape, or - once pinned - by a click outside it; a right click
+    // inside it means "work with the entries", nothing else.
+    if (right)
+        return;
+    if (menu == m_active)
+        hideMenu();
+    else
+        dropChildrenOf(parentOf(menu));     // close this level, keep the ones above
+}
+
+SecondaryMenu* SecondaryButton::parentOf(const SecondaryMenu* menu) const
+{
+    if (!menu || menu == m_active)
+        return nullptr;
+    for (int i = 0; i < m_children.size(); ++i) {
+        if (m_children[i] != menu)
+            continue;
+        return i == 0 ? m_active : m_children[i - 1];
+    }
+    return nullptr;
 }
 
 void SecondaryButton::showCapturedTagMenu()
@@ -1255,6 +1360,7 @@ void SecondaryButton::mouseMoveEvent(QMouseEvent* event)
             // first menu, whose third level is what a right drag is for there.
             if (openPreview(!m_rightMenuPath.isEmpty())) {
                 m_dragging = true;
+                m_dragLeftHeld = false;
                 if (m_active)
                     m_active->setPreview(false);
             }
@@ -1282,8 +1388,22 @@ void SecondaryButton::mouseReleaseEvent(QMouseEvent* event)
         showCapturedTagMenu();
         return;
     }
+    if (m_dragging && right && m_dragLeftHeld) {
+        // A right click inside a menu that is being dragged open is part of the
+        // drag: the left button is still down. Ending the drag here pinned the
+        // menu, and a pinned button swallows the next right press - which is why
+        // only the first entry could be clicked.
+        m_rightClickUsed = false;
+        m_rightPressedId.clear();
+        QPushButton::mouseReleaseEvent(event);
+        return;
+    }
     if (m_dragging && (left || right)) {
         m_dragging = false;
+        // The level a right click landed in: its own release is the end of the
+        // gesture, not a click. Another level is unaffected.
+        SecondaryMenu* rightUsed = m_rightUsedMenu;
+        m_rightUsedMenu = nullptr;
         SecondaryMenu* menu = m_active;
         const QPoint global = event->globalPosition().toPoint();
         const bool onButton = rect().contains(event->position().toPoint());
@@ -1321,18 +1441,41 @@ void SecondaryButton::mouseReleaseEvent(QMouseEvent* event)
                 continue;
             child->setHoverIndex(-1);
             QPushButton::mouseReleaseEvent(event);
-            if (const SecondaryAction* action = child->action(child->itemId(index)))
+            const QString releasedId = child->itemId(index);
+            if (!m_rightPressedId.isEmpty() && releasedId == m_rightPressedId) {
+                // One right click is one action: the press already wrote it.
+                m_rightPressedId.clear();
+                m_rightClickUsed = false;
+                return;
+            }
+            if (child == rightUsed) {
+                // A right click happened in this level: letting go here must not
+                // also pick whatever the cursor happens to rest on.
+                m_rightPressedId.clear();
+                m_rightClickUsed = false;
+                hideMenu();
+                return;
+            }
+            if (const SecondaryAction* action = child->action(releasedId))
                 activateAction(*action, true, false, child);
             m_rightClickUsed = false;
             return;
         }
         if (menu) {
             const int index = menu->itemAt(global);
+            if (index >= 0 && menu == rightUsed) {
+                // Right clicked in this very level: the release is not a pick.
+                m_rightPressedId.clear();
+                m_rightClickUsed = false;
+                hideMenu();
+                return;
+            }
             if (index >= 0 && m_rightClickUsed) {
                 // A right click already switched something here: the release must
                 // not switch a second entry - but it must not close the menus
                 // either, the user is still working in the third level.
                 QPushButton::mouseReleaseEvent(event);
+                m_rightPressedId.clear();
                 pinActive();                    // also makes every child usable
                 m_rightClickUsed = false;
                 return;
@@ -1379,6 +1522,9 @@ bool SecondaryButton::eventFilter(QObject* watched, QEvent* event)
     switch (event->type()) {
     case QEvent::MouseButtonPress: {
         auto* mouse = static_cast<QMouseEvent*>(event);
+        // A right press never closes anything, inside the menus or out of them.
+        if (mouse->button() == Qt::RightButton)
+            break;
         const QPoint global = mouse->globalPosition().toPoint();
         // A click on the button is handled by mousePressEvent() (it closes the
         // menu); a click inside a menu belongs to that menu.
@@ -1391,6 +1537,26 @@ bool SecondaryButton::eventFilter(QObject* watched, QEvent* event)
     }
     case QEvent::MouseButtonRelease: {
         auto* mouse = static_cast<QMouseEvent*>(event);
+        // The release under a right press was already handled as that press's
+        // click. It must not toggle the entry a second time, and a right release
+        // never closes anything.
+        if (mouse->button() == Qt::RightButton) {
+            m_rightClickUsed = false;
+            m_rightPressedId.clear();
+            break;
+        }
+        if (!m_rightPressedId.isEmpty()) {
+            // A left release that stays on the entry a right press just used is
+            // part of that same click (the pointer never moved): do not act twice.
+            SecondaryMenu* top = deepestMenu();
+            const int index = top ? top->itemAt(mouse->globalPosition().toPoint()) : -1;
+            const bool sameEntry = top && index >= 0
+                                   && top->itemId(index) == m_rightPressedId;
+            m_rightPressedId.clear();
+            if (sameEntry)
+                break;
+            // Anywhere else the release is an ordinary pick and falls through.
+        }
         SecondaryMenu* top = deepestMenu();
         if (!top || !top->isVisible())
             break;

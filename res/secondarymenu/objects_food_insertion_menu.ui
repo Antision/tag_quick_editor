@@ -17,7 +17,6 @@
      <property name="checkable"><bool>true</bool></property>
      <property name="text"><string>food insertion</string></property>
      <property name="tags" stdset="0"><string>food insertion</string></property>
-     <property name="group" stdset="0"><string>obj_food</string></property>
     </widget>
    </item>
    <item row="1" column="0">
@@ -25,7 +24,6 @@
      <property name="checkable"><bool>true</bool></property>
      <property name="text"><string>food dildo</string></property>
      <property name="tags" stdset="0"><string>food dildo</string></property>
-     <property name="group" stdset="0"><string>obj_food</string></property>
     </widget>
    </item>
    <item row="2" column="0">
@@ -33,7 +31,6 @@
      <property name="checkable"><bool>true</bool></property>
      <property name="text"><string>food in ass</string></property>
      <property name="tags" stdset="0"><string>food in ass</string></property>
-     <property name="group" stdset="0"><string>obj_food</string></property>
     </widget>
    </item>
    <item row="3" column="0">
@@ -41,7 +38,6 @@
      <property name="checkable"><bool>true</bool></property>
      <property name="text"><string>alcohol enema</string></property>
      <property name="tags" stdset="0"><string>alcohol enema</string></property>
-     <property name="group" stdset="0"><string>obj_food</string></property>
     </widget>
    </item>
    <item row="4" column="0">
@@ -49,7 +45,6 @@
      <property name="checkable"><bool>true</bool></property>
      <property name="text"><string>negi suppository</string></property>
      <property name="tags" stdset="0"><string>negi suppository</string></property>
-     <property name="group" stdset="0"><string>obj_food</string></property>
     </widget>
    </item>
   </layout>

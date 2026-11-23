@@ -55,6 +55,7 @@
          ../res/style/list.qss 会变成 :/style/res/style/list.qss。 -->
     <qresource prefix="/style">
         <file alias="list.qss">../res/style/list.qss</file>
+        <file alias="scrollbar.qss">../res/style/scrollbar.qss</file>
         <file alias="editor.qss">../res/style/editor.qss</file>
         <file alias="editor_custom.qss">../res/style/editor_custom.qss</file>
         <file alias="controls.qss">../res/style/controls.qss</file>
@@ -67,13 +68,11 @@
     <qresource prefix="/secondarymenu">
         <file alias="angle_menu.ui">../res/secondarymenu/angle_menu.ui</file>
         <file alias="bestiality_menu.ui">../res/secondarymenu/bestiality_menu.ui</file>
-        <file alias="body_parts_appendages_menu.ui">../res/secondarymenu/body_parts_appendages_menu.ui</file>
         <file alias="body_parts_arms_menu.ui">../res/secondarymenu/body_parts_arms_menu.ui</file>
         <file alias="body_parts_back_menu.ui">../res/secondarymenu/body_parts_back_menu.ui</file>
         <file alias="body_parts_feet_menu.ui">../res/secondarymenu/body_parts_feet_menu.ui</file>
         <file alias="body_parts_knees_menu.ui">../res/secondarymenu/body_parts_knees_menu.ui</file>
         <file alias="body_parts_legs_menu.ui">../res/secondarymenu/body_parts_legs_menu.ui</file>
-        <file alias="body_parts_lower_torso_menu.ui">../res/secondarymenu/body_parts_lower_torso_menu.ui</file>
         <file alias="body_parts_menu.ui">../res/secondarymenu/body_parts_menu.ui</file>
         <file alias="body_parts_nipples_menu.ui">../res/secondarymenu/body_parts_nipples_menu.ui</file>
         <file alias="body_parts_penis_menu.ui">../res/secondarymenu/body_parts_penis_menu.ui</file>
@@ -81,7 +80,6 @@
         <file alias="body_parts_stomach_menu.ui">../res/secondarymenu/body_parts_stomach_menu.ui</file>
         <file alias="body_parts_testicles_menu.ui">../res/secondarymenu/body_parts_testicles_menu.ui</file>
         <file alias="body_parts_thighs_menu.ui">../res/secondarymenu/body_parts_thighs_menu.ui</file>
-        <file alias="body_parts_upper_torso_menu.ui">../res/secondarymenu/body_parts_upper_torso_menu.ui</file>
         <file alias="body_parts_uterus_menu.ui">../res/secondarymenu/body_parts_uterus_menu.ui</file>
         <file alias="censor_menu.ui">../res/secondarymenu/censor_menu.ui</file>
         <file alias="character_type_menu.ui">../res/secondarymenu/character_type_menu.ui</file>

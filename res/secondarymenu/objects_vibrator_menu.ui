@@ -17,7 +17,6 @@
      <property name="checkable"><bool>true</bool></property>
      <property name="text"><string>vibrator</string></property>
      <property name="tags" stdset="0"><string>vibrator</string></property>
-     <property name="group" stdset="0"><string>obj_vibrator</string></property>
     </widget>
    </item>
    <item row="1" column="0">
@@ -25,7 +24,6 @@
      <property name="checkable"><bool>true</bool></property>
      <property name="text"><string>vibrator in anus</string></property>
      <property name="tags" stdset="0"><string>vibrator in anus</string></property>
-     <property name="group" stdset="0"><string>obj_vibrator</string></property>
     </widget>
    </item>
    <item row="2" column="0">
@@ -33,7 +31,6 @@
      <property name="checkable"><bool>true</bool></property>
      <property name="text"><string>vibrator under clothes</string></property>
      <property name="tags" stdset="0"><string>vibrator under clothes</string></property>
-     <property name="group" stdset="0"><string>obj_vibrator</string></property>
     </widget>
    </item>
    <item row="3" column="0">
@@ -41,7 +38,6 @@
      <property name="checkable"><bool>true</bool></property>
      <property name="text"><string>vibrator bulge</string></property>
      <property name="tags" stdset="0"><string>vibrator bulge</string></property>
-     <property name="group" stdset="0"><string>obj_vibrator</string></property>
     </widget>
    </item>
   </layout>

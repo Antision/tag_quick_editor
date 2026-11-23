@@ -45,6 +45,15 @@ QString controls();
  */
 QString list(int wordFontSizePt);
 
+/**
+ * @brief 滚动条那一份(箭头 + 滑块 + 两端按钮)。
+ *
+ * 主窗口的 TagListView 是 QListView,它原本什么样式都没拿,所以滚动条用的是
+ * Qt 默认箭头——深色主题下几乎看不见。这一份只动滚动条,不碰列表边框和字号。
+ * list() 把它拼在 list.qss 前面,ref list / 编辑器页拿到的还是原来那一套。
+ */
+QString scrollbar();
+
 } // namespace teStyle
 
 #endif // TESTYLE_H

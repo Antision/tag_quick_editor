@@ -24,7 +24,6 @@
      <property name="checkable"><bool>true</bool></property>
      <property name="text"><string>dildo</string></property>
      <property name="tags" stdset="0"><string>dildo</string></property>
-     <property name="group" stdset="0"><string>obj_dildo</string></property>
      <property name="submenu" stdset="0"><string>:/secondarymenu/objects_dildo_menu.ui</string></property>
     </widget>
    </item>
@@ -33,7 +32,6 @@
      <property name="checkable"><bool>true</bool></property>
      <property name="text"><string>vibrator</string></property>
      <property name="tags" stdset="0"><string>vibrator</string></property>
-     <property name="group" stdset="0"><string>obj_vibrator</string></property>
      <property name="submenu" stdset="0"><string>:/secondarymenu/objects_vibrator_menu.ui</string></property>
     </widget>
    </item>
@@ -42,7 +40,6 @@
      <property name="checkable"><bool>true</bool></property>
      <property name="text"><string>food insertion</string></property>
      <property name="tags" stdset="0"><string>food insertion</string></property>
-     <property name="group" stdset="0"><string>obj_food</string></property>
      <property name="submenu" stdset="0"><string>:/secondarymenu/objects_food_insertion_menu.ui</string></property>
     </widget>
    </item>

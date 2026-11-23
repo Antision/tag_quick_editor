@@ -17,7 +17,6 @@
      <property name="checkable"><bool>true</bool></property>
      <property name="text"><string>dildo</string></property>
      <property name="tags" stdset="0"><string>dildo</string></property>
-     <property name="group" stdset="0"><string>obj_dildo</string></property>
     </widget>
    </item>
    <item row="1" column="0">
@@ -25,7 +24,6 @@
      <property name="checkable"><bool>true</bool></property>
      <property name="text"><string>dildo riding</string></property>
      <property name="tags" stdset="0"><string>dildo riding</string></property>
-     <property name="group" stdset="0"><string>obj_dildo</string></property>
     </widget>
    </item>
    <item row="2" column="0">
@@ -33,7 +31,6 @@
      <property name="checkable"><bool>true</bool></property>
      <property name="text"><string>dildo under clothes</string></property>
      <property name="tags" stdset="0"><string>dildo under clothes</string></property>
-     <property name="group" stdset="0"><string>obj_dildo</string></property>
     </widget>
    </item>
   </layout>

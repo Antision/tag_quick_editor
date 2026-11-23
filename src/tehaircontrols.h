@@ -244,7 +244,7 @@ struct hair_and_eyes_color_list : public teTagListControl{
             if(yellow_button&&hair_button)
                 connect(hair_button,&QPushButton::toggled,yellow_button,[yellow_button](bool checked){if(checked)yellow_button->setText(qsl("blonde"));else yellow_button->setText(qsl("yellow"));});
 
-            sc->setMinimumHeight(110);
+
         }
 
         /// Is this a hair (or eyes) tag? Pure: the merge it used to start from
@@ -358,6 +358,17 @@ struct hair_and_eyes_color_list : public teTagListControl{
          */
         void onHairTagEdited(std::shared_ptr<teTag> edited_tag) {
             if(!edited_tag||edited_tag->retired||m_merging)
+                return;
+            // Same rule as absorb(): in a multi-person picture a streak or a
+            // gradient may belong to a different person, so an *edit* must not
+            // start an automatic merge either. Without this, switching "streaked"
+            // off and on again merged "white streaks" into "black hair" while
+            // adding the same tag by hand correctly did not.
+            if(isMultiPeople(taglistwidget?taglistwidget->showing_list:nullptr))
+                return;
+            // The global switch governs this path too: an edit is not a request to
+            // merge, and `absorb()` already honours the switch.
+            if(!autoMerge||!MergeSwitch)
                 return;
             const HairKind still_valid = classify_tag(edited_tag);
             if(!mergeKindAllowed(edited_tag,still_valid))
@@ -751,7 +762,7 @@ struct BangsList : public teTagListControl{
                 else bangs_label->setText(qsl("bangs"));
             });
         else telog("[BangsList::BangsList]could not find the \"bangs\" button or \"curtained\" button");
-        sc->setMinimumHeight(110);
+
     }
     bool filter(std::shared_ptr<teTag> in_tag) const override{
         if(in_tag->words.empty())return false;

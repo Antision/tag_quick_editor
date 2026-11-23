@@ -15,6 +15,7 @@
 #include "windows_frame.h"
 #include "task_runner.h"
 #include "svgicon.h"
+#include "testyle.h"
 
 #include <QPainterPath>
 #include <QRegion>
@@ -449,6 +450,10 @@ MainWindow::MainWindow(QWidget *parent)
     for(TagListView* view: findChildren<TagListView*>())
         view->setEditPopupAlways(tagEditPopupAlways);
 
+    // 主窗口的 tag list 是一个裸 QListView:不拿任何样式表,滚动条就是 Qt 默认的
+    // 小三角,深色主题下看不见。只给它滚动条那一份(箭头 + 滑块),列表本身的
+    // 边框/字号不动。
+    ui->taglist->setStyleSheet(teStyle::scrollbar());
     ui->editorlist->connectTaglistWidget(ui->taglist);
     // The pool gets the view as its parking parent (the view is the widget; the
     // controller is a plain QObject now). It no longer needs a layout: pooled

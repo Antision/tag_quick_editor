@@ -181,6 +181,10 @@ private:
     QWidget* m_colorQueueHost = nullptr;
     QFlowLayout* m_colorQueueLayout = nullptr;
     QFlowLayoutReorderer* m_colorQueueReorderer = nullptr;
+    /// 红按钮:编辑现有 tag 时是垃圾桶(删掉它),新增时是叉号(取消编辑)。
+    QPushButton* m_destroyButton = nullptr;
+    bool m_editingTag = false;
+    void applyDestroyMode();
     /// light / dark / deep - a prefix of a single colour, so they are out of the
     /// way while a queue of colours is being picked.
     QVector<QAbstractButton*> m_shadeButtons;

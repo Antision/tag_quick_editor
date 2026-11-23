@@ -504,6 +504,9 @@ class teTagListControl:public teRefTagListWidget,public EditorControl {
     Q_OBJECT
 public:
     bool ifedit=false;
+    /// "insert above/below" opened the add widget: the confirmed tag goes below
+    /// the current one instead of above it.
+    bool m_insertBelow=false;
     /**
      * @brief Words (or whole tags) this control claims.
      *
@@ -529,6 +532,8 @@ public:
     virtual void onAddButtonClicked();
     /// Ctrl+W in the list is the keyboard form of the "+" button.
     void addButtonClicked()override{ onAddButtonClicked(); }
+    /// 右键 insert above / below:打开新增窗口,记住插入方向。
+    void insertRequested(bool below)override;
     /// The add-tag window produced `data`. Virtual: a control may normalise the
     /// wording before it becomes a tag (the hair list writes "[colour] streaks").
     virtual void reciveWidgetSignal(QString data,bool ifadd);

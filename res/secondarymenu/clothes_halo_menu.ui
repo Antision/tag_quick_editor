@@ -12,12 +12,267 @@
    <property name="bottomMargin"><number>4</number></property>
    <property name="horizontalSpacing"><number>2</number></property>
    <property name="verticalSpacing"><number>2</number></property>
-   <item row="0" column="0">
+   <item row="0" column="0" colspan="3">
+    <widget class="QLabel" name="lbl_group_0">
+     <property name="type" stdset="0"><string>menuGroup</string></property>
+     <property name="text"><string>Type</string></property>
+    </widget>
+   </item>
+   <item row="1" column="0">
     <widget class="QPushButton" name="chk_halo">
      <property name="checkable"><bool>true</bool></property>
      <property name="text"><string>😇 halo</string></property>
      <property name="tags" stdset="0"><string>halo</string></property>
-     <property name="group" stdset="0"><string>halo</string></property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="chk_two_tone_halo">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>two-tone halo</string></property>
+     <property name="tags" stdset="0"><string>two-tone halo</string></property>
+    </widget>
+   </item>
+   <item row="1" column="2">
+    <widget class="QPushButton" name="chk_rainbow_halo">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>rainbow halo</string></property>
+     <property name="tags" stdset="0"><string>rainbow halo</string></property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="chk_crescent_halo">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>crescent halo</string></property>
+     <property name="tags" stdset="0"><string>crescent halo</string></property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QPushButton" name="chk_cross_halo">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>cross halo</string></property>
+     <property name="tags" stdset="0"><string>cross halo</string></property>
+    </widget>
+   </item>
+   <item row="2" column="2">
+    <widget class="QPushButton" name="chk_corrupted_halo">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>corrupted halo</string></property>
+     <property name="tags" stdset="0"><string>corrupted halo</string></property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="chk_double_halo">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>double halo</string></property>
+     <property name="tags" stdset="0"><string>double halo</string></property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QPushButton" name="chk_drawn_halo">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>drawn halo</string></property>
+     <property name="tags" stdset="0"><string>drawn halo</string></property>
+    </widget>
+   </item>
+   <item row="3" column="2">
+    <widget class="QPushButton" name="chk_fake_halo">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>fake halo</string></property>
+     <property name="tags" stdset="0"><string>fake halo</string></property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="chk_flaming_halo">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>flaming halo</string></property>
+     <property name="tags" stdset="0"><string>flaming halo</string></property>
+    </widget>
+   </item>
+   <item row="4" column="1">
+    <widget class="QPushButton" name="chk_heart_halo">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>heart halo</string></property>
+     <property name="tags" stdset="0"><string>heart halo</string></property>
+    </widget>
+   </item>
+   <item row="4" column="2">
+    <widget class="QPushButton" name="chk_liquid_halo">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>liquid halo</string></property>
+     <property name="tags" stdset="0"><string>liquid halo</string></property>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="QPushButton" name="chk_blood_halo">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>blood halo</string></property>
+     <property name="tags" stdset="0"><string>blood halo</string></property>
+    </widget>
+   </item>
+   <item row="5" column="1">
+    <widget class="QPushButton" name="chk_mechanical_halo">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>mechanical halo</string></property>
+     <property name="tags" stdset="0"><string>mechanical halo</string></property>
+    </widget>
+   </item>
+   <item row="5" column="2">
+    <widget class="QPushButton" name="chk_melting_halo">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>melting halo</string></property>
+     <property name="tags" stdset="0"><string>melting halo</string></property>
+    </widget>
+   </item>
+   <item row="6" column="0">
+    <widget class="QPushButton" name="chk_ophanim_halo">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>ophanim halo</string></property>
+     <property name="tags" stdset="0"><string>ophanim halo</string></property>
+    </widget>
+   </item>
+   <item row="6" column="1">
+    <widget class="QPushButton" name="chk_pregnancy_halo">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>pregnancy halo</string></property>
+     <property name="tags" stdset="0"><string>pregnancy halo</string></property>
+    </widget>
+   </item>
+   <item row="6" column="2">
+    <widget class="QPushButton" name="chk_rectangular_halo">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>rectangular halo</string></property>
+     <property name="tags" stdset="0"><string>rectangular halo</string></property>
+    </widget>
+   </item>
+   <item row="7" column="0">
+    <widget class="QPushButton" name="chk_spiked_halo">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>spiked halo</string></property>
+     <property name="tags" stdset="0"><string>spiked halo</string></property>
+    </widget>
+   </item>
+   <item row="7" column="1">
+    <widget class="QPushButton" name="chk_star_halo">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>star halo</string></property>
+     <property name="tags" stdset="0"><string>star halo</string></property>
+    </widget>
+   </item>
+   <item row="7" column="2">
+    <widget class="QPushButton" name="chk_traditional_halo">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>traditional halo</string></property>
+     <property name="tags" stdset="0"><string>traditional halo</string></property>
+    </widget>
+   </item>
+   <item row="8" column="0">
+    <widget class="QPushButton" name="chk_triangle_halo">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>triangle halo</string></property>
+     <property name="tags" stdset="0"><string>triangle halo</string></property>
+    </widget>
+   </item>
+   <item row="8" column="1">
+    <widget class="QPushButton" name="chk_two_sided_halo">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>two-sided halo</string></property>
+     <property name="tags" stdset="0"><string>two-sided halo</string></property>
+    </widget>
+   </item>
+   <item row="8" column="2">
+    <widget class="QPushButton" name="chk_winged_halo">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>winged halo</string></property>
+     <property name="tags" stdset="0"><string>winged halo</string></property>
+    </widget>
+   </item>
+   <item row="9" column="0" colspan="3">
+    <widget class="QLabel" name="lbl_group_9">
+     <property name="type" stdset="0"><string>menuGroup</string></property>
+     <property name="text"><string>State</string></property>
+    </widget>
+   </item>
+   <item row="10" column="0">
+    <widget class="QPushButton" name="chk_broken_halo">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>broken halo</string></property>
+     <property name="tags" stdset="0"><string>broken halo</string></property>
+    </widget>
+   </item>
+   <item row="10" column="1">
+    <widget class="QPushButton" name="chk_distorted_halo">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>distorted halo</string></property>
+     <property name="tags" stdset="0"><string>distorted halo</string></property>
+    </widget>
+   </item>
+   <item row="10" column="2">
+    <widget class="QPushButton" name="chk_dropped_halo">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>dropped halo</string></property>
+     <property name="tags" stdset="0"><string>dropped halo</string></property>
+    </widget>
+   </item>
+   <item row="11" column="0">
+    <widget class="QPushButton" name="chk_faded_halo">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>faded halo</string></property>
+     <property name="tags" stdset="0"><string>faded halo</string></property>
+    </widget>
+   </item>
+   <item row="11" column="1">
+    <widget class="QPushButton" name="chk_glitched_halo">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>glitched halo</string></property>
+     <property name="tags" stdset="0"><string>glitched halo</string></property>
+    </widget>
+   </item>
+   <item row="11" column="2">
+    <widget class="QPushButton" name="chk_glowing_halo">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>glowing halo</string></property>
+     <property name="tags" stdset="0"><string>glowing halo</string></property>
+    </widget>
+   </item>
+   <item row="12" column="0">
+    <widget class="QPushButton" name="chk_halo_removed">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>halo removed</string></property>
+     <property name="tags" stdset="0"><string>halo removed</string></property>
+    </widget>
+   </item>
+   <item row="12" column="1">
+    <widget class="QPushButton" name="chk_missing_halo">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>missing halo</string></property>
+     <property name="tags" stdset="0"><string>missing halo</string></property>
+    </widget>
+   </item>
+   <item row="12" column="2">
+    <widget class="QPushButton" name="chk_tilted_halo">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>tilted halo</string></property>
+     <property name="tags" stdset="0"><string>tilted halo</string></property>
+    </widget>
+   </item>
+   <item row="13" column="0" colspan="3">
+    <widget class="QLabel" name="lbl_group_13">
+     <property name="type" stdset="0"><string>menuGroup</string></property>
+     <property name="text"><string>Action/position</string></property>
+    </widget>
+   </item>
+   <item row="14" column="0">
+    <widget class="QPushButton" name="chk_halo_behind_head">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>halo behind head</string></property>
+     <property name="tags" stdset="0"><string>halo behind head</string></property>
+    </widget>
+   </item>
+   <item row="14" column="1">
+    <widget class="QPushButton" name="chk_holding_halo">
+     <property name="checkable"><bool>true</bool></property>
+     <property name="text"><string>holding halo</string></property>
+     <property name="tags" stdset="0"><string>holding halo</string></property>
     </widget>
    </item>
   </layout>

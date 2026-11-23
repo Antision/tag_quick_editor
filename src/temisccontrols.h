@@ -154,7 +154,7 @@
 
         Object_list(colorsWidget*in_onEdit_widget,TagListView*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr)
             :teTagListControl(in_onEdit_widget,parentlist,parent,styleSheet,"object"){
-            sc->setMinimumHeight(110);
+
         }
         bool filter(std::shared_ptr<teTag> in_tag) const override{
             if(in_tag->words.count()!=3)return false;

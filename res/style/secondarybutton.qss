@@ -73,9 +73,21 @@ SecondaryButton[kind="activatable"][captured="true"]:hover{
     background-color: rgba(0,190,120,60);
 }
 
-/* 纯二级按钮:虚线 + 淡绿底(比上面那条通用规则更明确,避免和激活态混) */
+/* 纯二级按钮:虚线 + 极淡的绿底(比上面那条通用规则更明确,避免和激活态混)。
+ * 绿底 10/255:可见但几乎不占颜色,捕获态的青色一上来就分得清 —— 18 时两者太像。 */
 SecondaryButton[kind="pure"]{
     border: 1px dotted #d8b13a;
     border-radius: 6px;
-    background-color: rgba(0,190,120,18);
+    background-color: rgba(0,190,120,10);
+}
+/* 捕获态必须压过上面这条:两条选择器特异性相同,后写的赢 —— 少这一条,纯按钮
+ * 捕获后仍是那层几乎看不见的绿底,和未捕获分不开。 */
+SecondaryButton[kind="pure"][captured="true"]{
+    border: 1px dotted #00b059;
+    background-color: rgba(0,190,140,58);
+    color: #00e07a;
+}
+SecondaryButton[kind="pure"][captured="true"]:hover{
+    border: 1px dotted #00d96b;
+    background-color: rgba(0,190,140,78);
 }

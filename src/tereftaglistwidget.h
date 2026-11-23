@@ -31,10 +31,18 @@ class teRefTagListWidget:public teTagListWidgetBase{
 public:
     std::map<teRefTagWidget*,teTagList*,bool(*)(teRefTagWidget*,teRefTagWidget*)>tags{teRefTagCmp};
     TagListView*parentTagListWidget=nullptr;
-    teRefTagListWidget(QWidget*parent):teTagListWidgetBase(12,parent){}
-    teRefTagListWidget(TagListView*parentlist,QWidget*parent):teTagListWidgetBase(12,parent),parentTagListWidget(parentlist){};
+    teRefTagListWidget(QWidget*parent):teTagListWidgetBase(12,parent){updateAdaptiveHeight();}
+    teRefTagListWidget(TagListView*parentlist,QWidget*parent):teTagListWidgetBase(12,parent),parentTagListWidget(parentlist){updateAdaptiveHeight();}
     ~teRefTagListWidget(){}
     void keyPressEvent(QKeyEvent *event) override;
+    /**
+     * @brief Tab 不能被焦点链先吃掉。
+     *
+     * QWidget::event() 在 Tab 上先调 focusNextPrevChild(),返回 true 就直接换焦点、
+     * 根本走不到 keyPressEvent —— 于是"Tab 手动合并"永远没反应,而 Shift+M
+     * (不参与焦点导航)却正常。支持手动合并的列表把 Tab 留给自己的 keyPressEvent。
+     */
+    bool focusNextPrevChild(bool next) override;
     /**
      * @brief What the "+" button of this list does.
      *
@@ -43,6 +51,12 @@ public:
      * list without a "+" does nothing.
      */
     virtual void addButtonClicked(){}
+    /**
+     * @brief 「insert above / below」:打开新增窗口,新 tag 插到当前位置的上/下。
+     *
+     * 基类没有新增窗口,什么也不做;编辑器里的列表(teTagListControl)覆写它。
+     */
+    virtual void insertRequested(bool below){ Q_UNUSED(below); }
     virtual int setSelectRange(teTagWidgetBase*in,bool ifclear=true)override;
     void setSelectAll();
     void clear(teTagList *in=nullptr)override;
@@ -55,6 +69,19 @@ public:
     virtual void tagErase(std::shared_ptr<teTag>tag=nullptr)override;
     std::map<teRefTagWidget*,teTagList*,bool(*)(teRefTagWidget*,teRefTagWidget*)>::iterator findIterator(std::shared_ptr<teTag>tag);
     void findAndErase(std::shared_ptr<teTag>in_core);
+    /**
+     * @brief 自适应高度:1..3 条 tag 时正好占它们的高度,超过 3 条按 3 条算。
+     *
+     * 高度 = 行数 × 一条 tag 的高度 + 6px。行高取第一个可见 ref widget 的
+     * sizeHint(),所以改字号不用同步改这里。列表原来固定 110px(每个宿主控件
+     * 各写一遍 sc->setMinimumHeight(110)),两条 tag 的列表也占那么高。
+     */
+    void updateAdaptiveHeight();
+    /// 重新显示时再量一次:页面重建前加进去的 tag 那时还没有真实高度。
+    void showEvent(QShowEvent* event) override;
+    /// 真正量高度的那一步(updateAdaptiveHeight() 把它推到下一轮事件循环)。
+    void applyAdaptiveHeight();
+    bool m_heightUpdatePending=false;
     void Destroy(teRefTagWidget*tag);
     virtual void connectTag(teTagWidgetBase* tag)override{
         teTagListWidgetBase::connectTag(tag);

@@ -717,7 +717,7 @@ struct ClothesList : public teTagListControl {
     ClothesList(colorsWidget*in_onEdit_widget,TagListView*parentlist,QWidget*parent = nullptr,QString*styleSheet=nullptr)
         :teTagListControl(in_onEdit_widget,parentlist,parent,styleSheet,"clothes"){
         this->info=QStringLiteral("ClothesList");
-        sc->setMinimumHeight(110);
+
     }
 
     /// 本列表提供右键 merge(Tab / Shift+M)。

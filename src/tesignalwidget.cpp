@@ -124,6 +124,8 @@ void colorsWidget::addBuiltSection(QGridLayout* grid,QButtonGroup* group,
 
 void colorsWidget::startNewTag()
 {
+    m_editingTag = false;
+    applyDestroyMode();
     uncheckAllButtons();
     for(SecondaryButton* button : findChildren<SecondaryButton*>()){
         button->setPaletteMode(true);
@@ -391,9 +393,15 @@ colorsWidget::colorsWidget(QVector<QPair<QStringList, bool> > &&objects, QWidget
     }
 
     QPushButton* destroy_btn = new QPushButton(this);
+    m_destroyButton = destroy_btn;
     destroy_btn->setStyleSheet(destroyButtonStyle);
     connect(destroy_btn,&QPushButton::clicked,this,[this](){
-        emit destroySignal();this->hide();uncheckAllButtons();
+        // 编辑现有 tag:垃圾桶 = 删掉它;新增:叉号 = 取消(什么都不写)。
+        if(m_editingTag)
+            emit destroySignal();
+        else
+            emit cancelSignal();
+        this->hide();uncheckAllButtons();
     },Qt::DirectConnection);
     connect(this,&LiteWidget2::closed,this,[this]{
         emit cancelSignal();
@@ -567,6 +575,9 @@ void colorsWidget::input_and_show(std::shared_ptr<teTag> in_tag)
 }
 
 void colorsWidget::applyEditingTag(std::shared_ptr<teTag> in_tag){
+    // 有 tag 要编辑 = 垃圾桶(删掉它);没有 = 新增,红按钮是叉号(取消)。
+    m_editingTag = bool(in_tag);
+    applyDestroyMode();
     // The dialog edits *one* tag: whatever was ticked for the previous one (or
     // for a new tag that was never composed) goes away first, otherwise a stale
     // "skirt" would stay lit while a pair of gloves is being edited.
@@ -1060,22 +1071,79 @@ background-color:rgba(25,235,130,150);
 }
 )");
 
+namespace {
+/**
+ * @brief 常态不发光、悬停才发光的图标。
+ *
+ * QIcon 的 Active 模式在 QStyleSheetStyle 里不一定按 hover 选,所以这里直接监听
+ * Enter/Leave 换图标:两套 pixmap 都是 32x32(光晕版四周留边),按钮尺寸不变。
+ */
+class GlowOnHover : public QObject {
+public:
+    GlowOnHover(QPushButton* button, const QIcon& plain, const QIcon& glow)
+        : QObject(button), m_button(button), m_plain(plain), m_glow(glow) {
+        m_button->setIcon(m_plain);
+        m_button->installEventFilter(this);
+    }
+    bool eventFilter(QObject* watched, QEvent* event) override {
+        if (watched == m_button) {
+            if (event->type() == QEvent::Enter)
+                m_button->setIcon(m_glow);
+            else if (event->type() == QEvent::Leave)
+                m_button->setIcon(m_plain);
+        }
+        return QObject::eventFilter(watched, event);
+    }
+private:
+    QPushButton* m_button;
+    QIcon m_plain;
+    QIcon m_glow;
+};
+
+/// 32x32 画布 + 居中的 20x20 图标;`glow` 版由 svgicon 自带光晕和留边。
+QIcon signalIcon(const QString& path, const QColor& color, bool glow)
+{
+    const QSize iconSize(20, 20);
+    const QSize slot(32, 32);
+    if (glow)
+        return svgicon::icon(path, color, iconSize, 2.0);
+    QPixmap plain(slot);
+    plain.fill(Qt::transparent);
+    QPainter painter(&plain);
+    painter.drawPixmap((slot.width() - iconSize.width()) / 2,
+                       (slot.height() - iconSize.height()) / 2,
+                       svgicon::tinted(path, color, iconSize, 0.0));
+    return QIcon(plain);
+}
+
+void setHoverGlowIcon(QPushButton* button, const QString& path, const QColor& color)
+{
+    if (!button)
+        return;
+    // 换图标(垃圾桶 <-> 叉号)时拆掉旧过滤器,否则两个过滤器会抢着设图标。
+    const QObjectList children = button->children();
+    for (QObject* child : children)
+        if (auto* filter = dynamic_cast<GlowOnHover*>(child))
+            delete filter;
+    button->setIconSize(QSize(32, 32));
+    new GlowOnHover(button, signalIcon(path, color, false), signalIcon(path, color, true));
+}
+} // namespace
+
+void colorsWidget::applyDestroyMode()
+{
+    setHoverGlowIcon(m_destroyButton,
+                     m_editingTag ? QStringLiteral(":/icons/trash.svg")
+                                  : QStringLiteral(":/icons/x.svg"),
+                     QColor(255, 64, 64));
+}
+
 void applySignalButtonIcons(QPushButton* ok,QPushButton* add,QPushButton* destroy){
-    // 图标 20px,光晕外扩 3*2px → 画布 32px;iconSize 跟着画布走,别让 Qt 缩。
-    const QSize iconSize(20,20);
-    const QSize slotSize(32,32);
-    if(ok){
-        ok->setIcon(svgicon::icon(":/icons/check.svg",QColor(25,235,130),iconSize,2.0));
-        ok->setIconSize(slotSize);
-    }
-    if(add){
-        add->setIcon(svgicon::icon(":/icons/plus.svg",QColor(25,235,130),iconSize,2.0));
-        add->setIconSize(slotSize);
-    }
-    if(destroy){
-        destroy->setIcon(svgicon::icon(":/icons/x.svg",QColor(255,64,64),iconSize,2.0));
-        destroy->setIconSize(slotSize);
-    }
+    // 常态不发光,鼠标经过才发光(用户明确要求)。
+    setHoverGlowIcon(ok, QStringLiteral(":/icons/check.svg"), QColor(25,235,130));
+    setHoverGlowIcon(add, QStringLiteral(":/icons/plus.svg"), QColor(25,235,130));
+    if(destroy)
+        setHoverGlowIcon(destroy, QStringLiteral(":/icons/x.svg"), QColor(255,64,64));
 }
 QString tagItemStyle = QStringLiteral(R"(
 QPushButton{

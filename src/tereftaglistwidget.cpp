@@ -3,6 +3,8 @@
 #include "teeditorcontrol.h"
 #include "mainwindow.h"
 #include "func.h"
+
+#include <QTimer>
 bool teRefTagCmp(teRefTagWidget *a, teRefTagWidget *b){
     return a->core<b->core;
 }
@@ -98,6 +100,15 @@ words_loop_end:
 
 
 
+bool teRefTagListWidget::focusNextPrevChild(bool next)
+{
+    // A list that merges on Tab keeps it: letting the focus chain have it first is
+    // why Tab did nothing while Shift+M worked.
+    if(manualMergeSupported())
+        return false;
+    return teTagListWidgetBase::focusNextPrevChild(next);
+}
+
 void teRefTagListWidget::keyPressEvent(QKeyEvent *event) {
     if (event->matches(QKeySequence::SelectAll)) {
         setSelectAll();
@@ -182,6 +193,7 @@ void teRefTagListWidget::clear(teTagList *in){
     }else{
         telog("TagRefList currently does not support clearing specified tags");
     }
+    updateAdaptiveHeight();
 }
 
 int teRefTagListWidget::findindex(std::shared_ptr<teTag> in_tag){
@@ -266,6 +278,85 @@ std::map<teRefTagWidget*,teTagList*,bool(*)(teRefTagWidget*,teRefTagWidget*)>::i
         return it;
 }
 
+void teRefTagListWidget::updateAdaptiveHeight()
+{
+    // The widgets inserted in this turn are not shown yet, and an unshown tag
+    // reports its pre-stylesheet size hint (25px vs 30px once it is laid out).
+    // Measure on the next turn, and coalesce: inserting ten tags is one update.
+    if (m_heightUpdatePending)
+        return;
+    m_heightUpdatePending = true;
+    QTimer::singleShot(0, this, [this] {
+        m_heightUpdatePending = false;
+        applyAdaptiveHeight();
+    });
+}
+
+void teRefTagListWidget::applyAdaptiveHeight()
+{
+    if (!sc || !layout)
+        return;
+    int widgets = 0;
+    int rowHeight = 0;
+    for (int i = 0; i < layout->count(); ++i) {
+        QWidget* widget = layout->itemAt(i)->widget();
+        if (!widget)
+            continue;                   // the bottom spacer
+        ++widgets;
+        // sizeHint, not height(): a widget the layout stretched (or one that has
+        // not been laid out yet) would otherwise decide the row height.
+        if (rowHeight <= 0)
+            rowHeight = qMax(widget->sizeHint().height(),
+                             widget->minimumSizeHint().height());
+    }
+    if (rowHeight <= 0)
+        rowHeight = fontMetrics().height() + 10;
+    // 0 条也留一行:6px 的空条读起来像被压扁的边框,而列表始终要能接住拖进来的 tag。
+    const int rows = qMin(qMax(widgets, 1), 3);
+    const int wanted = rows * rowHeight + 6;
+    // Both halves matter: the scroll area is what shows the rows, but the control
+    // itself is what the editor row lays out. Fixing only the scroll area left the
+    // row at the height it got while the list was empty - the visible height lagged
+    // one tag behind until the page was rebuilt by switching images.
+    sc->setFixedHeight(wanted);
+    // The control also carries the title + "+/-" row above the scroll area; a
+    // fixed height of just `wanted` would take those pixels away from the tags.
+    int chrome = 0;
+    if (wlayout) {
+        for (int i = 0; i < wlayout->count(); ++i) {
+            QLayoutItem* item = wlayout->itemAt(i);
+            if (!item || item->widget() == sc)
+                continue;
+            QWidget* widget = item->widget();
+            if (widget && widget->isHidden())
+                continue;
+            chrome += item->sizeHint().height();
+        }
+        const QMargins margins = wlayout->contentsMargins();
+        chrome += margins.top() + margins.bottom();
+    }
+    setFixedHeight(wanted + chrome);
+    updateGeometry();
+    // Ask the editor page to lay out again. The control is one widget in a row,
+    // and a row inside a page that was built while this list was empty kept the
+    // old geometry until the page was rebuilt (switching images "fixed" it).
+    for (QWidget* parent = parentWidget(); parent; parent = parent->parentWidget()) {
+        parent->updateGeometry();
+        if (QLayout* layout = parent->layout())
+            layout->activate();
+        if (qobject_cast<QScrollArea*>(parent))
+            break;
+    }
+}
+
+void teRefTagListWidget::showEvent(QShowEvent* event)
+{
+    teTagListWidgetBase::showEvent(event);
+    // Widgets added while the page was hidden reported their pre-stylesheet size;
+    // measure again now that they are on screen.
+    updateAdaptiveHeight();
+}
+
 void teRefTagListWidget::findAndErase(std::shared_ptr<teTag> in_core){
     auto it=findIterator(in_core);
     if(it!=tags.end()){
@@ -275,6 +366,7 @@ void teRefTagListWidget::findAndErase(std::shared_ptr<teTag> in_core){
         forgetSelection(it->first);
         widgetpool_ref.give_back(it->first);
         tags.erase(it);
+        updateAdaptiveHeight();
     }else{
         telog("[teRefTagListWidget::findAndErase]:Couldn't find tag in reftaglistwidget");
     }
@@ -358,15 +450,25 @@ void teRefTagListWidget::tagDestroy(std::shared_ptr<teTag> tag){
 
 extern QWidget*global_window;
 void teRefTagListWidget::tagInsertAbove(bool edit, std::shared_ptr<teTag>newtag,int removeDuplicate){
-    taginsert(edit,newtag,removeDuplicate);
+    if(!newtag){
+        // 右键菜单的 "insert above":打开新增窗口,由它把 tag 写到当前 tag 上方。
+        // 旧代码把 edit(bool) 当成 index 传给 taginsert(),还带着空 tag —— 直接崩。
+        if(edit)
+            insertRequested(false);
+        return;
+    }
+    taginsert(-1,newtag,removeDuplicate);
 }
 
 void teRefTagListWidget::tagInsertBelow(bool edit, std::shared_ptr<teTag>newtag,int removeDuplicate){
-    MainWindow* mwptr = (MainWindow*)global_window;
     if(newtag==nullptr){
-        telog("can't insert a reftag with nullptr tagcore");
+        if(edit)
+            insertRequested(true);
+        else
+            telog("can't insert a reftag with nullptr tagcore");
         return;
     }
+    MainWindow* mwptr = (MainWindow*)global_window;
     // ui->taglist is the view now; the controller behind it owns the tag list.
     TagListView* mainTagList = mwptr->ui->taglist;
     if(select_current==nullptr){
@@ -447,5 +549,6 @@ teTagWidgetBase *teRefTagListWidget::taginsert(int index,std::shared_ptr<teTag>i
     if(select){
         setSelectCurrent(widget);
     }
+    updateAdaptiveHeight();
     return widget;
 }
