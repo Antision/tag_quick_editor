@@ -316,6 +316,13 @@ private:
     /// The level above `menu` (the second level for its first child), nullptr for
     /// the second level itself.
     SecondaryMenu* parentOf(const SecondaryMenu* menu) const;
+
+    /// True when `member` belongs to `parent`'s family: the entry itself, a
+    /// same-group sibling, or anything read from its submenu tree (`family="true"`
+    /// entries such as the body-part ones, whose variants share no group).
+    bool isFamilyMember(const QVector<Action>& pool,const Action& parent,
+                        const Action& member) const;
+
     /**
      * @brief The tag operations of the tags this button captured.
      *
@@ -332,7 +339,8 @@ private:
     /// One tag from an entry's text, through m_tagBuilder when one was given.
     std::shared_ptr<teTag> makeTag(const QString& text) const;
     /// True when the entry replaced the type of the tag the menu was opened at.
-    bool rewriteAnchoredTag(const std::shared_ptr<teTag>& tag, const Action& action);    /// The entries of the menu that is on screen (the first one when none is).
+    bool rewriteAnchoredTag(const std::shared_ptr<teTag>& tag, const Action& action);
+    /// The entries of the menu that is on screen (the first one when none is).
     const QVector<Action>& activeActions() const;
     /// Does the menu on screen declare a third level? Then its groups belong to
     /// setFamily(), not to the "alternatives" rule in toggleAction().
@@ -417,6 +425,14 @@ private:
     /// release that ends the drag must not also "click" *that* menu - but a
     /// release over another level is still a normal pick.
     SecondaryMenu* m_rightUsedMenu = nullptr;
+    /// The menu window that received the last left press, if any.
+    ///
+    /// A pinned menu is a real window: pressing one of its entries delivers the
+    /// press there, and the matching release is that entry's own click. The
+    /// application-wide release handler below must not pick the entry a second
+    /// time - doing that used to close the whole stack when a third-level entry
+    /// was clicked (the handler always ended in hideMenu()).
+    SecondaryMenu* m_pressMenu = nullptr;
 };
 
 #endif // SECONDARYBUTTON_H

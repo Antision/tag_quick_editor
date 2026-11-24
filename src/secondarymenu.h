@@ -36,6 +36,14 @@ struct SecondaryAction {
     /// borrows the label of whichever member is captured, and is highlighted when
     /// any member is. It no longer means "exclusive" - these are multi-select.
     QString group;
+    /// "This entry and everything in its submenu are one family" (`family="true"`
+    /// in the .ui). The body-part entries use it without a group: `stomach` and
+    /// its variants (`navel`, `belly`, ...) belong together for the label and the
+    /// on/off switch, but they are independent tags with no exclusive group.
+    bool family = false;
+    /// The .ui file this action was read from. Filled by readActions(); it is how
+    /// an entry knows which submenu entries are its own descendants.
+    QString menuPath;
     /// Added when this entry is switched on, never removed by switching it off
     /// ("mosaic censoring" implies "censored"; the user may still drop `censored`
     /// on its own).

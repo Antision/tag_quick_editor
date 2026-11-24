@@ -147,6 +147,7 @@ void SecondaryMenu::collectActions(QWidget* page, QVector<SecondaryAction>& out)
             action.tags = tags.split(QLatin1Char('|'), Qt::SkipEmptyParts);
         action.group = button->property("group").toString();
         action.submenuPath = button->property("submenu").toString();
+        action.family = button->property("family").toBool();
         const QString implies = button->property("implies").toString();
         if (!implies.isEmpty())
             action.implies = implies.split(QLatin1Char('|'), Qt::SkipEmptyParts);
@@ -168,6 +169,11 @@ QVector<SecondaryAction> SecondaryMenu::readActions(const QString& path)
     if (!page)
         return result;
     collectActions(page, result);
+    // Every entry remembers the file it came from: the button walks the whole
+    // tree (second level + every submenu) and needs to tell a descendant from an
+    // unrelated entry that happens to follow it in the flat list.
+    for (SecondaryAction& action : result)
+        action.menuPath = path;
     delete page;
     return result;
 }

@@ -14,6 +14,7 @@
 #include <QStyleOptionButton>
 
 #include <algorithm>
+#include <functional>
 
 namespace {
 /// The only button that can be Pinned. Pinning a second one closes the first:
@@ -451,6 +452,9 @@ void SecondaryButton::dropChildrenOf(SecondaryMenu* parent)
         index = -1;                       // the second level owns all of them
     else if (index < 0)
         return;
+    // A press that was recorded in a menu that is about to go away can never be
+    // matched by a release any more.
+    m_pressMenu = nullptr;
     // Everything below this menu belongs to an entry that is no longer the one
     // being used. deleteLater: this can run from a child's own click handler.
     while (m_children.size() > index + 1) {
@@ -564,6 +568,9 @@ void SecondaryButton::pinActive()
     for (SecondaryMenu* child : m_children)
         child->setPreview(false);
     m_mode = Mode::Pinned;
+    // The press that pinned this menu belonged to the drag; a later release must
+    // not be matched against it.
+    m_pressMenu = nullptr;
     // SC-02's "click anywhere else closes it": while pinned, every press in the
     // application passes through here first.
     qApp->installEventFilter(this);
@@ -593,7 +600,9 @@ void SecondaryButton::hideSubmenu()
 
 void SecondaryButton::hideMenu()
 {
+
     qApp->removeEventFilter(this);
+    m_pressMenu = nullptr;
     if (m_mode == Mode::Pinned && sPinned == this)
         sPinned = nullptr;
     hideSubmenu();
@@ -652,17 +661,42 @@ bool SecondaryButton::entryCaptured(const Action& action) const
            && std::includes(captured.begin(), captured.end(), theirs.begin(), theirs.end());
 }
 
+bool SecondaryButton::isFamilyMember(const QVector<Action>& pool,const Action& parent,
+                                     const Action& member) const
+{
+    if (&member == &parent)
+        return true;
+    if (member.id == parent.id && member.menuPath == parent.menuPath)
+        return true;
+    // A group is the explicit "these entries are alternatives" marker. It must be
+    // non-empty: every ungrouped entry would otherwise join one family (that made
+    // one body part look like all of them).
+    if (!parent.group.isEmpty() && member.group == parent.group)
+        return true;
+    if (parent.submenuPath.isEmpty())
+        return false;
+    // `family="true"` entries (the body parts) have no group: their family is the
+    // submenu tree itself. Walk the paths the button already read.
+    QStringList paths{parent.submenuPath};
+    for (int i = 0; i < paths.size(); ++i) {
+        if (!member.menuPath.isEmpty() && member.menuPath == paths.at(i))
+            return true;
+        for (const Action& action : pool)
+            if (action.menuPath == paths.at(i) && !action.submenuPath.isEmpty()
+                && !paths.contains(action.submenuPath))
+                paths.push_back(action.submenuPath);
+    }
+    return false;
+}
+
 bool SecondaryButton::familyCaptured(const Action& parent) const
 {
-    // No group means "this entry stands for itself". Comparing empty strings
-    // would put every ungrouped entry into one family: capturing one body part
-    // then made every other part look captured too (a click on an unlit part
-    // "switched the family off" and deleted them all).
-    if (parent.group.isEmpty())
-        return entryCaptured(parent);
-    for (const Action& member : m_actions)
-        if (member.group == parent.group && member.tags != parent.tags && entryCaptured(member))
+    for (const Action& member : m_actions) {
+        if (member.tags.isEmpty() || !isFamilyMember(m_actions,parent,member))
+            continue;
+        if (entryCaptured(member))
             return true;
+    }
     return entryCaptured(parent);
 }
 
@@ -685,11 +719,14 @@ void SecondaryButton::setFamily(const Action& parent, bool on)
         // The entry stands for the whole family: "off" means every captured member
         // goes, not just the one whose name the entry happens to show. An entry
         // without a group is only itself (see familyCaptured()).
+        // The entry stands for its whole family: its own tag, same-group members
+        // and everything in its submenu tree (readMenuActions() already read every
+        // level, so the body-part variants are in m_actions even before the third
+        // level was ever opened).
         QStringList members = parent.tags;
-        if (!parent.group.isEmpty())
-            for (const Action& member : m_actions)
-                if (member.group == parent.group)
-                    members += member.tags;
+        for (const Action& member : m_actions)
+            if (isFamilyMember(m_actions,parent,member))
+                members += member.tags;
         const std::set<std::shared_ptr<teTag>> linked = linked_tags;
         for (const std::shared_ptr<teTag>& tag : linked)
             if (members.contains(static_cast<QString>(*tag)))
@@ -750,6 +787,7 @@ void SecondaryButton::activateAction(SecondaryAction action, bool fromSubmenu, b
     // means the second level, which is the only one it can be talking about.
     if (!owner)
         owner = m_active;
+
     // Pointing at another entry of the *second* level means the user is done with
     // whatever hung below it: a child menu never survives a click somewhere else
     // in its parent.
@@ -868,12 +906,17 @@ void SecondaryButton::syncMenuSelection()
         // entry (`skirt` in the skirt menu) lights up for its own tag and nothing
         // else: picking `microskirt` lights `microskirt` and the skirt *button*,
         // not the `skirt` entry - that one would claim a tag nobody wrote.
-        if (parent.submenuPath.isEmpty() || parent.group.isEmpty())
+        // Only a family entry represents its level below; a plain submenu entry
+        // is just a launcher. `family="true"` is the marker the body parts use,
+        // where the variants are independent tags with no group.
+        if (parent.submenuPath.isEmpty())
+            continue;
+        if (parent.group.isEmpty() && !parent.family)
             continue;
         const Action* firstLit = nullptr;
         bool selfLit = false;
         for (const Action& member : actions) {
-            if (member.group != parent.group || member.tags.isEmpty())
+            if (member.tags.isEmpty() || !isFamilyMember(actions,parent,member))
                 continue;
             if (!capturedAll(member))
                 continue;
@@ -1334,6 +1377,7 @@ void SecondaryButton::handleMenuBlankPress(SecondaryMenu* menu, bool right)
     // inside it means "work with the entries", nothing else.
     if (right)
         return;
+
     if (menu == m_active)
         hideMenu();
     else
@@ -1573,6 +1617,7 @@ void SecondaryButton::mouseReleaseEvent(QMouseEvent* event)
 void SecondaryButton::hideEvent(QHideEvent* event)
 {
     // A folded page or a closed window cannot own a popup that stays on screen.
+
     m_rightPressPending = false;
     hideMenu();
     QPushButton::hideEvent(event);
@@ -1595,6 +1640,19 @@ bool SecondaryButton::eventFilter(QObject* watched, QEvent* event)
         for (SecondaryMenu* child : m_children)
             inMenu = inMenu || child->frameGeometry().contains(global);
         const bool onButton = rect().contains(mapFromGlobal(global));
+        // Remember which menu window got this press. A pinned menu is usable at
+        // every depth, so its entries receive press + release themselves; the
+        // release branch below has to leave that pair alone.
+        m_pressMenu = nullptr;
+        if (m_active && m_active->frameGeometry().contains(global))
+            m_pressMenu = m_active;
+        for (int i = m_children.size() - 1; i >= 0; --i) {
+            SecondaryMenu* child = m_children[i];
+            if (child && child->frameGeometry().contains(global)) {
+                m_pressMenu = child;        // the deepest menu wins
+                break;
+            }
+        }
         if (!inMenu && !onButton)
             hideMenu();
         break;
@@ -1625,6 +1683,21 @@ bool SecondaryButton::eventFilter(QObject* watched, QEvent* event)
                 break;
             // Anywhere else the release is an ordinary pick and falls through.
         }
+        // Press and release in one menu window = that entry's own click. This is
+        // the pinned menu's normal path (its windows are interactive): picking it
+        // here as well would run the action twice and, because this branch ends in
+        // hideMenu(), close the whole stack - which is exactly what a third-level
+        // click used to do while the second level stayed open for its own clicks.
+        //
+        // The press record is *not* cleared here: one physical event is delivered
+        // through several notify() calls (window -> page -> button), so this filter
+        // runs more than once for the same release. Clearing it in the first call
+        // let the second call fall through and close everything. It is replaced by
+        // the next press and dropped when the menus go away.
+        if (m_pressMenu && m_pressMenu->isVisible()
+            && m_pressMenu->frameGeometry().contains(mouse->globalPosition().toPoint()))
+            break;
+
         SecondaryMenu* top = deepestMenu();
         if (!top || !top->isVisible())
             break;
