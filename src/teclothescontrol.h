@@ -1,4 +1,4 @@
-/*
+﻿/*
  * teclothescontrol.h - the clothes tag list control and its helpers.
  *
  * Moved out of teeditor_derive.cpp, where the whole clothes editor used to be
@@ -1113,8 +1113,10 @@ struct ClothesList : public teTagListControl {
         applyWords(in_tag);
         in_tag->teConnect(teCallbackType::edit,this,&ClothesList::onTagEdited,in_tag);
         in_tag->teConnect(teCallbackType::edit_with_layout,this,&ClothesList::onTagEdited,in_tag);
-        teTagWidgetBase*widget =taginsert(-1,in_tag,taglistwidget->showing_list);
-        extraWidgetPushBack(in_tag,widget);
+        // No per-tag extra button any more (2026-11-24): the bow [hair] toggle was
+        // the last one, and the tag's own second-level menu converts types now
+        // ("bow" -> "hair bow" is an entry there).
+        taginsert(-1,in_tag,taglistwidget->showing_list);
     }
 
     void unlink(std::shared_ptr<teTag> in_tag)override{
@@ -1129,49 +1131,4 @@ struct ClothesList : public teTagListControl {
         clothes_editing.reset();
     }
 
-    void extraWidgetPushBack(std::shared_ptr<teTag>in_tag,teTagWidgetBase*widget){
-        if(in_tag->words.empty()||*in_tag->words.back()!=qsl("bow"))
-            return;
-        int wordcount = in_tag->words.size();
-        QPushButton*hairbow_btn = new QPushButton("hair",widget);
-        hairbow_btn->setStyleSheet(qsl(R"(font:8pt "Sonsolas")"));
-        hairbow_btn->setCheckable(true);
-        hairbow_btn->setFixedHeight(15);
-        hairbow_btn->setContentsMargins(2,1,2,1);
-        for(int i =0;i<wordcount;++i)
-            if(*in_tag->words[i]==qsl("hair"))
-                hairbow_btn->setChecked(true);
-        connect(hairbow_btn,&QPushButton::clicked,widget,[in_tag,this](bool ifchecked){
-            auto* editorTag=tagWidgetFor(in_tag);
-            if(ifchecked){
-                // Never a second "hair": clicking again must not add another
-                // word (it used to, so "hair" piled up).
-                if(in_tag->contains(qsl("hair")))
-                    return;
-                if(editorTag)
-                    editorTag->insertWord(-2,qsl("hair"));
-            }else{
-                // Every "hair" is removed *without* signalling in between.
-                // Each destroyWord() re-enters this control through
-                // edited_with_layout() -> onTagEdited() -> applyWords(), which
-                // rewrites the tag's words - so the old loop walked a vector that
-                // had already been rewritten, and the word either survived or came
-                // back. One announcement at the end is enough.
-                bool removed=false;
-                for(int i=in_tag->words.size()-1;i>=0;--i)
-                    if(*in_tag->words[i]==qsl("hair")){
-                        if(editorTag)
-                            editorTag->destroyWord(i,false);
-                        else{
-                            delete in_tag->words[i];
-                            in_tag->words.erase(in_tag->words.begin()+i);
-                        }
-                        removed=true;
-                    }
-                if(removed)
-                    in_tag->edited_with_layout();
-            }
-        },Qt::DirectConnection);
-        widget->insertExtraWidgets(this,hairbow_btn);
-    }
 };

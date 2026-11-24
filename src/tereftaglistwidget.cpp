@@ -312,8 +312,11 @@ void teRefTagListWidget::applyAdaptiveHeight()
     if (rowHeight <= 0)
         rowHeight = fontMetrics().height() + 10;
     // 0 条也留一行:6px 的空条读起来像被压扁的边框,而列表始终要能接住拖进来的 tag。
-    const int rows = qMin(qMax(widgets, 1), 3);
-    const int wanted = rows * rowHeight + 6;
+    // 高度规则(2026-11-24 用户定):
+    //   最多 4 行,行外层留 10px;不足 4 条时按实际条数 × 行高 + 10;
+    //   0 条时只占一行、不加那 10px(空列表不该比一个 tag 还高)。
+    const int rows = qMin(qMax(widgets, 1), 4);
+    const int wanted = rows * rowHeight + (widgets == 0 ? 0 : 10);
     // Both halves matter: the scroll area is what shows the rows, but the control
     // itself is what the editor row lays out. Fixing only the scroll area left the
     // row at the height it got while the list was empty - the visible height lagged
