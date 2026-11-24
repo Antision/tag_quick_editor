@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QPointer>
 #include "teimagewidget.h"
 #include"tepicturefile.h"
 #include"teeditor.h"
@@ -61,6 +62,7 @@ class teSelectionTagListView;
 class teSelectionTagModel;
 class LogWidget;
 class ConnectivityOverlay;
+class ImageDeduplicateWindow;
 
 /// Outcome of teResolveDuplicateStems().
 struct teDuplicateStemReport{
@@ -125,6 +127,10 @@ public:
     LogWidget* logWindow=nullptr;
     /// The capture lines over the splitter area (S7); owned by this window.
     ConnectivityOverlay* connectivityOverlay=nullptr;
+    /// The deduplication window (common/dedup, Tools menu). Created on first
+    /// use, closes and deletes itself; QPointer because the window owns its own
+    /// lifetime (it is not a child widget).
+    QPointer<ImageDeduplicateWindow> dedupWindow;
     QTimer* autoSaveTimer=nullptr;
     /// Coalesces picture list selection changes into one tag list reload.
     QTimer* selectionTimer=nullptr;
@@ -192,6 +198,14 @@ public slots:
     /// Runs autoSaveSec after the last change; safely on the GUI thread.
     void autoSaveTick();
     void showLogWindow();
+    /**
+     * @brief Tools -> Image Deduplication: the shared dedup window (S10).
+     *
+     * One instance per program run, created on first use. It is a top-level
+     * window with its own title bar, not a dialog: the scan runs while the user
+     * keeps editing tags here.
+     */
+    void showDedupWindow();
 private slots:
     void on_sortByLexButton_clicked();
     void on_sortByOccurrenceButton_clicked();

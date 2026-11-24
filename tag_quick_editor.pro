@@ -25,6 +25,12 @@ RC_ICONS = res/icon.ico
 
 # 公用代码库(与 gallery_info 共用,独立仓库,git submodule -> ../common)
 include($$PWD/common/common.pri)
+
+# 去重窗口(common/dedup,S10)。库路径是构建机上的绝对路径,所以由消费方给;
+# 模块本身只需要 OpenCV 与 libjpeg-turbo(ffmpeg 不在这个模块里)。
+DEDUP_OPENCV_ROOT = F:/libs/opencv
+DEDUP_JPEG_ROOT   = F:/libs/libjpeg-turbo64
+include($$PWD/common/dedup/dedup.pri)
 SOURCES += \
     src/colorpicker.cpp \
     src/connectivityoverlay.cpp \
@@ -103,7 +109,6 @@ HEADERS += \
     src/tetag.h \
     src/tetagdisplaywidget.h \
     src/tetaglistwidget.h \
-    src/type_search.h \
     src/widget_pool.h \
     src/windows_frame.h
 
@@ -134,4 +139,15 @@ win32 {
     } else {
         QMAKE_POST_LINK += $$escape_expand(\\n\\t) windeployqt --no-translations --no-compiler-runtime --release $(DESTDIR_TARGET)
     }
+    # 去重窗口(common/dedup)的运行时:OpenCV 与 libjpeg-turbo 不是 Qt 的一部分,
+    # windeployqt 不会带。缺一个就在打开窗口时直接起不来。
+    OPENCV_BIN = $$DEDUP_OPENCV_ROOT/build/x64/vc16/bin
+    JPEG_BIN   = $$DEDUP_JPEG_ROOT/bin
+    CONFIG(debug, debug|release) {
+        QMAKE_POST_LINK += $$escape_expand(\\n\\t) $$QMAKE_COPY /Y "$$shell_path($$OPENCV_BIN/opencv_world4120d.dll)" "$$shell_path($$RUNTIME_DST)"
+    } else {
+        QMAKE_POST_LINK += $$escape_expand(\\n\\t) $$QMAKE_COPY /Y "$$shell_path($$OPENCV_BIN/opencv_world4120.dll)" "$$shell_path($$RUNTIME_DST)"
+    }
+    QMAKE_POST_LINK += $$escape_expand(\\n\\t) $$QMAKE_COPY /Y "$$shell_path($$JPEG_BIN/jpeg62.dll)" "$$shell_path($$RUNTIME_DST)"
+    QMAKE_POST_LINK += $$escape_expand(\\n\\t) $$QMAKE_COPY /Y "$$shell_path($$JPEG_BIN/turbojpeg.dll)" "$$shell_path($$RUNTIME_DST)"
 }

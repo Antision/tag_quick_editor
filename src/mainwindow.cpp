@@ -1,4 +1,4 @@
-#include "mainwindow.h"
+﻿#include "mainwindow.h"
 #include "litewidget2.h"
 #include "windowglyphbutton.h"
 #include "picturefilecaptionsource.h"
@@ -12,6 +12,7 @@
 #include"tepicturefile.h"
 #include"teeditor_derive.h"
 #include "logwidget.h"
+#include "imagededuplicatewindow.h"   // common/dedup:Tools -> Image Deduplication
 #include "windows_frame.h"
 #include "task_runner.h"
 #include "svgicon.h"
@@ -131,6 +132,7 @@ MainWindow::MainWindow(QWidget *parent)
     });
     attachLogWindow();
     connect(ui->action_log_window,&QAction::triggered,this,&MainWindow::showLogWindow,Qt::DirectConnection);
+    connect(ui->action_image_dedup,&QAction::triggered,this,&MainWindow::showDedupWindow,Qt::DirectConnection);
 
     teDetachTask("tags-load", load_tags);
 
@@ -736,6 +738,24 @@ void MainWindow::showLogWindow()
     logWindow->show();
     logWindow->raise();
     logWindow->activateWindow();
+}
+
+void MainWindow::showDedupWindow()
+{
+    // One instance per run, like gi keeps it in main(): the window owns thread
+    // pools and a scan session, and rebuilding it on every click would throw
+    // that away. WA_DeleteOnClose lets the user close it for good; QPointer
+    // clears itself when that happens.
+    if (!dedupWindow) {
+        dedupWindow = new ImageDeduplicateWindow(nullptr);
+        dedupWindow->setAttribute(Qt::WA_DeleteOnClose);
+        // The main window is frameless/translucent; a parented window would be
+        // clipped by it. Top level (no parent) is what gi does too.
+        dedupWindow->setWindowFlag(Qt::Window, true);
+    }
+    dedupWindow->show();
+    dedupWindow->raise();
+    dedupWindow->activateWindow();
 }
 
 void MainWindow::attachLogWindow()

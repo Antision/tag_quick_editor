@@ -2,6 +2,8 @@
 #include "mainwindow.h"
 #include"pch.h"
 #include "suggestionsource.h"
+#include "dedupenv.h"   // common/dedup:去重窗口的提示音
+#include "audio.h"
 #include <QApplication>
 #include"tesignalwidget.h"
 #include"task_runner.h"
@@ -37,6 +39,24 @@ int main(int argc, char *argv[])
     QLoggingCategory::setFilterRules(QStringLiteral("qt.gui.imageio=false"));
     setSuggestionSource(&g_tagSuggestions);
     load_config();
+    // 去重窗口(common/dedup)不再直接调某个程序的音频层:这里把共用提示音接上,
+    // 四条规定与 gi 相同(单对 / 批量 / 错误 / 一条都没移走)。
+    dedupenv::setSoundHandler([](DedupSound sound) {
+        switch (sound) {
+        case DedupSound::SingleAction:
+            appaudio::playSound(appaudio::Sound::SingleAction);
+            break;
+        case DedupSound::BatchAction:
+            appaudio::playSound(appaudio::Sound::BatchAction);
+            break;
+        case DedupSound::Error:
+            appaudio::playSound(appaudio::Sound::Error);
+            break;
+        case DedupSound::NothingRemoved:
+            appaudio::playSound(appaudio::Sound::NothingRemoved);
+            break;
+        }
+    });
     // config.json is the user's last word on tag icons/colours; the registry only
     // applies them, so it has to know them before the first tag is read.
     applyTagDecorations();

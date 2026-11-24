@@ -421,6 +421,7 @@ font-size:13px;
     </property>
     <addaction name="action_filt"/>
     <addaction name="action_log_window"/>
+    <addaction name="action_image_dedup"/>
    </widget>
    <addaction name="menu"/>
    <addaction name="menu_2"/>
@@ -542,6 +543,11 @@ font-size:13px;
   <action name="action_log_window">
    <property name="text">
     <string>Log Window</string>
+   </property>
+  </action>
+  <action name="action_image_dedup">
+   <property name="text">
+    <string>Image Deduplication</string>
    </property>
   </action>
  </widget>
