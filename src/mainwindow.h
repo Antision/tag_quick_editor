@@ -86,6 +86,17 @@ struct teDuplicateStemReport{
  *
  * @param imagePaths updated in place with the new paths.
  */
+/**
+ * @brief Where the image preview window goes, given the main window and the
+ *        available geometry of the screen that window is on.
+ *
+ * Beside the main window when the screen has a usable strip there, over it (same
+ * screen, 70% size, centred) when it has not - and never outside `work`, which is
+ * what keeps a two-monitor setup from producing one very long window that starts
+ * on the other screen. Pure, so the placement can be checked without windows.
+ */
+QRect teImagePreviewGeometry(const QRect& windowRect,const QRect& work);
+
 teDuplicateStemReport teResolveDuplicateStems(QVector<tePath>& imagePaths);
 
 class MainWindow : public QMainWindow

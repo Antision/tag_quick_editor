@@ -16,6 +16,29 @@
 #include "testyle.h"
 #include "pch.h"
 
+namespace {
+/**
+ * @brief The widget a page's editors live in.
+ *
+ * QScrollArea never shrinks its widget below the widget's `minimumSizeHint()`,
+ * and an editor reports a text driven one: a row of three line edits (pretreat)
+ * or one long custom tag is enough to make the page demand more width than the
+ * column has. The column is a column - its content follows its width, not the
+ * other way round - so the width demand is dropped and the layout squeezes its
+ * rows instead (which is what a narrow column should look like). Without this a
+ * two pixel overflow was enough to put a horizontal scrollbar under a page that
+ * had room to spare.
+ */
+class EditorPageContainer : public QWidget {
+public:
+    using QWidget::QWidget;
+    QSize minimumSizeHint() const override
+    {
+        return QSize(0, QWidget::minimumSizeHint().height());
+    }
+};
+}
+
 teEditorList::~teEditorList()
 {
     // The view keeps a raw TagEditorHost pointer and calls clearAll() from its
@@ -70,7 +93,7 @@ void teEditorList::loadEditors(const QVector<teEditor*>& input_vector_ptr,editor
         QScrollArea* newscrollarea = new QScrollArea;
         editorLayout->pages.push_back(newscrollarea);
         pageSplitter->addWidget(newscrollarea);
-        QWidget* container = new QWidget;
+        QWidget* container = new EditorPageContainer;
         newscrollarea->setWidget(container);
         newscrollarea->setWidgetResizable(true);
         newscrollarea->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
@@ -141,7 +164,7 @@ void teEditorList::setEditorsToPages(){
     }
     for(int i = pagecount;i<newPageCount;++i){
         QScrollArea*newscrollarea = new QScrollArea;
-        QWidget* container = new QWidget;
+        QWidget* container = new EditorPageContainer;
         newscrollarea->setWidget(container);
         newscrollarea->setWidgetResizable(true);
         newscrollarea->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);

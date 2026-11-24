@@ -396,6 +396,8 @@ struct hair_and_eyes_color_list : public teTagListControl{
             absorb(just_edited);
         }
         virtual void tagEdit(teTagWidgetBase*tag,teWordWidgetBase*word)override{
+            if(!tag||!tag->core)
+                return;
             if(std::shared_ptr<teTag>core =tag->core; core&&(classify_tag(core)==HairKind::StreakHair||classify_tag(core)==HairKind::GradientHair)){
                 int maxsize=0;
                 editingTag=tag;
@@ -422,9 +424,17 @@ struct hair_and_eyes_color_list : public teTagListControl{
                 lineedit->setFocus();
                 lineedit->selectAll();
             }else{
+                // Remember *which* tag the popup edits. This override used to
+                // bypass teTagListControl::tagEdit(), so m_editingCore stayed
+                // empty and reciveWidgetSignal() fell back to `select_current` -
+                // which a double click that never selected the tag does not set,
+                // and the popup then rewrote nothing (the H&E add widget looked
+                // completely dead).
                 ifedit=true;
+                m_insertBelow=false;
+                m_editingCore=tag->core;
                 onEdit_widget->input_and_show(tag->core);
-                        }
+            }
         }
         void link(std::shared_ptr<teTag>in_tag)override{
             if(absorb(in_tag))

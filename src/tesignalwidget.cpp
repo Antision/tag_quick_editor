@@ -1106,7 +1106,7 @@ QIcon signalIcon(const QString& path, const QColor& color, bool glow)
     const QSize iconSize(20, 20);
     const QSize slot(32, 32);
     if (glow)
-        return svgicon::icon(path, color, iconSize, 2.0);
+        return svgicon::icon(path, color, iconSize, 1.2);   // 光晕别太重
     QPixmap plain(slot);
     plain.fill(Qt::transparent);
     QPainter painter(&plain);

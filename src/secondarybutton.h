@@ -10,6 +10,7 @@
 #include <QVector>
 
 #include <functional>
+#include <memory>
 
 /**
  * @brief A button that owns a popup menu, instead of a combo box (SC-01..SC-11).
@@ -94,14 +95,32 @@ public:
      * The reftag list uses it: hovering a tag whose type this button stands for
      * shows the same menu the button would, anchored at the tag instead of at the
      * button (SC-02's hover preview, just with another anchor).
+     *
+     * `tag` is the tag the menu was opened at. It makes the menu edit *that* tag
+     * instead of this button's capture list (§1.13): a coloured spelling such as
+     * `red collar` is not in the collar menu's tag list, so the capture route
+     * wrote the picked spelling as a second tag next to it. Empty means "no
+     * tag" - the menu then behaves exactly like the button's own.
      */
-    void showPreviewAt(const QRect& anchor);
+    void showPreviewAt(const QRect& anchor, std::shared_ptr<teTag> tag = {});
     /// Solidify the preview that is on screen (a click on the reftag).
     void pinShownMenu();
     /// Close the menu if this button is the one showing it.
     void dismissMenu();
     /// True while the menu is the click-through hover preview (not yet pinned).
     bool previewVisible() const;
+
+    /**
+     * @brief How a menu entry rewrites the tag the preview was opened at.
+     *
+     * The editor this button's menu edits from the tag list decides what "give
+     * this tag that type" means (`red collar` + `sailor collar` ->
+     * `red sailor collar`); the button only knows the gesture, and which
+     * spelling of the tag its own menu stands for (`family`: `glowing halo` on
+     * `pink glowing halo`). Without a sink the anchored menu falls back to the
+     * capture semantics.
+     */
+    void setTagRewrite(std::function<bool(std::shared_ptr<teTag>, const QString&, const QStringList&)> sink);
 
     /**
      * @brief The add widget's rule: light up for the tag being edited, not for the
@@ -312,7 +331,8 @@ private:
     void loadActions();
     /// One tag from an entry's text, through m_tagBuilder when one was given.
     std::shared_ptr<teTag> makeTag(const QString& text) const;
-    /// The entries of the menu that is on screen (the first one when none is).
+    /// True when the entry replaced the type of the tag the menu was opened at.
+    bool rewriteAnchoredTag(const std::shared_ptr<teTag>& tag, const Action& action);    /// The entries of the menu that is on screen (the first one when none is).
     const QVector<Action>& activeActions() const;
     /// Does the menu on screen declare a third level? Then its groups belong to
     /// setFamily(), not to the "alternatives" rule in toggleAction().
@@ -335,6 +355,15 @@ private:
     /// widget). A menu opened by a reftag's hover preview keeps editing the list.
     std::function<void(const QString& tag, bool toggle)> m_composeSink;
     bool m_compose = false;
+    /**
+     * @brief The tag the menu on screen was opened at (the reftag gesture).
+     *
+     * Weak: the tag may be merged away while the menu is up, and a pinned menu
+     * outlives the hover that created it. Cleared when the menu closes.
+     */
+    std::weak_ptr<teTag> m_anchorTag;
+    /// How an entry rewrites that tag; empty when no editor installed a rule.
+    std::function<bool(std::shared_ptr<teTag>, const QString&, const QStringList&)> m_rewriteSink;
     mutable QStringList m_familyTags;
     mutable bool m_familyDirty = true;
     QString m_placeholder;

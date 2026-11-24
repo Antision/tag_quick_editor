@@ -308,20 +308,16 @@ MainWindow::MainWindow(QWidget *parent)
 
         imageWidget->setImage(file->filepath.qstring);
 
-        QRect windowRect = this->geometry();
-        int leftSpace = windowRect.left();
-        int rightSpace = QGuiApplication::primaryScreen()->geometry().right() - windowRect.right();
-
-        if (leftSpace < rightSpace) {
-            imageWidget->setGeometry(
-                windowRect.right(),
-                windowRect.top(),
-                QGuiApplication::primaryScreen()->geometry().right() - windowRect.right(),
-                windowRect.height()
-                );
-        } else {
-            imageWidget->setGeometry(0, windowRect.top(), windowRect.left(), windowRect.height());
-        }
+        const QRect windowRect = this->geometry();
+        // The screen the program is on, not the primary one: on two displays those
+        // are different screens and the preview belongs next to the window.
+        QScreen* screen = this->screen();
+        if (!screen)
+            screen = QGuiApplication::screenAt(windowRect.center());
+        if (!screen)
+            screen = QGuiApplication::primaryScreen();
+        const QRect work = screen ? screen->availableGeometry() : windowRect;
+        imageWidget->setGeometry(teImagePreviewGeometry(windowRect, work));
     }, Qt::DirectConnection);
 
     connect(imageWidget, &teImageWidget::prevImage,
@@ -1215,6 +1211,39 @@ QSet<QString> folderBaseNames(const QString& folder)
     return bases;
 }
 
+}
+
+QRect teImagePreviewGeometry(const QRect& windowRect,const QRect& work)
+{
+    if(!work.isValid()||!windowRect.isValid())
+        return windowRect;
+    // The free strip beside the main window, on *its* screen. Measuring it against
+    // the primary screen is what put the preview on the wrong monitor: with tqe on
+    // the secondary screen the "free space" came out negative (or as wide as the
+    // whole primary screen) and setGeometry clamped it into one long window
+    // starting there. `work` is the available geometry of the window's own screen.
+    const int rightSpace=work.right()-windowRect.right();
+    const int leftSpace=windowRect.left()-work.left();
+    // A sliver is not a preview: below this the window goes over the main one.
+    const int minWidth=qMin(240,qMax(1,work.width()/2));
+
+    QRect target;
+    if(rightSpace>=minWidth&&rightSpace>=leftSpace)
+        target=QRect(windowRect.right()+1,windowRect.top(),rightSpace,windowRect.height());
+    else if(leftSpace>=minWidth)
+        target=QRect(work.left(),windowRect.top(),leftSpace,windowRect.height());
+    else{
+        // No room beside it: the same screen, a usable size, centred.
+        const QSize size(work.width()*7/10,work.height()*7/10);
+        target=QRect(QPoint(work.center().x()-size.width()/2,
+                            work.center().y()-size.height()/2),size);
+    }
+    // Keep it inside that screen: the main window may itself be taller than the
+    // work area (a maximised window on a screen with a taskbar).
+    const int top=qBound(work.top(),target.top(),qMax(work.top(),work.bottom()));
+    target.moveTop(top);
+    target.setHeight(qMax(1,qMin(target.height(),work.bottom()+1-top)));
+    return target;
 }
 
 teDuplicateStemReport teResolveDuplicateStems(QVector<tePath>& imagePaths)

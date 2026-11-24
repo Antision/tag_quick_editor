@@ -507,6 +507,10 @@ public:
     /// "insert above/below" opened the add widget: the confirmed tag goes below
     /// the current one instead of above it.
     bool m_insertBelow=false;
+    /// The tag the add widget is editing. `select_current` is not reliable here:
+    /// the selection can move while the popup is open, and a deletion must hit the
+    /// tag the user opened, not whatever is selected by then.
+    std::shared_ptr<teTag> m_editingCore;
     /**
      * @brief Words (or whole tags) this control claims.
      *
@@ -540,6 +544,7 @@ public:
     void reciveDestroySignal();
     void reciveCancelSignal(){
         ifedit=false;
+        m_editingCore.reset();
     }
     virtual void onSubButtonClicked(){
         tagDestroy();

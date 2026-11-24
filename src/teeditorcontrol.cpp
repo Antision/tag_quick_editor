@@ -681,6 +681,7 @@ void teTagListControl::unlink(std::shared_ptr<teTag> in_tag){
 
 void teTagListControl::onAddButtonClicked(){
     ifedit=false;
+    m_editingCore.reset();
     m_insertBelow=false;
     // A new tag is not related to anything: no button may be lit.
     onEdit_widget->startNewTag();
@@ -690,6 +691,7 @@ void teTagListControl::onAddButtonClicked(){
 void teTagListControl::insertRequested(bool below){
     // 右键 insert above / below:和 "+" 同一个窗口,只是记住插到哪一侧。
     ifedit=false;
+    m_editingCore.reset();
     m_insertBelow=below;
     onEdit_widget->startNewTag();
     onEdit_widget->showNearCursor();
@@ -697,10 +699,15 @@ void teTagListControl::insertRequested(bool below){
 
 void teTagListControl::reciveWidgetSignal(QString data, bool ifadd){
     if(ifedit){
-        ifedit=false;
-        if(select_current){
-            taglistwidget->tagEdit(select_current->core,data);
-        }
+        // Keep editing: the popup stays open, and a second pick (another type, a
+        // colour) must keep rewriting the same tag. Consuming `ifedit` here made
+        // every pick after the first add a *new* tag, and it also turned the red
+        // button back into "cancel" (the trash stopped deleting).
+        std::shared_ptr<teTag> core = m_editingCore;
+        if(!core&&select_current)
+            core = select_current->core;
+        if(core&&taglistwidget)
+            taglistwidget->tagEdit(core,data);
     }else{
         auto tag=std::make_shared<teTag>(data);
         const bool below=m_insertBelow;
@@ -713,18 +720,22 @@ void teTagListControl::reciveWidgetSignal(QString data, bool ifadd){
 }
 
 void teTagListControl::reciveDestroySignal(){
-    if(ifedit){
-        ifedit=false;
-        if(select_current){
-            taglistwidget->tagErase(select_current->core);
-        }
-    }
+    if(!ifedit)
+        return;
+    ifedit=false;
+    std::shared_ptr<teTag> core = m_editingCore;
+    m_editingCore.reset();
+    if(!core&&select_current)
+        core = select_current->core;
+    if(core&&taglistwidget)
+        taglistwidget->tagErase(core);
 }
 
 void teTagListControl::tagEdit(teTagWidgetBase *tag, teWordWidgetBase *word){
     ifedit=true;
     m_insertBelow=false;
-    onEdit_widget->input_and_show(tag->core);
+    m_editingCore = tag ? tag->core : nullptr;
+    onEdit_widget->input_and_show(tag?tag->core:nullptr);
 }
 
 // The three overrides below mirror the editor's selection into the main tag

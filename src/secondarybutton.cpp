@@ -172,7 +172,7 @@ void SecondaryButton::setOwnTag(const QString& tag)
     setKind(tag.isEmpty() ? QStringLiteral("pure") : QStringLiteral("activatable"));
 }
 
-void SecondaryButton::showPreviewAt(const QRect& anchor)
+void SecondaryButton::showPreviewAt(const QRect& anchor, std::shared_ptr<teTag> tag)
 {
     // A menu anchored at a *tag* edits that tag in the list: the palette is not
     // what this gesture means, even though the same button paints it.
@@ -183,9 +183,12 @@ void SecondaryButton::showPreviewAt(const QRect& anchor)
     if (m_active && m_active != menu)
         hideMenu();
     m_active = menu;
+    // After hideMenu(), which drops the anchor of the menu it closed.
+    m_anchorTag = std::move(tag);
     menu->setPreview(true);
     menu->showAt(anchor);
     m_mode = Mode::Preview;
+    qApp->installEventFilter(this);
     syncMenuSelection();
 }
 
@@ -284,6 +287,28 @@ void SecondaryButton::setComposeSink(std::function<void(const QString& tag, bool
 bool SecondaryButton::previewVisible() const
 {
     return m_mode == Mode::Preview;
+}
+
+void SecondaryButton::setTagRewrite(std::function<bool(std::shared_ptr<teTag>, const QString&, const QStringList&)> sink)
+{
+    m_rewriteSink = std::move(sink);
+}
+
+bool SecondaryButton::rewriteAnchoredTag(const std::shared_ptr<teTag>& tag, const Action& action)
+{
+    // One entry is one spelling; a menu entry with several tags describes a set
+    // ("censored|mosaic censoring") and is not a type this tag can be rewritten
+    // to. Those keep the capture semantics.
+    if (!tag || !m_rewriteSink || action.tags.size() != 1)
+        return false;
+    // Which spelling of the tag this menu stands for: the longest one from its
+    // own family (`glowing halo` on `pink glowing halo`). Replacing only the
+    // registered type (`halo`) would keep `glowing` - it is not a type on its own
+    // - and append the picked spelling after it.
+    const QString family = paletteTagFor(static_cast<QString>(*tag));
+    if (family.isEmpty())
+        return false;
+    return m_rewriteSink(tag, family, action.tags);
 }
 
 void SecondaryButton::dismissMenu()
@@ -493,6 +518,10 @@ bool SecondaryButton::openPreview(bool right)
     menu->setPreview(true);
     menu->showAt(visualRect());
     m_mode = Mode::Preview;
+    // A preview can be turned solid by a press, and then the release never comes
+    // (the pointer went to the add widget / a context menu): without a watcher it
+    // stayed on screen forever. The same filter closes it on an outside press.
+    qApp->installEventFilter(this);
     syncMenuSelection();
     return true;
 }
@@ -564,11 +593,9 @@ void SecondaryButton::hideSubmenu()
 
 void SecondaryButton::hideMenu()
 {
-    if (m_mode == Mode::Pinned) {
-        qApp->removeEventFilter(this);
-        if (sPinned == this)
-            sPinned = nullptr;
-    }
+    qApp->removeEventFilter(this);
+    if (m_mode == Mode::Pinned && sPinned == this)
+        sPinned = nullptr;
     hideSubmenu();
     if (m_active) {
         m_active->dismiss();
@@ -576,6 +603,9 @@ void SecondaryButton::hideMenu()
     }
     m_mode = Mode::Hidden;
     m_dragging = false;
+    // The menu is gone: so is the tag it was editing. A later press must not
+    // rewrite a tag the user has long left.
+    m_anchorTag.reset();
 }
 
 const SecondaryButton::Action* SecondaryButton::findAction(const QString& id) const
@@ -594,6 +624,14 @@ const SecondaryButton::Action* SecondaryButton::findAction(const QString& id) co
 
 QStringList SecondaryButton::highlightedTags() const
 {
+    // A menu opened at a reftag shows what that tag says, not what this button
+    // captured: the tag a hover preview was opened at is the "capture" for as
+    // long as the menu is up (§1.13). The family spelling is what an entry can
+    // match, exactly like the add widget's palette mode.
+    if (std::shared_ptr<teTag> anchor = m_anchorTag.lock()) {
+        const QString spelling = paletteTagFor(static_cast<QString>(*anchor));
+        return spelling.isEmpty() ? QStringList{} : QStringList{spelling};
+    }
     // Palette mode: the add widget is editing one tag, so that tag *is* the
     // capture. The button and the entries of its menu must agree - reading the tag
     // list for one and the edited tag for the other is exactly how "the menu entry
@@ -729,6 +767,32 @@ void SecondaryButton::activateAction(SecondaryAction action, bool fromSubmenu, b
         // hover preview, a drag or a pinned menu. Leaving a pinned menu up would
         // hide the colours and modifiers the user is about to pick.
         hideMenu();
+        return;
+    }
+
+    // §1.13: a menu opened at a reftag edits that tag. `red collar` dropped on
+    // `sailor collar` is `red sailor collar` - not a second tag, which is what
+    // applying the entry to the button's capture list produced (the coloured
+    // spelling is not in the menu, so there was nothing to replace).
+    if (const std::shared_ptr<teTag> anchor = m_anchorTag.lock()) {
+        if (!rewriteAnchoredTag(anchor, action)) {
+            // The tag no longer ends with this menu's spelling (it was edited
+            // while the menu was up). Writing the entry on its own is exactly what
+            // the anchored gesture exists to prevent, so nothing is written.
+            telog(QStringLiteral("[secondary menu] %1 is not a spelling of %2")
+                      .arg(action.id, static_cast<QString>(*anchor)));
+            if (!keepOpen)
+                hideMenu();
+            return;
+        }
+        // An entry that opens a level below still offers it when the menu is
+        // staying up; a drag release ends the gesture and closes everything.
+        if (!action.submenuPath.isEmpty() && keepOpen)
+            openSubmenu(action, owner ? owner : m_active);
+        if (keepOpen)
+            syncMenuSelection();
+        else
+            hideMenu();
         return;
     }
 
@@ -1516,9 +1580,6 @@ void SecondaryButton::hideEvent(QHideEvent* event)
 
 bool SecondaryButton::eventFilter(QObject* watched, QEvent* event)
 {
-    if (m_mode != Mode::Pinned)
-        return QPushButton::eventFilter(watched, event);
-
     switch (event->type()) {
     case QEvent::MouseButtonPress: {
         auto* mouse = static_cast<QMouseEvent*>(event);
@@ -1527,15 +1588,22 @@ bool SecondaryButton::eventFilter(QObject* watched, QEvent* event)
             break;
         const QPoint global = mouse->globalPosition().toPoint();
         // A click on the button is handled by mousePressEvent() (it closes the
-        // menu); a click inside a menu belongs to that menu.
+        // menu); a click inside a menu belongs to that menu. Anything else - the
+        // add widget, a context menu, the editor behind - is "outside" and closes
+        // whatever this button has open, preview or pinned.
         bool inMenu = m_active && m_active->frameGeometry().contains(global);
         for (SecondaryMenu* child : m_children)
             inMenu = inMenu || child->frameGeometry().contains(global);
-        if (!inMenu)
+        const bool onButton = rect().contains(mapFromGlobal(global));
+        if (!inMenu && !onButton)
             hideMenu();
         break;
     }
     case QEvent::MouseButtonRelease: {
+        // Only a pinned menu needs the filter's release (the drag path handles its
+        // own); taking it here too would activate an entry twice.
+        if (m_mode != Mode::Pinned)
+            break;
         auto* mouse = static_cast<QMouseEvent*>(event);
         // The release under a right press was already handled as that press's
         // click. It must not toggle the entry a second time, and a right release

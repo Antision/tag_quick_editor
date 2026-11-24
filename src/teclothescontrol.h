@@ -221,6 +221,29 @@ inline QStringList allClothesTypes = []{
     return types;
 }();
 
+/**
+ * @brief How a type is spelled inside a tag: one word, or one word per part.
+ *
+ * A type whose *last* word is a type of its own (`sailor collar`: `collar` is a
+ * type) is a modifier in front of that type, so its words stay separate. Welding
+ * them together is what made `pink glowing halo` impossible to bring back to
+ * `pink halo`: the menu could no longer see `glowing` as its own word, and the
+ * next pick put a second `glowing` in front of it.
+ *
+ * A type whose last word is not a type (`crop top`, `long sleeves`: `top` and
+ * `sleeves` alone are not garment types) is a compound and stays ONE word - split
+ * it and the tag reads as an adjective plus a word that means nothing.
+ */
+inline QStringList clothesTypeWords(const QString& type)
+{
+    const QStringList words = type.split(QLatin1Char(' '), Qt::SkipEmptyParts);
+    if (words.size() < 2)
+        return words;
+    if (allClothesTypes.contains(words.back()))
+        return words;
+    return QStringList{type};
+}
+
 /// Generic garment words the user does not want, and the specific words they are
 /// absorbed by. A tag that says "underwear" or "footwear" is merged into an
 /// existing tag of the same family, and the *specific* spelling survives.
@@ -230,14 +253,14 @@ inline QHash<QString,QSet<QString>> genericClothesTypes{
 };
 
 /**
- * @brief The tag `text` describes, keeping a multi-word type as *one* word.
+ * @brief The tag `text` describes, with the type spelled the way a tag spells it.
  *
- * "school uniform", "high tops" and "mary janes" are each one type (§1.2), so a
- * tag built from them has to keep them together: split into "school" + "uniform"
- * the tag read back from the picture would be a different thing (the base word
- * `uniform` with an adjective in front), and the button that wrote it would no
- * longer claim it. "red school uniform" therefore becomes "red" + "school
- * uniform", and a single-word type is split the way a tag always is.
+ * The type keeps the spelling it was written with (`clothesTypeWords`): "crop
+ * top" stays one word because `top` alone is not a garment type, while "sailor
+ * collar" is `sailor` + `collar` because `collar` is one - welding it would take
+ * the modifier away from the word list, and nothing could remove it again.
+ * "red crop top" therefore becomes "red" + "crop top", and "red sailor collar"
+ * becomes "red" + "sailor" + "collar".
  *
  * Everything else goes through teTag(text), exactly like a hand-typed tag.
  */
@@ -258,7 +281,8 @@ inline std::shared_ptr<teTag> clothesTagFromText(const QString& text)
     const QString head = text.left(text.size() - type.size()).trimmed();
     for (const QString& word : head.split(QLatin1Char(' '), Qt::SkipEmptyParts))
         tag->words.append(new teWord{word});
-    tag->words.append(new teWord{type});
+    for (const QString& word : clothesTypeWords(type))
+        tag->words.append(new teWord{word});
     return tag;
 }
 
@@ -481,10 +505,30 @@ inline ClothesParts clothesParse(const teTag& tag)
     if (tag.words.isEmpty())
         return parts;
     parts.type = clothesTypeSuffix(tag);
-    // The words that spell the type are one part of the tag, even when the type
-    // is written as separate words.
-    const int typeWords = parts.type.split(QLatin1Char(' '), Qt::SkipEmptyParts).size();
-    const int adjectiveCount = qMax(0, tag.words.size() - typeWords);
+    // How many *words* of this tag spell the type. Both spellings exist - one
+    // word (`crop top`, see clothesTypeWords) or one word per part (`sailor
+    // collar`, and every hand-typed tag) - and counting the parts of the spelling
+    // instead of the words of the tag made the adjective count 2-2 = 0 for
+    // `red crop top`, which dropped the colour from the canonical words.
+    int typeWordCount = 0;
+    {
+        QString joined;
+        for (int i = tag.words.size() - 1; i >= 0; --i) {
+            joined = joined.isEmpty() ? tag.words[i]->text
+                                      : tag.words[i]->text + QLatin1Char(' ') + joined;
+            ++typeWordCount;
+            if (joined == parts.type)
+                break;
+            if (!parts.type.endsWith(joined)) {
+                typeWordCount = 0;          // the type is not a suffix of this tag
+                break;
+            }
+        }
+        if (typeWordCount <= 0)
+            typeWordCount = qMin(parts.type.split(QLatin1Char(' '), Qt::SkipEmptyParts).size(),
+                                 int(tag.words.size()));
+    }
+    const int adjectiveCount = qMax(0, tag.words.size() - typeWordCount);
     const auto colorSlot = is_color(tag);
     for (int i = 0; i < adjectiveCount; ++i) {
         const QString& text = tag.words[i]->text;
@@ -512,7 +556,7 @@ inline QStringList clothesCanonicalWords(const ClothesParts& parts)
         for (const QString& text : *bucket)
             if (!words.contains(text))
                 words.append(text);
-    words.append(parts.type);
+    words += clothesTypeWords(parts.type);
     return words;
 }
 
@@ -983,6 +1027,53 @@ struct ClothesList : public teTagListControl {
     /// the tag already is canonical).
     void applyWords(std::shared_ptr<teTag> tag){
         writeWords(tag,clothesCanonicalWords(clothesParse(*tag)));
+    }
+
+    /**
+     * @brief The reftag menu picked `tags` for `tag`: swap the garment's type.
+     *
+     * This is §1.13's "drag a reftag onto a menu entry". The menu stands for one
+     * *spelling* of the type (`family`: the longest one this tag ends with -
+     * `glowing halo` on `pink glowing halo`, `collar` on `red collar`), and the
+     * pick replaces exactly that spelling: `pink glowing halo` + `halo` gives
+     * `pink halo`, `red collar` + `sailor collar` gives `red sailor collar`.
+     * Using the registered type instead of the spelling kept `glowing` (it is not
+     * a type on its own) and put the picked spelling after it.
+     *
+     * Applying the entry to the button's capture list, which is what used to
+     * happen, found nothing to replace at all: `red collar` is not in the collar
+     * menu, so it simply wrote a second tag next to it.
+     *
+     * The picked spelling is written the way a tag spells it
+     * (`clothesTypeWords`): `sailor collar` becomes `sailor` + `collar`, so the
+     * modifier can be taken away again, while `crop top` stays one word.
+     *
+     * `writeWords` is the internal rewrite path, so the change is one undo step
+     * and does not send the tag through absorb() - composing a spelling is not
+     * the same as editing a tag into existence, and a merge here would undo the
+     * choice the user just made.
+     */
+    bool retag(std::shared_ptr<teTag> tag,const QString& family,const QStringList& tags){
+        if(!tag||tag->words.isEmpty()||tags.size()!=1||family.isEmpty())
+            return false;
+        const QString wanted=tags.front();
+        if(wanted.isEmpty()||!filter(tag))
+            return false;
+        if(family==wanted)
+            return true;                        // already this spelling
+        const QString current=static_cast<QString>(*tag);
+        if(!(current==family||current.endsWith(QLatin1Char(' ')+family)))
+            return false;                       // the spelling is not in this tag
+        QStringList words=current.left(current.size()-family.size())
+                              .split(QLatin1Char(' '),Qt::SkipEmptyParts);
+        words+=clothesTypeWords(wanted);
+        writeWords(tag,words);
+        // The same duplicate rule an edited tag gets (teTagList::edit): the one
+        // the user just renamed wins over an identical twin - the tag list may
+        // already hold the spelling that was picked.
+        if(taglistwidget&&taglistwidget->showing_list)
+            taglistwidget->showing_list->remove_duplicate(tag,true);
+        return true;
     }
 
     /**

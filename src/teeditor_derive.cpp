@@ -485,7 +485,11 @@ protected:
                 if(!resolve(m_anchor,button,tagWidget))
                     break;
                 m_shown = button;
-                m_shown->showPreviewAt(QRect(m_anchor->mapToGlobal(QPoint(0,0)),m_anchor->size()));
+                // The tag is part of the anchor: an entry picked from the menu
+                // rewrites *this* tag's type (`red collar` -> `red sailor
+                // collar`), it does not write the button's capture list.
+                m_shown->showPreviewAt(QRect(m_anchor->mapToGlobal(QPoint(0,0)),m_anchor->size()),
+                                       tagWidget?tagWidget->core:nullptr);
             }
             // Undecided, exactly like a SecondaryButton's own right press: a
             // drag materialises the hover menu, a click opens the tag operations
@@ -582,7 +586,9 @@ protected:
         }
         case QEvent::Leave:
         case QEvent::Hide:
-            if(!m_dragging)
+            // Leaving the tag is how the drag reaches the menu (they are one row
+            // apart); only a hover that is not being used closes here.
+            if(!m_dragging&&!m_pending)
                 dismiss();
             break;
         default:
@@ -616,11 +622,32 @@ private:
         }
         return !best.isEmpty();
     }
+    /// The tag list `tag` lives in (the editor's ref list); nullptr for a tag that
+    /// is not in one.
+    static teTagListWidgetBase* listOf(QWidget* tag){
+        for(QWidget* widget = tag;widget;widget = widget->parentWidget())
+            if(auto* list = qobject_cast<teTagListWidgetBase*>(widget))
+                return list;
+        return nullptr;
+    }
     void poll(){
         if(!m_page->isVisible()){
             dismiss();
             return;
         }
+        // A press owns the interaction until it is released. The menu hangs under
+        // the tag and routinely reaches past the editor page's own rect (the page
+        // ends a couple of rows below the ref list), so testing the page here used
+        // to end the drag as soon as the cursor walked onto the lower rows: the
+        // tag was never rewritten, and the menu - already pinned by the drag -
+        // stayed up and swallowed clicks ("the menu locked itself").
+        // The tag can also be recycled under the press (the list was rebuilt); that
+        // gesture can never finish, and keeping it would freeze the preview for the
+        // rest of the session.
+        if((m_pending||m_dragging)&&!m_anchor)
+            dismiss();
+        if(m_pending||m_dragging)
+            return;
         const QPoint global = QCursor::pos();
         if(!m_page->rect().contains(m_page->mapFromGlobal(global))){
             dismiss();
@@ -632,17 +659,40 @@ private:
         teTagWidgetBase* tagWidget = nullptr;
         if(!resolve(QApplication::widgetAt(global),button,tagWidget))
             return;
-        if(tagWidget==m_anchor)
+        teTagListWidgetBase* owner = listOf(tagWidget);
+        const bool selected = owner && owner->isSelected(tagWidget);
+        if(tagWidget==m_anchor){
+            // The same tag: only "it just became selected" is news. Clicking a tag
+            // is how it becomes the one whose menu may lift, and the cursor never
+            // leaves it - while re-offering the menu on every poll would make it
+            // pop back up right after the user closed it.
+            if(!m_anchorShown&&selected&&button&&!m_pinned){
+                m_anchorShown=true;
+                m_shown=button;
+                button->showPreviewAt(QRect(tagWidget->mapToGlobal(QPoint(0,0)),tagWidget->size()),
+                                      tagWidget->core);
+            }
             return;
+        }
         if(!button){
             dismiss();
             return;
         }
         dismiss();
-        m_shown = button;
+        // The gesture (a right press / drag, and the right-click menu) works on
+        // any tag, so the filter is installed for whatever is under the cursor.
+        // The *preview menu*, though, is only for the tag the user selected: a menu
+        // popping up under every tag the cursor happens to cross is noise on the
+        // way to the one being edited (user, 2026-11-24).
         m_anchor = tagWidget;
         m_anchor->installEventFilter(this);
-        button->showPreviewAt(QRect(tagWidget->mapToGlobal(QPoint(0,0)),tagWidget->size()));
+        m_anchorShown = false;
+        if(!selected)
+            return;
+        m_anchorShown = true;
+        m_shown = button;
+        button->showPreviewAt(QRect(tagWidget->mapToGlobal(QPoint(0,0)),tagWidget->size()),
+                              tagWidget->core);
     }
     /// The tag list that owns `tag`: its context menu is the one every tag of
     /// this editor uses, so a click here behaves exactly like a click there.
@@ -659,12 +709,21 @@ private:
         if(m_anchor)
             m_anchor->removeEventFilter(this);
         m_anchor = nullptr;
+        m_anchorShown = false;
     }
     void dismiss(){
         m_pending = nullptr;
         if(m_dragging&&m_anchor){
             m_dragging = false;
             m_anchor->releaseMouse();
+        }
+        // A menu this gesture materialised belongs to the gesture: aborting it
+        // (the tag went away, the page was hidden) must not leave that menu
+        // pinned on screen with nothing behind it. A menu the *user* pinned was
+        // handed over long ago - m_pinned is null by then.
+        if(m_pinned){
+            m_pinned->dismissMenu();
+            m_pinned = nullptr;
         }
         if(m_shown&&m_shown->previewVisible())
             m_shown->dismissMenu();
@@ -683,6 +742,9 @@ private:
     SecondaryButton* m_pending = nullptr;
     QPoint m_pendingPos;
     QPointer<teTagWidgetBase> m_anchor;   // switching the spelling destroys it
+    /// The menu of the anchored tag has already been offered (or the tag was not
+    /// the selected one when it was entered): a later poll must not offer it again.
+    bool m_anchorShown = false;
     bool m_dragging = false;
     bool m_rightUsed = false;
 };
@@ -777,7 +839,8 @@ teEditor_clothes::teEditor_clothes(TagListView*in_taglistwidget,QString &&name, 
 
     // The type list reads tags before the buttons do, exactly as it did when it
     // was the only control here.
-    addControl(new ClothesList(widget,taglistwidget));
+    auto* clothesList = new ClothesList(widget,taglistwidget);
+    addControl(clothesList);
 
     // A choice made in one of the menus clears the plain type buttons that are
     // still ticked: they live in another button group, so nothing else would.
@@ -866,6 +929,14 @@ teEditor_clothes::teEditor_clothes(TagListView*in_taglistwidget,QString &&name, 
         button->setPaletteMode(true);
         button->setComposeSink([widget](const QString& tag,bool toggle){
             widget->chooseComposedType(tag,toggle);
+        });
+        // §1.13: a menu opened from a reftag edits that tag's type. The rule
+        // lives in the list (it owns "what is this tag's type" and how a tag is
+        // rewritten); the button only knows the gesture and which spelling its
+        // menu stands for.
+        button->setTagRewrite([clothesList](std::shared_ptr<teTag> tag,const QString& family,
+                                            const QStringList& tags){
+            return clothesList->retag(tag,family,tags);
         });
     }
     connect(widget,&colorsWidget::editingTagChanged,this,[menuButtons](const QString& tagText){
